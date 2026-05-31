@@ -1,0 +1,67 @@
+package com.melon.foolsEngine.core.ECS.system;
+
+import com.melon.foolsEngine.core.ECS.basicComponents.CameraComponent;
+import com.melon.foolsEngine.core.ECS.basicComponents.Transform;
+import com.melon.foolsEngine.core.FoolsEngine;
+import com.melon.foolsEngine.api.rendering.resource.Camera;
+import com.melon.foolsEngine.util.PerspectiveProjection;
+import com.melon.foolsEngine.util.SparseSet;
+import org.joml.Matrix4f;
+import org.joml.Quaternionf;
+
+public class CameraCollector extends System {
+
+    private final SparseSet<CameraComponent> cameras;
+    private final SparseSet<Transform> transforms;
+    private final Matrix4f view = new Matrix4f();
+    private final Matrix4f proj = new Matrix4f();
+    private final PerspectiveProjection persp = new PerspectiveProjection(0,0,0);
+
+    {
+        requiredComponents.add(CameraComponent.class);
+        requiredComponents.add(Transform.class);
+    }
+
+    public CameraCollector(FoolsEngine engine) {
+        super(engine);
+        cameras = getSparseSet(CameraComponent.class);
+        transforms = getSparseSet(Transform.class);
+    }
+
+    //TODO:complete perspective projection and orthogonal projection
+    @Override
+    public void update(long dt) {
+
+        for (int e : entities) {
+            CameraComponent cam = cameras.getComponent(e);
+            //Only select the first activated camera.
+            if (!cam.active)
+                continue;
+            else
+                deactivateOtherCam(e);
+
+            Transform t = transforms.getComponent(e);
+            Matrix4f view = this.view.identity()
+                    .rotate(t.rotation.conjugate(new Quaternionf()))
+                    .translate(
+                            -t.position.x,
+                            -t.position.y,
+                            -t.position.z
+                    );
+            persp.aspect= INSTANCE.aspect;
+            persp.fov=cam.FOVy;
+            persp.near=cam.near;
+            Matrix4f proj = persp.get(this.proj.identity());
+            INSTANCE.frame.setCamera(new Camera(view, proj));
+            break;
+        }
+    }
+
+    private void deactivateOtherCam(int excludeEntityID){
+        for (int e : entities) {
+            CameraComponent cam = cameras.getComponent(e);
+            if(e!=excludeEntityID)
+                cam.active = false;
+        }
+    }
+}
