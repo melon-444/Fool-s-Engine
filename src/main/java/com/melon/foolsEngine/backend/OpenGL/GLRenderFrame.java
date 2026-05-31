@@ -2,6 +2,7 @@ package com.melon.foolsEngine.backend.OpenGL;
 
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderThreadPool;
+import com.melon.foolsEngine.api.rendering.resource.Light;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.Texture;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
@@ -23,6 +24,8 @@ class GLRenderFrame implements RenderFrame{
     private Camera camera;
     private boolean init = false;
     private RenderThreadPool renderThreadPool;
+    private Light[] currentLights = new Light[0];
+    private static final int MAX_LIGHTS = 16;
 
     @Override
     public void init(){
@@ -83,6 +86,7 @@ class GLRenderFrame implements RenderFrame{
             glMesh.uploadInstanceData(transforms);
 
             shader.bind();
+            uploadLights(shader);
             binder.reset();
             for (String key : material.params().keySet()) {
                 Object param = material.params().get(key);
@@ -132,6 +136,25 @@ class GLRenderFrame implements RenderFrame{
     public void submit(RenderCommand command) {
         initTest();
         commandQueue.add(command);
+    }
+
+    @Override
+    public void setLights(Light[] lights) {
+        initTest();
+        currentLights = lights != null ? lights : new Light[0];
+    }
+
+    private void uploadLights(ShaderProgram shader) {
+        int count = Math.min(currentLights.length, MAX_LIGHTS);
+        shader.setInt("lightCount", count);
+        for (int i = 0; i < count; i++) {
+            Light l = currentLights[i];
+            String idx = "[" + i + "]";
+            shader.setVec4("lightColor" + idx, l.color.x, l.color.y, l.color.z, l.intensity);
+            shader.setVec4("lightDir" + idx, l.direction.x, l.direction.y, l.direction.z, 0f);
+            shader.setVec4("lightPos" + idx, l.position.x, l.position.y, l.position.z, 0f);
+            shader.setVec4("lightParams" + idx, (float) l.type, l.cutOff, 0f, 0f);
+        }
     }
 
     @Override
