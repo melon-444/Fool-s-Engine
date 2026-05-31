@@ -83,7 +83,7 @@ public class TestInputBackend {
 
 
         float moveSpeed = 5.0f;
-        float lookSensitivity = 15.0f;
+        float lookSensitivity = 1.0f;
         float yaw = 0;
         float pitch = 0;
 
@@ -119,8 +119,8 @@ public class TestInputBackend {
             }
 
             Vector2f mouseDelta = input.getActionAxis2DDelta(lookDelta);
-            yaw -= mouseDelta.x * lookSensitivity * deltaTime;
-            pitch -= mouseDelta.y * lookSensitivity * deltaTime;
+            yaw -= mouseDelta.x * lookSensitivity;
+            pitch -= mouseDelta.y * lookSensitivity ;
             pitch = Math.min(89.0f, Math.max(-89.0f, pitch));
 
             Vector3f lookDir = new Vector3f(

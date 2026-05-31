@@ -22,6 +22,7 @@ public class GLFWMouse implements InputDevice<Window> {
     private float screenX = 0.0f;
     private float screenDeltaY = 0.0f;
     private float screenDeltaX = 0.0f;
+    private boolean firstMouse = true;
     private Window env;
 
     private final Map<Integer,Boolean> mouseButton = new HashMap<>();
@@ -104,10 +105,27 @@ public class GLFWMouse implements InputDevice<Window> {
             mouseWheelDel.put(GLFW_MOUSE_BUTTON_MIDDLE,scrollDeltaY);
         });
         cb_position = glfwSetCursorPosCallback(env.getID(), (window,  xpos,  ypos)->{
-                screenDeltaY = (float)ypos - this.screenY;
-                screenDeltaX = (float)xpos - this.screenX;
-                screenY = (float)ypos;
-                screenX = (float)xpos;
+                float newX = (float)xpos;
+                float newY = (float)ypos;
+
+                if (firstMouse) {
+                    screenX = newX;
+                    screenY = newY;
+                    firstMouse = false;
+                    mousePosition.put(GLFW_CURSOR, new Vector2f(screenX, screenY));
+                    return;
+                }
+
+                screenDeltaX = newX - screenX;
+                screenDeltaY = newY - screenY;
+                screenX = newX;
+                screenY = newY;
+
+                if (Math.abs(screenDeltaX) > 200 || Math.abs(screenDeltaY) > 200) {
+                    mousePosition.put(GLFW_CURSOR, new Vector2f(screenX, screenY));
+                    return;
+                }
+
                 if(!mousePosition.containsKey(GLFW_CURSOR))
                     mousePosition.put(GLFW_CURSOR,new Vector2f(screenX,screenY));
                 else
@@ -129,6 +147,7 @@ public class GLFWMouse implements InputDevice<Window> {
         cb_button = null;
         cb_wheel = null;
         cb_position = null;
+        firstMouse = true;
     }
 
 }
