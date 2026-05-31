@@ -46,7 +46,6 @@ public class GLFWKeyBoard implements InputDevice<Window>{
 
     @Override
     public void endFrame() {
-        keyboard.clear();
     }
 
     private Callback cb;

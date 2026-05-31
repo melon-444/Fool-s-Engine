@@ -61,13 +61,8 @@ public class GLFWMouse implements InputDevice<Window> {
 
     @Override
     public void endFrame() {
-        mouseButton.clear();
-        mouseWheel.clear();
         mouseWheelDel.clear();
-        mousePosition.clear();
         mousePositionDel.clear();
-        scrollY = 0;
-        scrollX = 0;
         scrollDeltaY = 0;
         scrollDeltaX = 0;
     }
