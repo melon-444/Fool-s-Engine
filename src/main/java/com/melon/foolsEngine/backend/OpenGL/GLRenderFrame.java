@@ -64,49 +64,48 @@ class GLRenderFrame implements RenderFrame{
 
         Map<BatchKey, List<RenderCommand>> batches = groupCommands(commands);
 
-        Mesh currentMesh = null;
-        ShaderProgram currentShader = null;
-
         for (Map.Entry<BatchKey, List<RenderCommand>> entry : batches.entrySet()) {
             Mesh mesh = entry.getKey().mesh;
-            ShaderProgram shader = entry.getKey().shader;
+            Material material = entry.getKey().material;
+            ShaderProgram shader = material.shader();
+            List<RenderCommand> cmds = entry.getValue();
 
-            if (currentMesh != mesh) {
-                mesh.bind();
-                currentMesh = mesh;
+            GLMesh glMesh = (GLMesh) mesh;
+            glMesh.configureInstancedModelMatrix();
+
+            int instanceCount = cmds.size();
+            float[] transforms = new float[instanceCount * 16];
+            for (int i = 0; i < instanceCount; i++) {
+                cmds.get(i).transform().get(transforms, i * 16);
             }
 
-            if (currentShader != shader) {
-                shader.bind();
-                currentShader = shader;
-            }
+            glMesh.bind();
+            glMesh.uploadInstanceData(transforms);
 
-            for (RenderCommand c : entry.getValue()) {
-                Material material = c.material();
-
-                binder.reset();
-                for (String key : material.params().keySet()) {
-                    Object param = material.params().get(key);
-                    if (param instanceof Float f) {
-                        shader.setFloat(key, f);
-                    } else if (param instanceof Integer i) {
-                        shader.setInt(key, i);
-                    } else if (param instanceof Vector2f v) {
-                        shader.setVec2(key, v.x, v.y);
-                    } else if (param instanceof Vector3f v) {
-                        shader.setVec3(key, v.x, v.y, v.z);
-                    } else if (param instanceof Vector4f v) {
-                        shader.setVec4(key, v.x, v.y, v.z, v.w);
-                    } else if (param instanceof Matrix4f m) {
-                        shader.setMat4(key, m.get(new float[16]));
-                    } else if (param instanceof Texture t) {
-                        int slot = binder.bind(t);
-                        shader.setInt(key, slot);
-                    }
+            shader.bind();
+            binder.reset();
+            for (String key : material.params().keySet()) {
+                Object param = material.params().get(key);
+                if (param instanceof Float f) {
+                    shader.setFloat(key, f);
+                } else if (param instanceof Integer i) {
+                    shader.setInt(key, i);
+                } else if (param instanceof Vector2f v) {
+                    shader.setVec2(key, v.x, v.y);
+                } else if (param instanceof Vector3f v) {
+                    shader.setVec3(key, v.x, v.y, v.z);
+                } else if (param instanceof Vector4f v) {
+                    shader.setVec4(key, v.x, v.y, v.z, v.w);
+                } else if (param instanceof Matrix4f m) {
+                    shader.setMat4(key, m.get(new float[16]));
+                } else if (param instanceof Texture t) {
+                    int slot = binder.bind(t);
+                    shader.setInt(key, slot);
                 }
-                shader.setMat4("mvp", new Matrix4f(camera.vp()).mul(c.transform()).get(new float[16]));
-                glDrawElements(GL_TRIANGLES, mesh.indexCount(), GL_UNSIGNED_INT, 0);
             }
+            shader.setMat4("vp", camera.vp().get(new float[16]));
+
+            glDrawElementsInstanced(GL_TRIANGLES, mesh.indexCount(), GL_UNSIGNED_INT, 0, instanceCount);
         }
 
         commandQueue.clear();
@@ -115,13 +114,13 @@ class GLRenderFrame implements RenderFrame{
     private Map<BatchKey, List<RenderCommand>> groupCommands(List<RenderCommand> commands) {
         Map<BatchKey, List<RenderCommand>> batches = new LinkedHashMap<>();
         for (RenderCommand c : commands) {
-            BatchKey key = new BatchKey(c.mesh(), c.material().shader());
+            BatchKey key = new BatchKey(c.mesh(), c.material());
             batches.computeIfAbsent(key, k -> new ArrayList<>()).add(c);
         }
         return batches;
     }
 
-    private record BatchKey(Mesh mesh, ShaderProgram shader) {}
+    private record BatchKey(Mesh mesh, Material material) {}
 
     @Override
     public void setCamera(Camera camera) {

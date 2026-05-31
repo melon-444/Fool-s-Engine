@@ -7,7 +7,7 @@ import org.lwjgl.BufferUtils;
 
 import java.nio.IntBuffer;
 
-import static org.lwjgl.opengl.GL30.*;
+import static org.lwjgl.opengl.GL45.*;
 
 class GLMesh implements Mesh {
     private int vao;
@@ -15,6 +15,10 @@ class GLMesh implements Mesh {
     private int ebo;
     private boolean uploaded = false;
     private MeshData meshData;
+
+    private int instanceVBO = 0;
+    private boolean instanceConfigured = false;
+    private static final int INSTANCE_MODEL_BASE = 3;
 
     @Override
     public void upload(MeshData data) {
@@ -58,6 +62,10 @@ class GLMesh implements Mesh {
         unbindVAO();
         glDeleteBuffers(vbo);
         glDeleteBuffers(ebo);
+        if (instanceVBO != 0) {
+            glDeleteBuffers(instanceVBO);
+            instanceVBO = 0;
+        }
         glDeleteVertexArrays(vao);
     }
 
@@ -76,6 +84,27 @@ class GLMesh implements Mesh {
     @Override
     public int indexCount() {
         return meshData.indices().length;
+    }
+
+    void configureInstancedModelMatrix() {
+        if (instanceConfigured) return;
+        bindVAO();
+        instanceVBO = glGenBuffers();
+        glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+        int stride = 16 * Float.BYTES;
+        for (int i = 0; i < 4; i++) {
+            int loc = INSTANCE_MODEL_BASE + i;
+            glEnableVertexAttribArray(loc);
+            glVertexAttribPointer(loc, 4, GL_FLOAT, false, stride, (long)i * 4 * Float.BYTES);
+            glVertexAttribDivisor(loc, 1);
+        }
+        instanceConfigured = true;
+        unbindVAO();
+    }
+
+    void uploadInstanceData(float[] data) {
+        glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+        glBufferData(GL_ARRAY_BUFFER, data, GL_DYNAMIC_DRAW);
     }
 
     private int createVAO(){
