@@ -1,6 +1,7 @@
 package com.melon.foolsEngine.backend.OpenGL;
 
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
+import com.melon.foolsEngine.api.rendering.render.RenderThreadPool;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.Texture;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
@@ -21,8 +22,7 @@ class GLRenderFrame implements RenderFrame{
     private final Queue<RenderCommand> commandQueue = new LinkedList<RenderCommand>();
     private Camera camera;
     private boolean init = false;
-
-
+    private RenderThreadPool renderThreadPool;
 
     @Override
     public void init(){
@@ -30,6 +30,7 @@ class GLRenderFrame implements RenderFrame{
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_GREATER);
         glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+        renderThreadPool = new RenderThreadPool();
         init = true;
     }
 
@@ -50,50 +51,77 @@ class GLRenderFrame implements RenderFrame{
     @Override
     public void endFrame() {
         initTest();
-        RenderCommand cmd = commandQueue.poll();
-        ShaderProgram shader = null;
-        Mesh mesh = null;
 
-        while(cmd!=null){
-            Material material = cmd.material();
-
-            if(shader != material.shader()){
-                shader = material.shader();
-                material.shader().bind();
-            }
-
-            if(mesh != cmd.mesh()){
-                mesh = cmd.mesh();
-                cmd.mesh().bind();
-            }
-
-            binder.reset();
-            for(String key:material.params().keySet()){
-                Object param = material.params().get(key);
-                if(param instanceof Float f){
-                    material.shader().setFloat(key, f);
-                }else if(param instanceof Integer i){
-                    material.shader().setInt(key, i);
-                }else if(param instanceof Vector2f v){
-                    material.shader().setVec2(key,v.x,v.y);
-                }else if(param instanceof Vector3f v){
-                    material.shader().setVec3(key,v.x,v.y,v.z);
-                }else  if(param instanceof Vector4f v){
-                    material.shader().setVec4(key,v.x,v.y,v.z,v.w);
-                }else  if(param instanceof Matrix4f m){
-                    material.shader().setMat4(key,m.get(new float[16]));
-                }else if(param instanceof Texture t){
-                    int slot = binder.bind(t);
-                    material.shader().setInt(key, slot);
-                }
-            }
-            material.shader().setMat4("mvp",new Matrix4f(camera.vp()).mul(cmd.transform()).get(new float[16]));
-            glDrawElements(GL_TRIANGLES, cmd.mesh().indexCount(), GL_UNSIGNED_INT, 0);
-
-            cmd = commandQueue.poll();
+        List<RenderCommand> commands = new ArrayList<>();
+        RenderCommand cmd;
+        while ((cmd = commandQueue.poll()) != null) {
+            commands.add(cmd);
         }
+
+        if (commands.isEmpty()) {
+            return;
+        }
+
+        Map<BatchKey, List<RenderCommand>> batches = groupCommands(commands);
+
+        Mesh currentMesh = null;
+        ShaderProgram currentShader = null;
+
+        for (Map.Entry<BatchKey, List<RenderCommand>> entry : batches.entrySet()) {
+            Mesh mesh = entry.getKey().mesh;
+            ShaderProgram shader = entry.getKey().shader;
+
+            if (currentMesh != mesh) {
+                mesh.bind();
+                currentMesh = mesh;
+            }
+
+            if (currentShader != shader) {
+                shader.bind();
+                currentShader = shader;
+            }
+
+            for (RenderCommand c : entry.getValue()) {
+                Material material = c.material();
+
+                binder.reset();
+                for (String key : material.params().keySet()) {
+                    Object param = material.params().get(key);
+                    if (param instanceof Float f) {
+                        shader.setFloat(key, f);
+                    } else if (param instanceof Integer i) {
+                        shader.setInt(key, i);
+                    } else if (param instanceof Vector2f v) {
+                        shader.setVec2(key, v.x, v.y);
+                    } else if (param instanceof Vector3f v) {
+                        shader.setVec3(key, v.x, v.y, v.z);
+                    } else if (param instanceof Vector4f v) {
+                        shader.setVec4(key, v.x, v.y, v.z, v.w);
+                    } else if (param instanceof Matrix4f m) {
+                        shader.setMat4(key, m.get(new float[16]));
+                    } else if (param instanceof Texture t) {
+                        int slot = binder.bind(t);
+                        shader.setInt(key, slot);
+                    }
+                }
+                shader.setMat4("mvp", new Matrix4f(camera.vp()).mul(c.transform()).get(new float[16]));
+                glDrawElements(GL_TRIANGLES, mesh.indexCount(), GL_UNSIGNED_INT, 0);
+            }
+        }
+
         commandQueue.clear();
     }
+
+    private Map<BatchKey, List<RenderCommand>> groupCommands(List<RenderCommand> commands) {
+        Map<BatchKey, List<RenderCommand>> batches = new LinkedHashMap<>();
+        for (RenderCommand c : commands) {
+            BatchKey key = new BatchKey(c.mesh(), c.material().shader());
+            batches.computeIfAbsent(key, k -> new ArrayList<>()).add(c);
+        }
+        return batches;
+    }
+
+    private record BatchKey(Mesh mesh, ShaderProgram shader) {}
 
     @Override
     public void setCamera(Camera camera) {
@@ -118,15 +146,12 @@ class GLRenderFrame implements RenderFrame{
         private int nextSlot = 0;
 
         public int bind(Texture texture) {
-
             if (bound.containsKey(texture)) {
                 return bound.get(texture);
             }
-
             int slot = nextSlot++;
             texture.bind(slot);
             bound.put(texture, slot);
-
             return slot;
         }
 
