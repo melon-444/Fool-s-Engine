@@ -22,6 +22,7 @@ public class GLFWMouse implements InputDevice<Window> {
     private float screenX = 0.0f;
     private float screenDeltaY = 0.0f;
     private float screenDeltaX = 0.0f;
+    private Window env;
 
     private final Map<Integer,Boolean> mouseButton = new HashMap<>();
     private final Map<Integer,Float> mouseWheel = new HashMap<>();
@@ -61,8 +62,13 @@ public class GLFWMouse implements InputDevice<Window> {
 
     @Override
     public void endFrame() {
+        mouseButton.clear();
+        mouseWheel.clear();
         mouseWheelDel.clear();
+        mousePosition.clear();
         mousePositionDel.clear();
+        scrollY = 0;
+        scrollX = 0;
         scrollDeltaY = 0;
         scrollDeltaX = 0;
     }
@@ -73,6 +79,8 @@ public class GLFWMouse implements InputDevice<Window> {
 
     @Override
     public void attachEnvironment(Window env) {
+        this.env = env;
+        glfwSetInputMode(env.getID(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         if(!(env instanceof GLWindow))
             throw new IllegalStateException("not a GLFW Window");
         cb_button = glfwSetMouseButtonCallback(env.getID(), (window,  button,  action,  mods)->{
@@ -101,19 +109,20 @@ public class GLFWMouse implements InputDevice<Window> {
                 screenY = (float)ypos;
                 screenX = (float)xpos;
                 if(!mousePosition.containsKey(GLFW_CURSOR))
-                    mousePosition.put(GLFW_CURSOR,new  Vector2f(screenX,screenY));
+                    mousePosition.put(GLFW_CURSOR,new Vector2f(screenX,screenY));
                 else
                     mousePosition.get(GLFW_CURSOR).set(screenX,screenY);
 
                 if(!mousePositionDel.containsKey(GLFW_CURSOR))
-                    mousePositionDel.put(GLFW_CURSOR,new Vector2f(0,0));
+                    mousePositionDel.put(GLFW_CURSOR,new Vector2f(screenDeltaX,screenDeltaY));
                 else
-                    mousePositionDel.get(GLFW_CURSOR).set(screenDeltaX,screenDeltaY);
+                    mousePositionDel.get(GLFW_CURSOR).add(screenDeltaX, screenDeltaY);
         });
     }
 
     @Override
     public void detachEnvironment() {
+        glfwSetInputMode(env.getID(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         cb_button.free();
         cb_wheel.free();
         cb_position.free();

@@ -75,12 +75,12 @@ public class TestInputBackend {
         input.bind(keyboard, FoolsEngineKeyCode.S, moveBackward);
         input.bind(keyboard, FoolsEngineKeyCode.A, moveLeft);
         input.bind(keyboard, FoolsEngineKeyCode.D, moveRight);
-        input.bind(keyboard, FoolsEngineKeyCode.E, moveUp);
-        input.bind(keyboard, FoolsEngineKeyCode.Q, moveDown);
+        input.bind(keyboard, FoolsEngineKeyCode.SPACE, moveUp);
+        input.bind(keyboard, FoolsEngineKeyCode.LEFT_SHIFT, moveDown);
 
         input.bind(mouse, FoolsEngineKeyCode.CURSOR, lookDelta);
 
-        glfwSetInputMode(win.getID(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
 
         float moveSpeed = 5.0f;
         float lookSensitivity = 15.0f;
@@ -119,7 +119,7 @@ public class TestInputBackend {
             }
 
             Vector2f mouseDelta = input.getActionAxis2DDelta(lookDelta);
-            yaw += mouseDelta.x * lookSensitivity * deltaTime;
+            yaw -= mouseDelta.x * lookSensitivity * deltaTime;
             pitch -= mouseDelta.y * lookSensitivity * deltaTime;
             pitch = Math.min(89.0f, Math.max(-89.0f, pitch));
 
@@ -147,7 +147,6 @@ public class TestInputBackend {
             }
         }
 
-        glfwSetInputMode(win.getID(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         shader.destroy();
         manager.destroyWindow(win, true);
     }
