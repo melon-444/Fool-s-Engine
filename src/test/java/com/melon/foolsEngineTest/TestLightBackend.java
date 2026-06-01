@@ -28,7 +28,7 @@ public class TestLightBackend {
     public static void main(String[] args) {
         WindowsManager manager = foolsEngine.serviceFactory.getWindowsManager();
         Window win = foolsEngine.mainWindow;
-        win.setTitle("Test Light Backend - P:DirLight  O:PointLight  I:SpotLight");
+        win.setTitle("Test Light Backend - P:DirLight  O:PointLight  I:SpotLight  L:Clear");
 
         Mesh dragonMesh = foolsEngine.serviceFactory.getMesh();
         dragonMesh.upload(ObjLoader.loadMesh(Path.of("src/test/resources/shaders/model/dragon.obj")));
@@ -75,6 +75,7 @@ public class TestLightBackend {
         Action spawnDirLight = () -> SignalType.BUTTON;
         Action spawnPointLight = () -> SignalType.BUTTON;
         Action spawnSpotLight = () -> SignalType.BUTTON;
+        Action clearLights = () -> SignalType.BUTTON;
 
         input.bind(keyboard, FoolsEngineKeyCode.W, moveForward);
         input.bind(keyboard, FoolsEngineKeyCode.S, moveBackward);
@@ -88,6 +89,7 @@ public class TestLightBackend {
         input.bind(keyboard, FoolsEngineKeyCode.P, spawnDirLight);
         input.bind(keyboard, FoolsEngineKeyCode.O, spawnPointLight);
         input.bind(keyboard, FoolsEngineKeyCode.I, spawnSpotLight);
+        input.bind(keyboard, FoolsEngineKeyCode.L, clearLights);
 
         float moveSpeed = 5.0f;
         float lookSensitivity = 1.0f;
@@ -98,6 +100,11 @@ public class TestLightBackend {
 
         List<Light> lights = new ArrayList<>();
         java.util.Random rng = new java.util.Random();
+
+        boolean pWasDown = false;
+        boolean oWasDown = false;
+        boolean iWasDown = false;
+        boolean lWasDown = false;
 
         while (!win.shouldClose()) {
             long currentTime = System.nanoTime();
@@ -142,18 +149,31 @@ public class TestLightBackend {
             cameraTarget = new Vector3f(cameraPos).add(lookDir);
             camera.view.identity().lookAt(cameraPos, cameraTarget, worldUp);
 
-            if (input.isActionPressed(spawnDirLight)) {
+            boolean pDown = input.isActionDown(spawnDirLight);
+            boolean oDown = input.isActionDown(spawnPointLight);
+            boolean iDown = input.isActionDown(spawnSpotLight);
+            boolean lDown = input.isActionDown(clearLights);
+
+            if (pDown && !pWasDown) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 lights.add(Light.directional(color, new Vector3f(lookDir)));
             }
-            if (input.isActionPressed(spawnPointLight)) {
+            if (oDown && !oWasDown) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 lights.add(Light.point(color, new Vector3f(cameraPos), 3.0f));
             }
-            if (input.isActionPressed(spawnSpotLight)) {
+            if (iDown && !iWasDown) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 lights.add(Light.spot(color, new Vector3f(lookDir), new Vector3f(cameraPos), 0.91f, 2.0f));
             }
+            if (lDown && !lWasDown) {
+                lights.clear();
+            }
+
+            pWasDown = pDown;
+            oWasDown = oDown;
+            iWasDown = iDown;
+            lWasDown = lDown;
 
             frame.beginFrame();
             frame.setCamera(camera);

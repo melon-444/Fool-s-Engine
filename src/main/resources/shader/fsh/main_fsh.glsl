@@ -41,9 +41,9 @@ void main() {
             vec3 toLight = lightPos[i].xyz - fragWorldPos;
             float dist = length(toLight);
             L = toLight / dist;
-            float theta = dot(L, normalize(-lightDir[i].xyz));
+            float theta = dot(-L, normalize(lightDir[i].xyz));
             float cutOff = lightParams[i].y;
-            float spot = smoothstep(cutOff, cutOff * 0.85, theta);
+            float spot = smoothstep(cutOff * 0.90, cutOff, theta);
             attenuation = intensity * spot / (1.0 + 0.05 * dist + 0.005 * dist * dist);
         }
 
