@@ -1,7 +1,8 @@
 package com.melon.foolsEngine.api.rendering.render;
 
 import com.melon.foolsEngine.api.rendering.resource.Camera;
-import com.melon.foolsEngine.api.rendering.resource.Light;
+import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
+import com.melon.foolsEngine.api.rendering.resource.Material;
 import com.melon.foolsEngine.api.rendering.resource.RenderCommand;
 
 public interface RenderFrame {
@@ -13,7 +14,7 @@ public interface RenderFrame {
 
     void endFrame(RenderTarget target);
 
-    RenderTarget createRenderTarget(int width, int height, int type);
+    void endFrame(RenderTarget target, Material overrideMaterial);
 
     void setCamera(Camera camera);
 
@@ -21,7 +22,5 @@ public interface RenderFrame {
 
     void setBackGroundColor(float r, float g, float b, float a);
 
-    void setAmbientColor(float r, float g, float b);
-
-    void setLights(Light[] lights);
+    void applyLightEnvironment(LightEnvironment env);
 }

@@ -4,6 +4,7 @@ import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
 import com.melon.foolsEngine.api.rendering.render.RenderThreadPool;
 import com.melon.foolsEngine.api.rendering.resource.Light;
+import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.Texture;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
@@ -25,9 +26,9 @@ class GLRenderFrame implements RenderFrame{
     private Camera camera;
     private boolean init = false;
     private RenderThreadPool renderThreadPool;
-    private Light[] currentLights = new Light[0];
+    private LightEnvironment lightEnv;
     private static final int MAX_LIGHTS = 16;
-    private final Vector3f ambientColor = new Vector3f(0.06f, 0.06f, 0.06f);
+    private static final int SHADOW_TEXTURE_BASE = 8;
 
     @Override
     public void init(){
@@ -66,23 +67,31 @@ class GLRenderFrame implements RenderFrame{
         commandQueue.clear();
 
         if (!commands.isEmpty()) {
-            renderCommands(commands, null);
+            renderCommands(commands, null, null);
         }
     }
 
     @Override
     public void endFrame(RenderTarget target) {
+        endFrame(target, null);
+    }
+
+    @Override
+    public void endFrame(RenderTarget target, Material overrideMaterial) {
         initTest();
 
         List<RenderCommand> commands = new ArrayList<>(commandQueue);
 
         if (!commands.isEmpty()) {
-            renderCommands(commands, target);
+            renderCommands(commands, target, overrideMaterial);
         }
     }
 
-    private void renderCommands(List<RenderCommand> commands, RenderTarget target) {
+    private void renderCommands(List<RenderCommand> commands, RenderTarget target, Material overrideMaterial) {
+        int[] savedViewport = null;
         if (target != null) {
+            savedViewport = new int[4];
+            glGetIntegerv(GL_VIEWPORT, savedViewport);
             target.bind();
             glViewport(0, 0, target.getWidth(), target.getHeight());
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -93,7 +102,7 @@ class GLRenderFrame implements RenderFrame{
 
         for (Map.Entry<BatchKey, List<RenderCommand>> entry : batches.entrySet()) {
             Mesh mesh = entry.getKey().mesh;
-            Material material = entry.getKey().material;
+            Material material = overrideMaterial != null ? overrideMaterial : entry.getKey().material;
             ShaderProgram shader = material.shader();
             List<RenderCommand> cmds = entry.getValue();
 
@@ -110,7 +119,9 @@ class GLRenderFrame implements RenderFrame{
             glMesh.uploadInstanceData(transforms);
 
             shader.bind();
-            uploadLights(shader);
+            if (overrideMaterial == null && lightEnv != null) {
+                uploadLightEnvironment(shader);
+            }
             binder.reset();
             for (String key : material.params().keySet()) {
                 Object param = material.params().get(key);
@@ -138,6 +149,7 @@ class GLRenderFrame implements RenderFrame{
 
         if (target != null) {
             target.unbind();
+            glViewport(savedViewport[0], savedViewport[1], savedViewport[2], savedViewport[3]);
         }
     }
 
@@ -165,22 +177,38 @@ class GLRenderFrame implements RenderFrame{
     }
 
     @Override
-    public void setLights(Light[] lights) {
+    public void applyLightEnvironment(LightEnvironment env) {
         initTest();
-        currentLights = lights != null ? lights : new Light[0];
+        this.lightEnv = env;
     }
 
-    private void uploadLights(ShaderProgram shader) {
-        shader.setVec3("ambientColor", ambientColor.x, ambientColor.y, ambientColor.z);
-        int count = Math.min(currentLights.length, MAX_LIGHTS);
+    private void uploadLightEnvironment(ShaderProgram shader) {
+        List<Light> lights = lightEnv.getLights();
+        shader.setVec3("ambientColor", lightEnv.getAmbient().x, lightEnv.getAmbient().y, lightEnv.getAmbient().z);
+        int count = Math.min(lights.size(), MAX_LIGHTS);
         shader.setInt("lightCount", count);
+
+        int shadowSlot = SHADOW_TEXTURE_BASE;
         for (int i = 0; i < count; i++) {
-            Light l = currentLights[i];
+            Light l = lights.get(i);
             String idx = "[" + i + "]";
             shader.setVec4("lightColor" + idx, l.color.x, l.color.y, l.color.z, l.intensity);
             shader.setVec4("lightDir" + idx, l.direction.x, l.direction.y, l.direction.z, 0f);
             shader.setVec4("lightPos" + idx, l.position.x, l.position.y, l.position.z, 0f);
-            shader.setVec4("lightParams" + idx, (float) l.type, l.cutOff, 0f, 0f);
+
+            boolean hasShadow = l.castsShadow() && l.lightSpaceMatrices != null
+                    && !l.lightSpaceMatrices.isEmpty() && !l.shadowMaps.isEmpty();
+            shader.setVec4("lightParams" + idx, (float) l.type, l.cutOff, hasShadow ? 1f : 0f, 0f);
+
+            if (hasShadow) {
+                RenderTarget sm = l.shadowMaps.get(0);
+                Matrix4f lsMatrix = l.lightSpaceMatrices.get(0);
+                glActiveTexture(GL_TEXTURE0 + shadowSlot);
+                glBindTexture(GL_TEXTURE_2D, sm.getTextureId());
+                shader.setInt("shadowMaps[" + i + "]", shadowSlot);
+                shader.setMat4("lightSpaceMatrices[" + i + "]", lsMatrix.get(new float[16]));
+                shadowSlot++;
+            }
         }
     }
 
@@ -188,19 +216,6 @@ class GLRenderFrame implements RenderFrame{
     public void setBackGroundColor(float r, float g, float b,float a) {
         initTest();
         glClearColor(r, g, b, a);
-    }
-
-    @Override
-    public void setAmbientColor(float r, float g, float b) {
-        initTest();
-        ambientColor.set(r, g, b);
-    }
-
-    @Override
-    public RenderTarget createRenderTarget(int width, int height, int type) {
-        GLFrameBuffer fbo = new GLFrameBuffer();
-        fbo.init(width, height, type);
-        return fbo;
     }
 
     private static class TextureBinder {

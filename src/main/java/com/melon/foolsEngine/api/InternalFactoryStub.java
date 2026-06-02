@@ -1,6 +1,7 @@
 package com.melon.foolsEngine.api;
 
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
+import com.melon.foolsEngine.api.rendering.render.RenderTarget;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.Texture;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
@@ -21,6 +22,7 @@ public abstract class InternalFactoryStub implements APIFactory {
     protected abstract ShaderProgram shaderProgram();
     protected abstract Texture texture();
     protected abstract Mesh mesh();
+    protected abstract RenderTarget renderTarget(int width, int height, int type);
 
     private static InternalFactoryStub OpenGLINSTANCE;
     private static InternalFactoryStub VulkanINSTANCE;
@@ -68,5 +70,9 @@ public abstract class InternalFactoryStub implements APIFactory {
     @Override
     public Mesh getMesh(){
         return mesh();
+    }
+    @Override
+    public RenderTarget createRenderTarget(int width, int height, int type) {
+        return renderTarget(width, height, type);
     }
 }

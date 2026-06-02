@@ -20,6 +20,8 @@ uniform vec4 lightColor[MAX_LIGHTS];
 uniform vec4 lightDir[MAX_LIGHTS];
 uniform vec4 lightPos[MAX_LIGHTS];
 uniform vec4 lightParams[MAX_LIGHTS];
+uniform mat4 lightSpaceMatrices[MAX_LIGHTS];
+uniform sampler2D shadowMaps[MAX_LIGHTS];
 
 void main() {
     vec3 N = normalize(fragWorldNormal);
@@ -50,9 +52,23 @@ void main() {
         }
 
         float diff = max(dot(N, L), 0.0);
-        colorSum += lColor * diff * attenuation;
+
+        float shadow = 1.0;
+        bool hasShadow = lightParams[i].z > 0.5;
+        if (hasShadow) {
+            vec4 lsPos = lightSpaceMatrices[i] * vec4(fragWorldPos, 1.0);
+            vec3 proj = lsPos.xyz / lsPos.w;
+            vec2 shadowUV = proj.xy * 0.5 + 0.5;
+            if (shadowUV.x >= 0.0 && shadowUV.x <= 1.0 && shadowUV.y >= 0.0 && shadowUV.y <= 1.0) {
+                float closest = texture(shadowMaps[i], shadowUV).r;
+                float bias = 0.002;
+                shadow = proj.z >= closest - bias ? 1.0 : 0.0;
+            }
+        }
+
+        colorSum += lColor * diff * attenuation * shadow;
     }
 
     colorSum += ambientColor;
-    fragColor = texture(textureSampler, a_uv) * vec4(colorSum, 1.0) ;
+    fragColor = texture(textureSampler, a_uv) * vec4(colorSum, 1.0);
 }

@@ -2,6 +2,7 @@ package com.melon.foolsEngineTest;
 
 import com.melon.foolsEngine.api.input.*;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
+import com.melon.foolsEngine.api.rendering.render.RenderTarget;
 import com.melon.foolsEngine.api.rendering.resource.*;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.Window;
@@ -11,6 +12,7 @@ import com.melon.foolsEngine.backend.OpenGL.GLFWMouse;
 import com.melon.foolsEngine.core.ECS.basicComponents.Transform;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.ObjLoader;
+import com.melon.foolsEngine.util.OrthogonalProjection;
 import com.melon.foolsEngine.util.PerspectiveProjection;
 import com.melon.foolsEngine.util.SignalType;
 import org.joml.*;
@@ -18,17 +20,19 @@ import org.joml.Math;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.lwjgl.glfw.GLFW.*;
 
 public class TestLightBackend {
     static FoolsEngine foolsEngine = FoolsEngine.create(1000, 100, 800, 600);
+    private static final int SHADOW_MAP_SIZE = 1024;
 
     public static void main(String[] args) {
         WindowsManager manager = foolsEngine.serviceFactory.getWindowsManager();
         Window win = foolsEngine.mainWindow;
-        win.setTitle("Test Light Backend - P:DirLight  O:PointLight  I:SpotLight  L:Clear");
+        win.setTitle("Test Light Backend - P:Dir  O:Point  I:Spot  ,:ShadowDir  N:ShadowSpot  L:Clear");
 
         Mesh dragonMesh = foolsEngine.serviceFactory.getMesh();
         dragonMesh.upload(ObjLoader.loadMesh(Path.of("src/test/resources/shaders/model/dragon.obj")));
@@ -40,10 +44,15 @@ public class TestLightBackend {
         texture.upload(Path.of("src/test/resources/textures/test2.png"));
         material.set("textureSampler", texture);
 
-        Transform dragonTransform = new Transform(new Vector3f(0, 0, 0), new Quaternionf(), new Vector3f(0.1f, 0.1f, 0.1f));
+        ShaderProgram depthShader = foolsEngine.serviceFactory.getShaderProgram();
+        depthShader.load(Path.of("src/main/resources/shader/vsh/depth_vsh.glsl"), Path.of("src/main/resources/shader/fsh/depth_fsh.glsl"));
+        Material depthMaterial = new Material(depthShader);
+
+        Transform dragonTransform1 = new Transform(new Vector3f(0, 0, 5), new Quaternionf(), new Vector3f(0.1f, 0.1f, 0.1f));
+        Transform dragonTransform2 = new Transform(new Vector3f(0, 0, -5), new Quaternionf(), new Vector3f(0.1f, 0.1f, 0.1f));
 
         PerspectiveProjection proj = new PerspectiveProjection(foolsEngine.FOV, foolsEngine.aspect, foolsEngine.Z_NEAR);
-        Vector3f cameraPos = new Vector3f(0, 0, -5);
+        Vector3f cameraPos = new Vector3f(0, 0, -12);
         Vector3f cameraTarget = new Vector3f(0, 0, 0);
         Vector3f worldUp = new Vector3f(0, 1, 0);
         Camera camera = new Camera(
@@ -55,6 +64,9 @@ public class TestLightBackend {
         RenderFrame frame = foolsEngine.frame;
         frame.init();
         frame.setBackGroundColor(0.05f, 0.05f, 0.1f, 1);
+
+        LightEnvironment lightEnv = new LightEnvironment();
+        lightEnv.setAmbient(0.08f, 0.08f, 0.08f);
 
         InputManager input = new InputManager();
         GLFWKeyBoard keyboard = new GLFWKeyBoard();
@@ -79,6 +91,8 @@ public class TestLightBackend {
         Action ambientUp = () -> SignalType.BUTTON;
         Action ambientDown = () -> SignalType.BUTTON;
         Action exit = () -> SignalType.BUTTON;
+        Action spawnShadowDirLight = () -> SignalType.BUTTON;
+        Action spawnShadowSpotLight = () -> SignalType.BUTTON;
 
         input.bind(keyboard, FoolsEngineKeyCode.W, moveForward);
         input.bind(keyboard, FoolsEngineKeyCode.S, moveBackward);
@@ -87,9 +101,8 @@ public class TestLightBackend {
         input.bind(keyboard, FoolsEngineKeyCode.SPACE, moveUp);
         input.bind(keyboard, FoolsEngineKeyCode.LEFT_SHIFT, moveDown);
 
-        input.bind(keyboard, FoolsEngineKeyCode.J , ambientUp);
+        input.bind(keyboard, FoolsEngineKeyCode.J, ambientUp);
         input.bind(keyboard, FoolsEngineKeyCode.K, ambientDown);
-
 
         input.bind(mouse, FoolsEngineKeyCode.CURSOR, lookDelta);
 
@@ -97,7 +110,8 @@ public class TestLightBackend {
         input.bind(keyboard, FoolsEngineKeyCode.O, spawnPointLight);
         input.bind(keyboard, FoolsEngineKeyCode.I, spawnSpotLight);
         input.bind(keyboard, FoolsEngineKeyCode.L, clearLights);
-
+        input.bind(keyboard, FoolsEngineKeyCode.COMMA, spawnShadowDirLight);
+        input.bind(keyboard, FoolsEngineKeyCode.N, spawnShadowSpotLight);
         input.bind(keyboard, FoolsEngineKeyCode.ESC, exit);
 
         float moveSpeed = 5.0f;
@@ -107,7 +121,8 @@ public class TestLightBackend {
 
         long lastTime = System.nanoTime();
 
-        List<Light> lights = new ArrayList<>();
+        List<Camera> shadowCameras = new ArrayList<>();
+        List<RenderTarget> shadowMaps = new ArrayList<>();
         java.util.Random rng = new java.util.Random();
 
         boolean pWasDown = false;
@@ -116,8 +131,8 @@ public class TestLightBackend {
         boolean lWasDown = false;
         boolean jWasDown = false;
         boolean kWasDown = false;
-
-        Vector3f ambientColor = new Vector3f(0.06f);
+        boolean commaWasDown = false;
+        boolean nWasDown = false;
 
         while (!win.shouldClose()) {
             long currentTime = System.nanoTime();
@@ -171,30 +186,68 @@ public class TestLightBackend {
             boolean lDown = input.isActionDown(clearLights);
             boolean jDown = input.isActionDown(ambientUp);
             boolean kDown = input.isActionDown(ambientDown);
+            boolean commaDown = input.isActionDown(spawnShadowDirLight);
+            boolean nDown = input.isActionDown(spawnShadowSpotLight);
 
             if (pDown && !pWasDown) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
-                lights.add(Light.directional(color, new Vector3f(lookDir)));
+                lightEnv.add(Light.directional(color, new Vector3f(lookDir)));
             }
             if (oDown && !oWasDown) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
-                lights.add(Light.point(color, new Vector3f(cameraPos), 3.0f));
+                lightEnv.add(Light.point(color, new Vector3f(cameraPos), 3.0f));
             }
             if (iDown && !iWasDown) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
-                lights.add(Light.spot(color, new Vector3f(lookDir), new Vector3f(cameraPos), 0.91f, 2.0f));
+                lightEnv.add(Light.spot(color, new Vector3f(lookDir), new Vector3f(cameraPos), 0.91f, 2.0f));
             }
             if (lDown && !lWasDown) {
-                lights.clear();
+                lightEnv.clear();
+                shadowCameras.clear();
+                for (RenderTarget sm : shadowMaps) {
+                    sm.destroy();
+                }
+                shadowMaps.clear();
             }
-            if(jDown && !jWasDown) {
-                ambientColor.mul(1.1f);
+            if (jDown && !jWasDown) {
+                lightEnv.getAmbient().mul(1.1f);
             }
             if (kDown && !kWasDown) {
-                ambientColor.mul(.9f);
+                lightEnv.getAmbient().mul(0.9f);
             }
 
+            if (commaDown && !commaWasDown) {
+                Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
+                Vector3f lightDir = new Vector3f(lookDir);
+                RenderTarget sm = foolsEngine.serviceFactory.createRenderTarget(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, RenderTarget.TARGET_DEPTH);
+                shadowMaps.add(sm);
 
+                Vector3f shadowCamPos = new Vector3f(lightDir).mul(-20);
+                Matrix4f shadowView = new Matrix4f().lookAt(shadowCamPos, new Vector3f(0, 0, 0), worldUp);
+                OrthogonalProjection orthoProj = new OrthogonalProjection(15f, 15f, 0.1f, 60f);
+                Matrix4f lightSpace = new Matrix4f(orthoProj.get(new Matrix4f())).mul(shadowView);
+                shadowCameras.add(new Camera(shadowView, orthoProj.get(new Matrix4f())));
+
+                lightEnv.add(Light.directional(color, lightDir, 1.0f,
+                        Collections.singletonList(sm), Collections.singletonList(lightSpace)));
+            }
+
+            if (nDown && !nWasDown) {
+                Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
+                Vector3f lightPos = new Vector3f(cameraPos);
+                Vector3f lightDir = new Vector3f(lookDir);
+                RenderTarget sm = foolsEngine.serviceFactory.createRenderTarget(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, RenderTarget.TARGET_DEPTH);
+                shadowMaps.add(sm);
+
+                Matrix4f shadowView = new Matrix4f().lookAt(lightPos,
+                        new Vector3f(lightPos).add(lightDir), worldUp);
+                PerspectiveProjection spotProj = new PerspectiveProjection(50f, 1.0f, 0.1f);
+                Matrix4f lightSpace = new Matrix4f(spotProj.get(new Matrix4f())).mul(shadowView);
+                shadowCameras.add(new Camera(shadowView, spotProj.get(new Matrix4f())));
+
+                lightEnv.add(Light.spot(color, lightDir, lightPos, 0.91f, 2.0f,
+                        Collections.singletonList(sm), Collections.singletonList(lightSpace)));
+            }
 
             pWasDown = pDown;
             oWasDown = oDown;
@@ -202,22 +255,48 @@ public class TestLightBackend {
             lWasDown = lDown;
             kWasDown = kDown;
             jWasDown = jDown;
+            commaWasDown = commaDown;
+            nWasDown = nDown;
 
 
             frame.beginFrame();
+
+            frame.submit(new RenderCommand(dragonMesh, material, dragonTransform1.getMatrix()));
+            frame.submit(new RenderCommand(dragonMesh, material, dragonTransform2.getMatrix()));
+
+            int shadowIdx = 0;
+            List<Light> lights = lightEnv.getLights();
+            for (int li = 0; li < lights.size(); li++) {
+                Light light = lights.get(li);
+                if (light.castsShadow()) {
+                    for (RenderTarget sm : light.shadowMaps) {
+                        frame.setCamera(shadowCameras.get(shadowIdx));
+                        frame.endFrame(sm, depthMaterial);
+                        shadowIdx++;
+                    }
+                }
+            }
+
             frame.setCamera(camera);
-            frame.setLights(lights.toArray(new Light[0]));
-            frame.setAmbientColor(ambientColor.x, ambientColor.y, ambientColor.z);
-            frame.setBackGroundColor(ambientColor.x,ambientColor.y,ambientColor.z,1.0f);
-            frame.submit(new RenderCommand(dragonMesh, material, dragonTransform.getMatrix()));
+            frame.applyLightEnvironment(lightEnv);
+            frame.setBackGroundColor(lightEnv.getAmbient().x, lightEnv.getAmbient().y, lightEnv.getAmbient().z, 1.0f);
             frame.endFrame();
 
             input.endFrame();
             win.update();
 
+            try {
+                Thread.sleep(5);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         shader.destroy();
+        depthShader.destroy();
+        for (RenderTarget sm : shadowMaps) {
+            sm.destroy();
+        }
         manager.destroyWindow(win, true);
     }
 }
