@@ -1,6 +1,7 @@
 package com.melon.foolsEngine.backend.OpenGL;
 
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
+import com.melon.foolsEngine.api.rendering.render.RenderTarget;
 import com.melon.foolsEngine.api.rendering.render.RenderThreadPool;
 import com.melon.foolsEngine.api.rendering.resource.Light;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
@@ -26,6 +27,7 @@ class GLRenderFrame implements RenderFrame{
     private RenderThreadPool renderThreadPool;
     private Light[] currentLights = new Light[0];
     private static final int MAX_LIGHTS = 16;
+    private final Vector3f ambientColor = new Vector3f(0.06f, 0.06f, 0.06f);
 
     @Override
     public void init(){
@@ -44,6 +46,7 @@ class GLRenderFrame implements RenderFrame{
     @Override
     public void beginFrame() {
         initTest();
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearDepth(0.0f);
         commandQueue.clear();
@@ -60,9 +63,30 @@ class GLRenderFrame implements RenderFrame{
         while ((cmd = commandQueue.poll()) != null) {
             commands.add(cmd);
         }
+        commandQueue.clear();
 
-        if (commands.isEmpty()) {
-            return;
+        if (!commands.isEmpty()) {
+            renderCommands(commands, null);
+        }
+    }
+
+    @Override
+    public void endFrame(RenderTarget target) {
+        initTest();
+
+        List<RenderCommand> commands = new ArrayList<>(commandQueue);
+
+        if (!commands.isEmpty()) {
+            renderCommands(commands, target);
+        }
+    }
+
+    private void renderCommands(List<RenderCommand> commands, RenderTarget target) {
+        if (target != null) {
+            target.bind();
+            glViewport(0, 0, target.getWidth(), target.getHeight());
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glClearDepth(0.0f);
         }
 
         Map<BatchKey, List<RenderCommand>> batches = groupCommands(commands);
@@ -112,7 +136,9 @@ class GLRenderFrame implements RenderFrame{
             glDrawElementsInstanced(GL_TRIANGLES, mesh.indexCount(), GL_UNSIGNED_INT, 0, instanceCount);
         }
 
-        commandQueue.clear();
+        if (target != null) {
+            target.unbind();
+        }
     }
 
     private Map<BatchKey, List<RenderCommand>> groupCommands(List<RenderCommand> commands) {
@@ -145,6 +171,7 @@ class GLRenderFrame implements RenderFrame{
     }
 
     private void uploadLights(ShaderProgram shader) {
+        shader.setVec3("ambientColor", ambientColor.x, ambientColor.y, ambientColor.z);
         int count = Math.min(currentLights.length, MAX_LIGHTS);
         shader.setInt("lightCount", count);
         for (int i = 0; i < count; i++) {
@@ -161,6 +188,19 @@ class GLRenderFrame implements RenderFrame{
     public void setBackGroundColor(float r, float g, float b,float a) {
         initTest();
         glClearColor(r, g, b, a);
+    }
+
+    @Override
+    public void setAmbientColor(float r, float g, float b) {
+        initTest();
+        ambientColor.set(r, g, b);
+    }
+
+    @Override
+    public RenderTarget createRenderTarget(int width, int height, int type) {
+        GLFrameBuffer fbo = new GLFrameBuffer();
+        fbo.init(width, height, type);
+        return fbo;
     }
 
     private static class TextureBinder {

@@ -13,6 +13,8 @@ out vec4 fragColor;
 
 uniform sampler2D textureSampler;
 
+uniform vec3 ambientColor;
+
 uniform int lightCount;
 uniform vec4 lightColor[MAX_LIGHTS];
 uniform vec4 lightDir[MAX_LIGHTS];
@@ -51,6 +53,6 @@ void main() {
         colorSum += lColor * diff * attenuation;
     }
 
-    colorSum += vec3(0.06);
-    fragColor = texture(textureSampler, a_uv) * vec4(colorSum, 1.0);
+    colorSum += ambientColor;
+    fragColor = texture(textureSampler, a_uv) * vec4(colorSum, 1.0) ;
 }

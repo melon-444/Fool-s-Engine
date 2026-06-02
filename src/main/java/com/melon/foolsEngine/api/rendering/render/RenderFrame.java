@@ -11,11 +11,17 @@ public interface RenderFrame {
 
     void endFrame();
 
+    void endFrame(RenderTarget target);
+
+    RenderTarget createRenderTarget(int width, int height, int type);
+
     void setCamera(Camera camera);
 
     void submit(RenderCommand command);
 
     void setBackGroundColor(float r, float g, float b, float a);
+
+    void setAmbientColor(float r, float g, float b);
 
     void setLights(Light[] lights);
 }

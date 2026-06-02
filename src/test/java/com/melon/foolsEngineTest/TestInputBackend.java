@@ -70,6 +70,7 @@ public class TestInputBackend {
         Action moveUp = () -> SignalType.BUTTON;
         Action moveDown = () -> SignalType.BUTTON;
         Action lookDelta = () -> SignalType.AXIS_2DDel;
+        Action exit = () -> SignalType.BUTTON;
 
         input.bind(keyboard, FoolsEngineKeyCode.W, moveForward);
         input.bind(keyboard, FoolsEngineKeyCode.S, moveBackward);
@@ -80,6 +81,7 @@ public class TestInputBackend {
 
         input.bind(mouse, FoolsEngineKeyCode.CURSOR, lookDelta);
 
+        input.bind(mouse, FoolsEngineKeyCode.ESC, exit);
 
 
         float moveSpeed = 5.0f;
@@ -117,6 +119,11 @@ public class TestInputBackend {
             if (input.isActionDown(moveDown)) {
                 cameraPos.sub(new Vector3f(worldUp).mul(moveSpeed * deltaTime));
             }
+
+            if (input.isActionDown(exit)) {
+                break;
+            }
+
 
             Vector2f mouseDelta = input.getActionAxis2DDelta(lookDelta);
             yaw -= mouseDelta.x * lookSensitivity;

@@ -10,6 +10,7 @@ public class Light extends Component{
     public Vector3f position;
     public float thetaOfCutOff;
     public final LightType lightType;
+    public boolean castsShadow = false;
 
     public Light(Vector3f color, Vector3f direction, Vector3f position, float thetaOfCutOff) {
         this.color = color;

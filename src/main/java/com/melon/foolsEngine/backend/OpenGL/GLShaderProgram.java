@@ -54,6 +54,12 @@ class GLShaderProgram implements ShaderProgram {
         glCompileShader(fragmentShaderID);
         checkCompileStatus(fragmentShaderID,GL_FRAGMENT_SHADER);
 
+        uniformLocations.clear();
+        programID = glCreateProgram();
+        glAttachShader(programID, vertexShaderID);
+        glAttachShader(programID, fragmentShaderID);
+        glLinkProgram(programID);
+        glValidateProgram(programID);
     }
 
     private void checkCompileStatus(int shaderID,int type) {
@@ -65,13 +71,6 @@ class GLShaderProgram implements ShaderProgram {
 
     @Override
     public void bind() {
-        this.programID = glCreateProgram();
-        glAttachShader(programID, vertexShaderID);
-        glAttachShader(programID, fragmentShaderID);
-        //link vert and frag
-        glLinkProgram(programID);
-        //validate
-        glValidateProgram(programID);
         glUseProgram(programID);
     }
 
@@ -82,6 +81,7 @@ class GLShaderProgram implements ShaderProgram {
 
     @Override
     public void destroy() {
+        uniformLocations.clear();
         glDeleteProgram(programID);
         this.programID = 0;
         glDeleteShader(vertexShaderID);

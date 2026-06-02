@@ -76,6 +76,9 @@ public class TestLightBackend {
         Action spawnPointLight = () -> SignalType.BUTTON;
         Action spawnSpotLight = () -> SignalType.BUTTON;
         Action clearLights = () -> SignalType.BUTTON;
+        Action ambientUp = () -> SignalType.BUTTON;
+        Action ambientDown = () -> SignalType.BUTTON;
+        Action exit = () -> SignalType.BUTTON;
 
         input.bind(keyboard, FoolsEngineKeyCode.W, moveForward);
         input.bind(keyboard, FoolsEngineKeyCode.S, moveBackward);
@@ -84,12 +87,18 @@ public class TestLightBackend {
         input.bind(keyboard, FoolsEngineKeyCode.SPACE, moveUp);
         input.bind(keyboard, FoolsEngineKeyCode.LEFT_SHIFT, moveDown);
 
+        input.bind(keyboard, FoolsEngineKeyCode.J , ambientUp);
+        input.bind(keyboard, FoolsEngineKeyCode.K, ambientDown);
+
+
         input.bind(mouse, FoolsEngineKeyCode.CURSOR, lookDelta);
 
         input.bind(keyboard, FoolsEngineKeyCode.P, spawnDirLight);
         input.bind(keyboard, FoolsEngineKeyCode.O, spawnPointLight);
         input.bind(keyboard, FoolsEngineKeyCode.I, spawnSpotLight);
         input.bind(keyboard, FoolsEngineKeyCode.L, clearLights);
+
+        input.bind(keyboard, FoolsEngineKeyCode.ESC, exit);
 
         float moveSpeed = 5.0f;
         float lookSensitivity = 1.0f;
@@ -105,6 +114,10 @@ public class TestLightBackend {
         boolean oWasDown = false;
         boolean iWasDown = false;
         boolean lWasDown = false;
+        boolean jWasDown = false;
+        boolean kWasDown = false;
+
+        Vector3f ambientColor = new Vector3f(0.06f);
 
         while (!win.shouldClose()) {
             long currentTime = System.nanoTime();
@@ -134,6 +147,9 @@ public class TestLightBackend {
             if (input.isActionDown(moveDown)) {
                 cameraPos.sub(new Vector3f(worldUp).mul(moveSpeed * deltaTime));
             }
+            if (input.isActionDown(exit)) {
+                break;
+            }
 
             Vector2f mouseDelta = input.getActionAxis2DDelta(lookDelta);
             yaw -= mouseDelta.x * lookSensitivity;
@@ -153,6 +169,8 @@ public class TestLightBackend {
             boolean oDown = input.isActionDown(spawnPointLight);
             boolean iDown = input.isActionDown(spawnSpotLight);
             boolean lDown = input.isActionDown(clearLights);
+            boolean jDown = input.isActionDown(ambientUp);
+            boolean kDown = input.isActionDown(ambientDown);
 
             if (pDown && !pWasDown) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
@@ -169,26 +187,34 @@ public class TestLightBackend {
             if (lDown && !lWasDown) {
                 lights.clear();
             }
+            if(jDown && !jWasDown) {
+                ambientColor.mul(1.1f);
+            }
+            if (kDown && !kWasDown) {
+                ambientColor.mul(.9f);
+            }
+
+
 
             pWasDown = pDown;
             oWasDown = oDown;
             iWasDown = iDown;
             lWasDown = lDown;
+            kWasDown = kDown;
+            jWasDown = jDown;
+
 
             frame.beginFrame();
             frame.setCamera(camera);
             frame.setLights(lights.toArray(new Light[0]));
+            frame.setAmbientColor(ambientColor.x, ambientColor.y, ambientColor.z);
+            frame.setBackGroundColor(ambientColor.x,ambientColor.y,ambientColor.z,1.0f);
             frame.submit(new RenderCommand(dragonMesh, material, dragonTransform.getMatrix()));
             frame.endFrame();
 
             input.endFrame();
             win.update();
 
-            try {
-                Thread.sleep(5);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
         }
 
         shader.destroy();
