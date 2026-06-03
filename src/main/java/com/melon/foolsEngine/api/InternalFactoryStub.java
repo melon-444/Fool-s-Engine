@@ -24,6 +24,10 @@ public abstract class InternalFactoryStub implements APIFactory {
     protected abstract Mesh mesh();
     protected abstract RenderTarget renderTarget(int width, int height, int type);
 
+    protected RenderTarget renderTarget(int width, int height, int type, int layers) {
+        return renderTarget(width, height, type);
+    }
+
     private static InternalFactoryStub OpenGLINSTANCE;
     private static InternalFactoryStub VulkanINSTANCE;
 
@@ -74,5 +78,10 @@ public abstract class InternalFactoryStub implements APIFactory {
     @Override
     public RenderTarget createRenderTarget(int width, int height, int type) {
         return renderTarget(width, height, type);
+    }
+
+    @Override
+    public RenderTarget createRenderTarget(int width, int height, int type, int layers) {
+        return renderTarget(width, height, type, layers);
     }
 }

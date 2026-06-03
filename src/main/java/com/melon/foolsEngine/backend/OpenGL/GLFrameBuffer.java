@@ -12,30 +12,38 @@ class GLFrameBuffer implements RenderTarget {
     private int width;
     private int height;
     private int type;
+    private int layers = 1;
 
     @Override
     public void init(int width, int height, int type) {
+        init(width, height, type, 1);
+    }
+
+    @Override
+    public void init(int width, int height, int type, int layers) {
         this.width = width;
         this.height = height;
         this.type = type;
+        this.layers = layers;
 
         fbo = glGenFramebuffers();
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
         if (type == TARGET_DEPTH) {
             depthAttachment = glGenTextures();
-            glBindTexture(GL_TEXTURE_2D, depthAttachment);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0L);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, depthAttachment);
+            glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT24, width, height, layers, 0,
+                    GL_DEPTH_COMPONENT, GL_FLOAT, 0L);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
             float[] border = {1f, 1f, 1f, 1f};
-            glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, border);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthAttachment, 0);
+            glTexParameterfv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BORDER_COLOR, border);
+            glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthAttachment, 0, 0);
             glDrawBuffer(GL_NONE);
             glReadBuffer(GL_NONE);
-        } else {
+        }  else {
             colorTex = glGenTextures();
             glBindTexture(GL_TEXTURE_2D, colorTex);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0L);
@@ -68,6 +76,16 @@ class GLFrameBuffer implements RenderTarget {
     }
 
     @Override
+    public void attachLayer(int layer) {
+        glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthAttachment, 0, layer);
+    }
+
+    @Override
+    public int getLayers() {
+        return layers;
+    }
+
+    @Override
     public int getWidth() {
         return width;
     }
@@ -79,7 +97,7 @@ class GLFrameBuffer implements RenderTarget {
 
     @Override
     public int getTextureId() {
-        return type == TARGET_DEPTH ? depthAttachment : colorTex;
+        return type == TARGET_COLOR ? colorTex : depthAttachment;
     }
 
     @Override
@@ -93,18 +111,18 @@ class GLFrameBuffer implements RenderTarget {
             glDeleteFramebuffers(fbo);
             fbo = 0;
         }
-        if (type == TARGET_DEPTH) {
-            if (depthAttachment != 0) {
-                glDeleteTextures(depthAttachment);
-                depthAttachment = 0;
-            }
-        } else {
+        if (type == TARGET_COLOR) {
             if (colorTex != 0) {
                 glDeleteTextures(colorTex);
                 colorTex = 0;
             }
             if (depthAttachment != 0) {
                 glDeleteRenderbuffers(depthAttachment);
+                depthAttachment = 0;
+            }
+        } else {
+            if (depthAttachment != 0) {
+                glDeleteTextures(depthAttachment);
                 depthAttachment = 0;
             }
         }

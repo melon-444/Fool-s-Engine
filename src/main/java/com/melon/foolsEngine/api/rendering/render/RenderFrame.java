@@ -16,6 +16,8 @@ public interface RenderFrame {
 
     void endFrame(RenderTarget target, Material overrideMaterial);
 
+    void endFrame(RenderTarget target, Material overrideMaterial, int arrayLayer);
+
     void setCamera(Camera camera);
 
     void submit(RenderCommand command);

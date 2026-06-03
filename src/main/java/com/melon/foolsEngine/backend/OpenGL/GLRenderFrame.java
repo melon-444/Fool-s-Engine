@@ -3,7 +3,6 @@ package com.melon.foolsEngine.backend.OpenGL;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
 import com.melon.foolsEngine.api.rendering.render.RenderThreadPool;
-import com.melon.foolsEngine.api.rendering.resource.Light;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.Texture;
@@ -27,8 +26,6 @@ class GLRenderFrame implements RenderFrame{
     private boolean init = false;
     private RenderThreadPool renderThreadPool;
     private LightEnvironment lightEnv;
-    private static final int MAX_LIGHTS = 16;
-    private static final int SHADOW_TEXTURE_BASE = 8;
 
     @Override
     public void init(){
@@ -67,7 +64,7 @@ class GLRenderFrame implements RenderFrame{
         commandQueue.clear();
 
         if (!commands.isEmpty()) {
-            renderCommands(commands, null, null);
+            renderCommands(commands, null, null, -1);
         }
     }
 
@@ -78,21 +75,29 @@ class GLRenderFrame implements RenderFrame{
 
     @Override
     public void endFrame(RenderTarget target, Material overrideMaterial) {
+        endFrame(target, overrideMaterial, -1);
+    }
+
+    @Override
+    public void endFrame(RenderTarget target, Material overrideMaterial, int arrayLayer) {
         initTest();
 
         List<RenderCommand> commands = new ArrayList<>(commandQueue);
 
         if (!commands.isEmpty()) {
-            renderCommands(commands, target, overrideMaterial);
+            renderCommands(commands, target, overrideMaterial, arrayLayer);
         }
     }
 
-    private void renderCommands(List<RenderCommand> commands, RenderTarget target, Material overrideMaterial) {
+    private void renderCommands(List<RenderCommand> commands, RenderTarget target, Material overrideMaterial, int arrayLayer) {
         int[] savedViewport = null;
         if (target != null) {
             savedViewport = new int[4];
             glGetIntegerv(GL_VIEWPORT, savedViewport);
             target.bind();
+            if (target.getLayers() > 1 && arrayLayer >= 0) {
+                target.attachLayer(arrayLayer);
+            }
             glViewport(0, 0, target.getWidth(), target.getHeight());
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glClearDepth(0.0f);
@@ -120,7 +125,8 @@ class GLRenderFrame implements RenderFrame{
 
             shader.bind();
             if (overrideMaterial == null && lightEnv != null) {
-                uploadLightEnvironment(shader);
+                bindShadowArrayTexture();
+                lightEnv.apply(shader);
             }
             binder.reset();
             for (String key : material.params().keySet()) {
@@ -153,6 +159,22 @@ class GLRenderFrame implements RenderFrame{
         }
     }
 
+    private void bindShadowArrayTexture() {
+        if (lightEnv == null || lightEnv.getLights().isEmpty()) return;
+        for (var l : lightEnv.getLights()) {
+            if (l.castsShadow() && !l.shadowMaps.isEmpty()) {
+                RenderTarget sm = l.shadowMaps.get(0);
+                glActiveTexture(GL_TEXTURE0 + LightEnvironment.SHADOW_ARRAY_SLOT);
+                if (sm.getType() == RenderTarget.TARGET_DEPTH) {
+                    glBindTexture(GL_TEXTURE_2D_ARRAY, sm.getTextureId());
+                } else {
+                    glBindTexture(GL_TEXTURE_2D, sm.getTextureId());
+                }
+                return;
+            }
+        }
+    }
+
     private Map<BatchKey, List<RenderCommand>> groupCommands(List<RenderCommand> commands) {
         Map<BatchKey, List<RenderCommand>> batches = new LinkedHashMap<>();
         for (RenderCommand c : commands) {
@@ -180,36 +202,6 @@ class GLRenderFrame implements RenderFrame{
     public void applyLightEnvironment(LightEnvironment env) {
         initTest();
         this.lightEnv = env;
-    }
-
-    private void uploadLightEnvironment(ShaderProgram shader) {
-        List<Light> lights = lightEnv.getLights();
-        shader.setVec3("ambientColor", lightEnv.getAmbient().x, lightEnv.getAmbient().y, lightEnv.getAmbient().z);
-        int count = Math.min(lights.size(), MAX_LIGHTS);
-        shader.setInt("lightCount", count);
-
-        int shadowSlot = SHADOW_TEXTURE_BASE;
-        for (int i = 0; i < count; i++) {
-            Light l = lights.get(i);
-            String idx = "[" + i + "]";
-            shader.setVec4("lightColor" + idx, l.color.x, l.color.y, l.color.z, l.intensity);
-            shader.setVec4("lightDir" + idx, l.direction.x, l.direction.y, l.direction.z, 0f);
-            shader.setVec4("lightPos" + idx, l.position.x, l.position.y, l.position.z, 0f);
-
-            boolean hasShadow = l.castsShadow() && l.lightSpaceMatrices != null
-                    && !l.lightSpaceMatrices.isEmpty() && !l.shadowMaps.isEmpty();
-            shader.setVec4("lightParams" + idx, (float) l.type, l.cutOff, hasShadow ? 1f : 0f, 0f);
-
-            if (hasShadow) {
-                RenderTarget sm = l.shadowMaps.get(0);
-                Matrix4f lsMatrix = l.lightSpaceMatrices.get(0);
-                glActiveTexture(GL_TEXTURE0 + shadowSlot);
-                glBindTexture(GL_TEXTURE_2D, sm.getTextureId());
-                shader.setInt("shadowMaps[" + i + "]", shadowSlot);
-                shader.setMat4("lightSpaceMatrices[" + i + "]", lsMatrix.get(new float[16]));
-                shadowSlot++;
-            }
-        }
     }
 
     @Override

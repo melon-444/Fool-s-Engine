@@ -14,4 +14,5 @@ public interface APIFactory {
     Texture getTexture();
     Mesh getMesh();
     RenderTarget createRenderTarget(int width, int height, int type);
+    RenderTarget createRenderTarget(int width, int height, int type, int layers);
 }

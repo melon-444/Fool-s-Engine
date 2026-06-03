@@ -23,11 +23,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.lwjgl.glfw.GLFW.*;
-
 public class TestLightBackend {
     static FoolsEngine foolsEngine = FoolsEngine.create(1000, 100, 800, 600);
-    private static final int SHADOW_MAP_SIZE = 1024;
+    private static final int SHADOW_MAP_SIZE = 2048;
+    private static final int MAX_SHADOW_LAYERS = 16;
 
     public static void main(String[] args) {
         WindowsManager manager = foolsEngine.serviceFactory.getWindowsManager();
@@ -67,6 +66,10 @@ public class TestLightBackend {
 
         LightEnvironment lightEnv = new LightEnvironment();
         lightEnv.setAmbient(0.08f, 0.08f, 0.08f);
+
+        RenderTarget shadowArray = foolsEngine.serviceFactory.createRenderTarget(
+                SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, RenderTarget.TARGET_DEPTH, MAX_SHADOW_LAYERS);
+        int nextShadowLayer = 0;
 
         InputManager input = new InputManager();
         GLFWKeyBoard keyboard = new GLFWKeyBoard();
@@ -122,7 +125,7 @@ public class TestLightBackend {
         long lastTime = System.nanoTime();
 
         List<Camera> shadowCameras = new ArrayList<>();
-        List<RenderTarget> shadowMaps = new ArrayList<>();
+        List<Integer> shadowLayers = new ArrayList<>();
         java.util.Random rng = new java.util.Random();
 
         boolean pWasDown = false;
@@ -204,10 +207,8 @@ public class TestLightBackend {
             if (lDown && !lWasDown) {
                 lightEnv.clear();
                 shadowCameras.clear();
-                for (RenderTarget sm : shadowMaps) {
-                    sm.destroy();
-                }
-                shadowMaps.clear();
+                shadowLayers.clear();
+                nextShadowLayer = 0;
             }
             if (jDown && !jWasDown) {
                 lightEnv.getAmbient().mul(1.1f);
@@ -219,34 +220,34 @@ public class TestLightBackend {
             if (commaDown && !commaWasDown) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 Vector3f lightDir = new Vector3f(lookDir);
-                RenderTarget sm = foolsEngine.serviceFactory.createRenderTarget(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, RenderTarget.TARGET_DEPTH);
-                shadowMaps.add(sm);
+                int layer = nextShadowLayer++;
 
                 Vector3f shadowCamPos = new Vector3f(lightDir).mul(-20);
                 Matrix4f shadowView = new Matrix4f().lookAt(shadowCamPos, new Vector3f(0, 0, 0), worldUp);
                 OrthogonalProjection orthoProj = new OrthogonalProjection(15f, 15f, 0.1f, 60f);
                 Matrix4f lightSpace = new Matrix4f(orthoProj.get(new Matrix4f())).mul(shadowView);
                 shadowCameras.add(new Camera(shadowView, orthoProj.get(new Matrix4f())));
+                shadowLayers.add(layer);
 
                 lightEnv.add(Light.directional(color, lightDir, 1.0f,
-                        Collections.singletonList(sm), Collections.singletonList(lightSpace)));
+                        Collections.singletonList(shadowArray), Collections.singletonList(lightSpace), layer));
             }
 
             if (nDown && !nWasDown) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 Vector3f lightPos = new Vector3f(cameraPos);
                 Vector3f lightDir = new Vector3f(lookDir);
-                RenderTarget sm = foolsEngine.serviceFactory.createRenderTarget(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, RenderTarget.TARGET_DEPTH);
-                shadowMaps.add(sm);
+                int layer = nextShadowLayer++;
 
                 Matrix4f shadowView = new Matrix4f().lookAt(lightPos,
                         new Vector3f(lightPos).add(lightDir), worldUp);
                 PerspectiveProjection spotProj = new PerspectiveProjection(50f, 1.0f, 0.1f);
                 Matrix4f lightSpace = new Matrix4f(spotProj.get(new Matrix4f())).mul(shadowView);
                 shadowCameras.add(new Camera(shadowView, spotProj.get(new Matrix4f())));
+                shadowLayers.add(layer);
 
                 lightEnv.add(Light.spot(color, lightDir, lightPos, 0.91f, 2.0f,
-                        Collections.singletonList(sm), Collections.singletonList(lightSpace)));
+                        Collections.singletonList(shadowArray), Collections.singletonList(lightSpace), layer));
             }
 
             pWasDown = pDown;
@@ -269,11 +270,9 @@ public class TestLightBackend {
             for (int li = 0; li < lights.size(); li++) {
                 Light light = lights.get(li);
                 if (light.castsShadow()) {
-                    for (RenderTarget sm : light.shadowMaps) {
-                        frame.setCamera(shadowCameras.get(shadowIdx));
-                        frame.endFrame(sm, depthMaterial);
-                        shadowIdx++;
-                    }
+                    frame.setCamera(shadowCameras.get(shadowIdx));
+                    frame.endFrame(shadowArray, depthMaterial, shadowLayers.get(shadowIdx));
+                    shadowIdx++;
                 }
             }
 
@@ -294,9 +293,7 @@ public class TestLightBackend {
 
         shader.destroy();
         depthShader.destroy();
-        for (RenderTarget sm : shadowMaps) {
-            sm.destroy();
-        }
+        shadowArray.destroy();
         manager.destroyWindow(win, true);
     }
 }

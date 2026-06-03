@@ -79,5 +79,14 @@ public class ServiceFactory implements APIFactory {
             default -> throw new RuntimeException("Unsupported backend type");
         };
     }
+
+    @Override
+    public RenderTarget createRenderTarget(int width, int height, int type, int layers) {
+        return switch (BackEndType) {
+            case OPENGL_BACKEND -> InternalFactoryStub.OpenGLINSTANCE().createRenderTarget(width, height, type, layers);
+            case VULKAN_BACKEND -> InternalFactoryStub.VulkanINSTANCE().createRenderTarget(width, height, type, layers);
+            default -> throw new RuntimeException("Unsupported backend type");
+        };
+    }
 }
 

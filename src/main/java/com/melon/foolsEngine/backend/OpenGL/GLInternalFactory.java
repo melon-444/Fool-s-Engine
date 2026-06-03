@@ -45,4 +45,11 @@ public class GLInternalFactory extends InternalFactoryStub {
         fbo.init(width, height, type);
         return fbo;
     }
+
+    @Override
+    protected RenderTarget renderTarget(int width, int height, int type, int layers) {
+        GLFrameBuffer fbo = new GLFrameBuffer();
+        fbo.init(width, height, type, layers);
+        return fbo;
+    }
 }

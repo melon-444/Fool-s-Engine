@@ -12,6 +12,7 @@ in vec3 fragWorldNormal;
 out vec4 fragColor;
 
 uniform sampler2D textureSampler;
+uniform sampler2DArray shadowMapArray;
 
 uniform vec3 ambientColor;
 
@@ -21,7 +22,6 @@ uniform vec4 lightDir[MAX_LIGHTS];
 uniform vec4 lightPos[MAX_LIGHTS];
 uniform vec4 lightParams[MAX_LIGHTS];
 uniform mat4 lightSpaceMatrices[MAX_LIGHTS];
-uniform sampler2D shadowMaps[MAX_LIGHTS];
 
 void main() {
     vec3 N = normalize(fragWorldNormal);
@@ -60,9 +60,21 @@ void main() {
             vec3 proj = lsPos.xyz / lsPos.w;
             vec2 shadowUV = proj.xy * 0.5 + 0.5;
             if (shadowUV.x >= 0.0 && shadowUV.x <= 1.0 && shadowUV.y >= 0.0 && shadowUV.y <= 1.0) {
-                float closest = texture(shadowMaps[i], shadowUV).r;
+                float layer = lightParams[i].w;
                 float bias = 0.002;
-                shadow = proj.z >= closest - bias ? 1.0 : 0.0;
+                //PCF sampling
+                float closest = texture(shadowMapArray, vec3(shadowUV, layer)).r;
+                for (int x = -1; x <= 1; ++x) {
+                    for (int y = -1; y <= 1; ++y) {
+                        float pcfClosest = texture(shadowMapArray, vec3(shadowUV + vec2(x, y) * 0.001, layer)).r;
+                        if (proj.z >= pcfClosest - bias) {
+                            shadow += 1.0;
+                        }
+                    }
+                }
+                shadow /= 9.0;
+
+
             }
         }
 
