@@ -8,51 +8,77 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Manages a collection of up to 16 lights and an ambient color for a scene.
+ * Pushes light data to shader uniforms via {@link #apply(ShaderProgram)}.
+ * <p>
+ * Usage:
+ * <pre>{@code
+ *   LightEnvironment env = new LightEnvironment();
+ *   env.setAmbient(0.08f, 0.08f, 0.08f);
+ *   env.add(Light.directional(color, direction));
+ *   scene.setLighting(env);
+ * }</pre>
+ */
 public class LightEnvironment {
 
     private static final int MAX_LIGHTS = 16;
+    /** Texture unit slot used for the shadow map array in shaders */
     public static final int SHADOW_ARRAY_SLOT = 8;
 
     private final List<Light> lights = new ArrayList<>();
     private final Vector3f ambientColor = new Vector3f(0.06f, 0.06f, 0.06f);
     private int shadowMapSize = 1024;
 
+    /** Adds a light to the environment */
     public void add(Light light) {
         lights.add(light);
     }
 
+    /** Removes a light from the environment */
     public void remove(Light light) {
         lights.remove(light);
     }
 
+    /** Removes all lights */
     public void clear() {
         lights.clear();
     }
 
+    /** Sets the ambient light color (per-component) */
     public void setAmbient(float r, float g, float b) {
         ambientColor.set(r, g, b);
     }
 
+    /** Sets the ambient light color */
     public void setAmbient(Vector3f color) {
         ambientColor.set(color);
     }
 
+    /** Sets the shadow map resolution (affects PCF sampling in the shader) */
     public void setShadowMapSize(int size) {
         this.shadowMapSize = size;
     }
 
+    /** @return the current ambient color (mutable reference) */
     public Vector3f getAmbient() {
         return ambientColor;
     }
 
+    /** @return an unmodifiable view of the current lights */
     public List<Light> getLights() {
         return Collections.unmodifiableList(lights);
     }
 
+    /** @return the number of lights currently in the environment */
     public int size() {
         return lights.size();
     }
 
+    /**
+     * Pushes all light data and shadow map binding info to the given shader.
+     * Called internally by the renderer.
+     */
     public void apply(ShaderProgram shader) {
         shader.setVec3("ambientColor", ambientColor.x, ambientColor.y, ambientColor.z);
         int count = Math.min(lights.size(), MAX_LIGHTS);

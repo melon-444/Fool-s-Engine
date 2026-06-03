@@ -7,12 +7,27 @@ import com.melon.foolsEngine.api.rendering.resource.Texture;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.WindowsManager;
 
+/**
+ * Backend-agnostic service factory.
+ * All engine services (windows, render frame, shaders, meshes, textures, render targets)
+ * are obtained through this interface. The concrete implementation is selected at engine startup
+ * (currently OpenGL only).
+ * <p>
+ * Obtain via {@code FoolsEngine.serviceFactory}.
+ */
 public interface APIFactory {
+    /** @return the window manager for creating and managing windows */
     WindowsManager getWindowsManager();
+    /** @return the main render frame */
     RenderFrame getRenderFrame();
+    /** @return a new unloaded shader program */
     ShaderProgram getShaderProgram();
+    /** @return a new unloaded texture */
     Texture getTexture();
+    /** @return a new unloaded mesh */
     Mesh getMesh();
+    /** Creates a single-layer render target */
     RenderTarget createRenderTarget(int width, int height, int type);
+    /** Creates a multi-layer render target (e.g., for shadow map arrays) */
     RenderTarget createRenderTarget(int width, int height, int type, int layers);
 }

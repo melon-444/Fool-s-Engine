@@ -136,7 +136,6 @@ class GLWindow implements Window {
         this.width = width;
         this.height = height;
         glfwSetWindowSize(id, width, height);
-        //TODO：修改VeiwPort的设置位置
         glViewport(0, 0, width, height);
     }
 

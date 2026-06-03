@@ -12,22 +12,45 @@ import java.util.List;
 
 import static java.lang.Math.*;
 
+/**
+ * Defines a light source for the rendering pipeline.
+ * Supports three light types: directional, point, and spot.
+ * A light may optionally cast shadows when configured via {@link ShadowManager}.
+ * <p>
+ * Use the static factory methods to create lights:
+ * <pre>{@code
+ *   Light dir = Light.directional(color, direction);
+ *   Light pt  = Light.point(color, position, 3.0f);
+ *   Light sp  = Light.spot(color, direction, position, inner, outer);
+ * }</pre>
+ */
 public class Light {
 
+    /** Parallel light (aka directional / sun light) */
     public static final LightType DIRECTIONAL = LightType.PARALLEL;
+    /** Omnidirectional point light with attenuation */
     public static final LightType POINT = LightType.POINT;
+    /** Spotlight with inner/outer cone angles */
     public static final LightType SPOT = LightType.SPOT;
 
     private static final float FRUSTUM_Z_NEAR = 1.0f;
     private static final float FRUSTUM_Z_FAR = 0.0002f;
 
+    /** The light type ({@link #DIRECTIONAL}, {@link #POINT}, or {@link #SPOT}) */
     public final LightType type;
+    /** RGB color of the light */
     public final Vector3f color;
+    /** Normalized direction vector (primarily for directional and spot lights) */
     public final Vector3f direction;
+    /** Position in world space (primarily for point and spot lights) */
     public final Vector3f position;
+    /** Intensity multiplier */
     public final float intensity;
+    /** Inner cone angle in degrees (spot lights only) */
     public final float innerTheta;
+    /** Outer cone angle in degrees (spot lights only) */
     public final float outerTheta;
+    /** Shadow data; null if this light does not cast shadows */
     public final ShadowInfo shadowInfo;
 
     private Light(LightType type, Vector3f color, Vector3f direction, Vector3f position,
@@ -46,16 +69,31 @@ public class Light {
                 : null;
     }
 
+    /**
+     * Creates a directional light with default intensity (1.0).
+     * @param color RGB color
+     * @param direction light direction (will be normalized)
+     */
     public static Light directional(Vector3f color, Vector3f direction) {
         return new Light(DIRECTIONAL, color, new Vector3f(direction).normalize(), new Vector3f(),
                 1.0f, 0f, 0f, null, null, -1, null);
     }
 
+    /**
+     * Creates a directional light.
+     * @param color RGB color
+     * @param direction light direction (will be normalized)
+     * @param intensity brightness multiplier
+     */
     public static Light directional(Vector3f color, Vector3f direction, float intensity) {
         return new Light(DIRECTIONAL, color, new Vector3f(direction).normalize(), new Vector3f(),
                 intensity, 0f, 0f, null, null, -1, null);
     }
 
+    /**
+     * Creates a directional light with shadow support.
+     * Typically called by {@link ShadowManager#enableDirLightShadow(Light, Camera)} rather than directly.
+     */
     public static Light directional(Vector3f color, Vector3f direction, float intensity,
                                     List<RenderTarget> shadowMaps, List<Matrix4f> lightSpaceMatrices,
                                     int shadowLayer, Camera shadowCamera) {
@@ -63,16 +101,31 @@ public class Light {
                 intensity, 0f, 0f, shadowMaps, lightSpaceMatrices, shadowLayer, shadowCamera);
     }
 
+    /**
+     * Creates a point light with default intensity (1.0).
+     * @param color RGB color
+     * @param position world-space position
+     */
     public static Light point(Vector3f color, Vector3f position) {
         return new Light(POINT, color, new Vector3f(), new Vector3f(position),
                 1.0f, 0f, 0f, null, null, -1, null);
     }
 
+    /**
+     * Creates a point light.
+     * @param color RGB color
+     * @param position world-space position
+     * @param intensity brightness multiplier
+     */
     public static Light point(Vector3f color, Vector3f position, float intensity) {
         return new Light(POINT, color, new Vector3f(), new Vector3f(position),
                 intensity, 0f, 0f, null, null, -1, null);
     }
 
+    /**
+     * Creates a point light with shadow support.
+     * Typically called by {@link ShadowManager}.
+     */
     public static Light point(Vector3f color, Vector3f position, float intensity,
                               List<RenderTarget> shadowMaps, List<Matrix4f> lightSpaceMatrices,
                               int shadowLayer, Camera shadowCamera) {
@@ -80,18 +133,40 @@ public class Light {
                 intensity, 0f, 0f, shadowMaps, lightSpaceMatrices, shadowLayer, shadowCamera);
     }
 
+    /**
+     * Creates a spot light with default intensity (1.0).
+     * @param color RGB color
+     * @param direction light direction (will be normalized)
+     * @param position world-space position
+     * @param innerTheta inner cone angle in degrees
+     * @param outerTheta outer cone angle in degrees
+     */
     public static Light spot(Vector3f color, Vector3f direction, Vector3f position,
                              float innerTheta, float outerTheta) {
         return new Light(SPOT, color, new Vector3f(direction).normalize(), new Vector3f(position),
                 1.0f, innerTheta, outerTheta, null, null, -1, null);
     }
 
+    /**
+     * Creates a spot light.
+     * @param color RGB color
+     * @param direction light direction (will be normalized)
+     * @param position world-space position
+     * @param innerTheta inner cone angle in degrees
+     * @param outerTheta outer cone angle in degrees
+     * @param intensity brightness multiplier
+     */
     public static Light spot(Vector3f color, Vector3f direction, Vector3f position,
                              float innerTheta, float outerTheta, float intensity) {
         return new Light(SPOT, color, new Vector3f(direction).normalize(), new Vector3f(position),
                 intensity, innerTheta, outerTheta, null, null, -1, null);
     }
 
+    /**
+     * Creates a spot light with shadow support.
+     * Typically called by {@link ShadowManager#enableSpotLightShadow(Light, float)}.
+     * @param shadowNear near plane distance for the shadow camera
+     */
     public static Light spot(Vector3f color, Vector3f direction, Vector3f position,
                              float innerTheta, float outerTheta, float intensity,
                              List<RenderTarget> shadowMaps, List<Matrix4f> lightSpaceMatrices,
@@ -111,10 +186,18 @@ public class Light {
                 shadowMaps, lightSpaceMatrices, shadowLayer, shadowCam);
     }
 
+    /**
+     * @return true if this light is configured to cast shadows
+     */
     public boolean castsShadow() {
         return shadowInfo != null && shadowInfo.castsShadow();
     }
 
+    /**
+     * Rebuilds the directional light's shadow camera based on the main camera frustum.
+     * Called each frame by the renderer's shadow pass.
+     * Has no effect on non-directional lights.
+     */
     public void buildDirLightShadowCam(Camera mainCamera) {
         if (type != DIRECTIONAL || shadowInfo == null || shadowInfo.shadowCamera() == null) return;
 

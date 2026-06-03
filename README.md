@@ -63,6 +63,29 @@ A custom 3D game engine in Java, built on LWJGL 3 with OpenGL 4.3+ rendering, En
 | J / K | Increase / decrease ambient |
 | ESC | Exit |
 
+## Key API
+
+```java
+// Window
+Window win = ...;
+win.setCursorMode(CursorMode.DISABLED); // NORMAL, HIDDEN, DISABLED
+
+// Rendering
+RenderScene scene = new RenderScene();
+scene.setCamera(camera);
+scene.setLighting(lightEnv);
+scene.submit(new RenderCommand(mesh, material, transform));
+
+frame.init();
+frame.setShadowManager(shadowManager);
+frame.render(scene);
+
+// Shadows
+ShadowManager sm = new ShadowManager(shadowArray, depthMaterial, maxLayers);
+Light dirLight = sm.enableDirLightShadow(baseLight, mainCamera);
+Light spotLight = sm.enableSpotLightShadow(baseLight, nearPlane);
+```
+
 ## Project Structure
 
 ```
@@ -99,7 +122,7 @@ src/main/java/com/melon/foolsEngine/
     events/                     # EventBus
     world/                      # Entity/Component/System managers, ServiceFactory
 
-  util/                         # SparseSet, Signature, Projection, ObjLoader, etc.
+  util/                         # SparseSet, Signature, Projection, CursorMode, ObjLoader, etc.
 
 src/main/resources/shader/
   vsh/main_vsh.glsl             # Main vertex shader (instanced)
@@ -151,13 +174,14 @@ ServiceFactory → InternalFactoryStub → GLInternalFactory (OpenGL)
 ### Dependency Direction (post-refactor)
 
 ```
-RenderFrame → ShadowManager → ShadowPassContext
-                                     ↑
-                              (pure data, no rendering)
+RenderFrame  ──→  ShadowManager  ──→  ShadowPassContext      (no rendering)
+GLFWMouse    ──→  InputDevice<Window>                          (input only)
+Window.setCursorMode()                                         (cursor control)
 ```
 
 - **RenderFrame** owns rendering execution (shadow pass loop + color pass).
-- **ShadowManager** manages shadow resources (layer allocation, ShadowInfo creation, light-space matrix sync, shadow camera build). Returns `ShadowPassContext` — never calls draw commands.
+- **ShadowManager** manages shadow resources (layer allocation, ShadowInfo creation, light-space matrix sync). Returns `ShadowPassContext` — never calls draw commands.
+- **GLFWMouse** no longer controls cursor mode — cursor behavior is managed by `Window.setCursorMode(CursorMode)`.
 
 ## Design Decisions
 

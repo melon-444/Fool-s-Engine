@@ -18,7 +18,7 @@ public class LightCollector extends System {
 
     @Override
     public void update(long dt) {
-        //TODO compelete
+        //TODO complete
 
     }
 }

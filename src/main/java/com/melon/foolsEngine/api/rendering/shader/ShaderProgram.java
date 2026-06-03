@@ -2,11 +2,23 @@ package com.melon.foolsEngine.api.rendering.shader;
 
 import java.nio.file.Path;
 
+/**
+ * A compiled and linked GPU shader program.
+ * Obtain an instance via {@link com.melon.foolsEngine.core.world.ServiceFactory#getShaderProgram()}.
+ */
 public interface ShaderProgram {
+    /**
+     * Loads, compiles, and links vertex and fragment shaders from source files.
+     * @param vertexShaderPath path to the vertex shader source
+     * @param fragmentShaderPath path to the fragment shader source
+     */
     void load(Path vertexShaderPath, Path fragmentShaderPath);
-    public void bind();
-    public void unbind();
-    public void destroy();
+    /** Binds this shader program for rendering */
+    void bind();
+    /** Unbinds the shader program */
+    void unbind();
+    /** Releases all GPU resources associated with this program */
+    void destroy();
 
     void setInt(String name, int value);
     void setFloat(String name, float value);

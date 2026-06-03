@@ -63,6 +63,29 @@
 | J / K | 增加 / 降低环境光 |
 | ESC | 退出 |
 
+## 关键 API
+
+```java
+// 窗口
+Window win = ...;
+win.setCursorMode(CursorMode.DISABLED); // NORMAL, HIDDEN, DISABLED
+
+// 渲染
+RenderScene scene = new RenderScene();
+scene.setCamera(camera);
+scene.setLighting(lightEnv);
+scene.submit(new RenderCommand(mesh, material, transform));
+
+frame.init();
+frame.setShadowManager(shadowManager);
+frame.render(scene);
+
+// 阴影
+ShadowManager sm = new ShadowManager(shadowArray, depthMaterial, maxLayers);
+Light dirLight = sm.enableDirLightShadow(baseLight, mainCamera);
+Light spotLight = sm.enableSpotLightShadow(baseLight, nearPlane);
+```
+
 ## 项目结构
 
 ```
@@ -99,7 +122,7 @@ src/main/java/com/melon/foolsEngine/
     events/                     # 事件总线
     world/                      # Entity/Component/System 管理器, ServiceFactory
 
-  util/                         # SparseSet, Signature, Projection, ObjLoader 等
+  util/                         # SparseSet, Signature, Projection, CursorMode, ObjLoader 等
 
 src/main/resources/shader/
   vsh/main_vsh.glsl             # 主顶点着色器（实例化）
@@ -151,13 +174,14 @@ ServiceFactory → InternalFactoryStub → GLInternalFactory（OpenGL）
 ### 依赖方向（重构后）
 
 ```
-RenderFrame → ShadowManager → ShadowPassContext
-                                     ↑
-                              （纯数据，不执行渲染）
+RenderFrame  ──→  ShadowManager  ──→  ShadowPassContext      （不执行渲染）
+GLFWMouse    ──→  InputDevice<Window>                          （仅输入）
+Window.setCursorMode()                                         （光标控制）
 ```
 
 - **RenderFrame** 拥有渲染执行权（阴影通道循环 + 颜色通道）。
-- **ShadowManager** 管理阴影资源（层分配、ShadowInfo 创建、light-space 矩阵同步、阴影相机构建）。返回 `ShadowPassContext`——从不调用任何绘制命令。
+- **ShadowManager** 管理阴影资源（层分配、ShadowInfo 创建、light-space 矩阵同步）。返回 `ShadowPassContext`——从不调用任何绘制命令。
+- **GLFWMouse** 不再控制光标模式——光标行为由 `Window.setCursorMode(CursorMode)` 管理。
 
 ## 设计决策
 
