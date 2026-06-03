@@ -11,6 +11,7 @@ import com.melon.foolsEngine.backend.OpenGL.GLFWKeyBoard;
 import com.melon.foolsEngine.backend.OpenGL.GLFWMouse;
 import com.melon.foolsEngine.core.ECS.basicComponents.Transform;
 import com.melon.foolsEngine.core.FoolsEngine;
+import com.melon.foolsEngine.util.CursorMode;
 import com.melon.foolsEngine.util.ObjLoader;
 import com.melon.foolsEngine.util.PerspectiveProjection;
 import com.melon.foolsEngine.util.SignalType;
@@ -80,6 +81,7 @@ public class TestLightBackend {
 
         keyboard.attachEnvironment(win);
         mouse.attachEnvironment(win);
+        win.setCursorMode(CursorMode.DISABLED);
         input.register(keyboard);
         input.register(mouse);
 

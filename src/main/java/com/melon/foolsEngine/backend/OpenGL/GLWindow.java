@@ -1,6 +1,7 @@
 package com.melon.foolsEngine.backend.OpenGL;
 
 import com.melon.foolsEngine.api.windows.Window;
+import com.melon.foolsEngine.util.CursorMode;
 import org.lwjgl.glfw.GLFWVidMode;
 
 import java.util.ArrayList;
@@ -21,6 +22,7 @@ class GLWindow implements Window {
     private boolean isVisible = false;
     private int width = 0;
     private int height = 0;
+    private CursorMode cursorMode = CursorMode.NORMAL;
 
 
     public void setIntervalMode(int intervalMode) {
@@ -194,5 +196,21 @@ class GLWindow implements Window {
     @Override
     public boolean shouldClose() {
         return glfwWindowShouldClose(id);
+    }
+
+    @Override
+    public void setCursorMode(CursorMode mode) {
+        this.cursorMode = mode;
+        int glfwMode = switch (mode) {
+            case NORMAL -> GLFW_CURSOR_NORMAL;
+            case HIDDEN -> GLFW_CURSOR_HIDDEN;
+            case DISABLED -> GLFW_CURSOR_DISABLED;
+        };
+        glfwSetInputMode(id, GLFW_CURSOR, glfwMode);
+    }
+
+    @Override
+    public CursorMode getCursorMode() {
+        return cursorMode;
     }
 }

@@ -9,7 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 
 import static org.lwjgl.glfw.GLFW.*;
-import static org.lwjgl.opengl.GL11.glViewport;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
 //import org.lwjgl.glfw.GLFWErrorCallback; //Debug

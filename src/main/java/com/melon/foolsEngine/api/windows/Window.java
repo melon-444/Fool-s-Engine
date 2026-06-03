@@ -1,5 +1,7 @@
 package com.melon.foolsEngine.api.windows;
 
+import com.melon.foolsEngine.util.CursorMode;
+
 import java.util.List;
 
 public interface Window {
@@ -25,4 +27,6 @@ public interface Window {
     public void addChild(Window child);
     public void removeChild(Window child);
     public boolean shouldClose();
+    public void setCursorMode(CursorMode mode);
+    public CursorMode getCursorMode();
 }

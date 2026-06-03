@@ -81,7 +81,6 @@ public class GLFWMouse implements InputDevice<Window> {
     @Override
     public void attachEnvironment(Window env) {
         this.env = env;
-        glfwSetInputMode(env.getID(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         if(!(env instanceof GLWindow))
             throw new IllegalStateException("not a GLFW Window");
         cb_button = glfwSetMouseButtonCallback(env.getID(), (window,  button,  action,  mods)->{
@@ -140,7 +139,6 @@ public class GLFWMouse implements InputDevice<Window> {
 
     @Override
     public void detachEnvironment() {
-        glfwSetInputMode(env.getID(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         cb_button.free();
         cb_wheel.free();
         cb_position.free();
