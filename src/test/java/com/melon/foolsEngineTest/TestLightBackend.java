@@ -27,11 +27,14 @@ public class TestLightBackend {
     static FoolsEngine foolsEngine = FoolsEngine.create(1000, 100, 800, 600);
     private static final int SHADOW_MAP_SIZE = 2048;
     private static final int MAX_SHADOW_LAYERS = 16;
+    private static final float FRUSTUM_Z_NEAR = 1.0f;
+    private static final float FRUSTUM_Z_FAR = 0.001f;
 
     public static void main(String[] args) {
         WindowsManager manager = foolsEngine.serviceFactory.getWindowsManager();
         Window win = foolsEngine.mainWindow;
-        win.setTitle("Test Light Backend - P:Dir  O:Point  I:Spot  ,:ShadowDir  N:ShadowSpot  L:Clear");
+        win.setTitle("Test Light Backend - P:Dir  O:Point  I:Spot  ,:ShadowDir  N:ShadowSpot  L:Clear J:AmbientUp K: AmbientDown ESC:exit");
+        win.setSize(2048,1536);
 
         Mesh dragonMesh = foolsEngine.serviceFactory.getMesh();
         dragonMesh.upload(ObjLoader.loadMesh(Path.of("src/test/resources/shaders/model/dragon.obj")));
@@ -66,6 +69,7 @@ public class TestLightBackend {
 
         LightEnvironment lightEnv = new LightEnvironment();
         lightEnv.setAmbient(0.08f, 0.08f, 0.08f);
+        lightEnv.setShadowMapSize(SHADOW_MAP_SIZE);
 
         RenderTarget shadowArray = foolsEngine.serviceFactory.createRenderTarget(
                 SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, RenderTarget.TARGET_DEPTH, MAX_SHADOW_LAYERS);
@@ -126,6 +130,7 @@ public class TestLightBackend {
 
         List<Camera> shadowCameras = new ArrayList<>();
         List<Integer> shadowLayers = new ArrayList<>();
+        List<Vector3f> shadowLightDirs = new ArrayList<>();
         java.util.Random rng = new java.util.Random();
 
         boolean pWasDown = false;
@@ -208,6 +213,7 @@ public class TestLightBackend {
                 lightEnv.clear();
                 shadowCameras.clear();
                 shadowLayers.clear();
+                shadowLightDirs.clear();
                 nextShadowLayer = 0;
             }
             if (jDown && !jWasDown) {
@@ -222,15 +228,14 @@ public class TestLightBackend {
                 Vector3f lightDir = new Vector3f(lookDir);
                 int layer = nextShadowLayer++;
 
-                Vector3f shadowCamPos = new Vector3f(lightDir).mul(-20);
-                Matrix4f shadowView = new Matrix4f().lookAt(shadowCamPos, new Vector3f(0, 0, 0), worldUp);
-                OrthogonalProjection orthoProj = new OrthogonalProjection(15f, 15f, 0.1f, 60f);
-                Matrix4f lightSpace = new Matrix4f(orthoProj.get(new Matrix4f())).mul(shadowView);
-                shadowCameras.add(new Camera(shadowView, orthoProj.get(new Matrix4f())));
+                Camera shadowCam = new Camera(new Matrix4f(), new Matrix4f());
+                shadowCameras.add(shadowCam);
                 shadowLayers.add(layer);
+                shadowLightDirs.add(new Vector3f(lightDir));
 
+                Matrix4f lsMatrix = new Matrix4f();
                 lightEnv.add(Light.directional(color, lightDir, 1.0f,
-                        Collections.singletonList(shadowArray), Collections.singletonList(lightSpace), layer));
+                        Collections.singletonList(shadowArray), Collections.singletonList(lsMatrix), layer));
             }
 
             if (nDown && !nWasDown) {
@@ -245,6 +250,7 @@ public class TestLightBackend {
                 Matrix4f lightSpace = new Matrix4f(spotProj.get(new Matrix4f())).mul(shadowView);
                 shadowCameras.add(new Camera(shadowView, spotProj.get(new Matrix4f())));
                 shadowLayers.add(layer);
+                shadowLightDirs.add(null);
 
                 lightEnv.add(Light.spot(color, lightDir, lightPos, 0.91f, 2.0f,
                         Collections.singletonList(shadowArray), Collections.singletonList(lightSpace), layer));
@@ -262,14 +268,34 @@ public class TestLightBackend {
 
             frame.beginFrame();
 
-            frame.submit(new RenderCommand(dragonMesh, material, dragonTransform1.getMatrix()));
-            frame.submit(new RenderCommand(dragonMesh, material, dragonTransform2.getMatrix()));
+            Vector3f cache = new Vector3f(dragonTransform1.position);
+
+            for(int i=0;i<10;i++){
+                for(int j=0;j<10;j++){
+                    frame.submit(new RenderCommand(dragonMesh, material, new Matrix4f(dragonTransform1.getMatrix())));
+                    dragonTransform1.position.add(0,0,2);
+                    dragonTransform1.markDirty();
+                }
+                dragonTransform1.position.set(cache);
+                dragonTransform1.position.add(3*i,0,0);
+                dragonTransform1.markDirty();
+            }
+
+            dragonTransform1.position.set(cache) ;
+            dragonTransform1.markDirty();
 
             int shadowIdx = 0;
             List<Light> lights = lightEnv.getLights();
             for (int li = 0; li < lights.size(); li++) {
                 Light light = lights.get(li);
                 if (light.castsShadow()) {
+                    if (light.type == Light.DIRECTIONAL) {
+                        Vector3f dir = shadowLightDirs.get(shadowIdx);
+                        if (dir != null) {
+                            updateDirLightShadowCam(shadowCameras.get(shadowIdx), dir, camera);
+                        }
+                        light.lightSpaceMatrices.get(0).set(shadowCameras.get(shadowIdx).vp());
+                    }
                     frame.setCamera(shadowCameras.get(shadowIdx));
                     frame.endFrame(shadowArray, depthMaterial, shadowLayers.get(shadowIdx));
                     shadowIdx++;
@@ -295,5 +321,51 @@ public class TestLightBackend {
         depthShader.destroy();
         shadowArray.destroy();
         manager.destroyWindow(win, true);
+    }
+
+    private static void updateDirLightShadowCam(Camera shadowCam, Vector3f lightDir, Camera mainCamera) {
+        Vector4f[] ndc = {
+            new Vector4f(-1, -1, FRUSTUM_Z_NEAR, 1), new Vector4f(1, -1, FRUSTUM_Z_NEAR, 1),
+            new Vector4f(-1,  1, FRUSTUM_Z_NEAR, 1), new Vector4f(1,  1, FRUSTUM_Z_NEAR, 1),
+            new Vector4f(-1, -1, FRUSTUM_Z_FAR,  1), new Vector4f(1, -1, FRUSTUM_Z_FAR,  1),
+            new Vector4f(-1,  1, FRUSTUM_Z_FAR,  1), new Vector4f(1,  1, FRUSTUM_Z_FAR,  1),
+        };
+
+        Matrix4f invVP = new Matrix4f(mainCamera.vp());
+        invVP.invert();
+
+        Vector3f[] corners = new Vector3f[8];
+        Vector3f center = new Vector3f();
+        for (int i = 0; i < 8; i++) {
+            Vector4f w = ndc[i].mul(invVP, new Vector4f());
+            float invW = 1f / w.w;
+            corners[i] = new Vector3f(w.x * invW, w.y * invW, w.z * invW);
+            center.add(corners[i]);
+        }
+        center.div(8);
+
+        Vector3f dir = new Vector3f(lightDir).normalize();
+        Vector3f up = new Vector3f(0, 1, 0);
+        if (Math.abs(dir.y) > 0.99f) up.set(1, 0, 0);
+        Vector3f lightPos = new Vector3f(center).add(new Vector3f(dir).mul(-30));
+
+        Matrix4f lightView = new Matrix4f().lookAt(lightPos, center, up);
+
+        float minX = Float.MAX_VALUE, maxX = -Float.MAX_VALUE;
+        float minY = Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
+        float minZ = Float.MAX_VALUE, maxZ = -Float.MAX_VALUE;
+        for (Vector3f c : corners) {
+            Vector4f ls = new Vector4f(c, 1).mul(lightView);
+            minX = Math.min(minX, ls.x); maxX = Math.max(maxX, ls.x);
+            minY = Math.min(minY, ls.y); maxY = Math.max(maxY, ls.y);
+            minZ = Math.min(minZ, -ls.z); maxZ = Math.max(maxZ, -ls.z);
+        }
+
+        float halfW = (maxX - minX) * 0.5f + 2f;
+        float halfH = (maxY - minY) * 0.5f + 2f;
+        OrthogonalProjection ortho = new OrthogonalProjection(halfW, halfH, Math.max(minZ - 5, 0.01f), maxZ + 5);
+
+        shadowCam.view.set(lightView);
+        shadowCam.projection = ortho.get(new Matrix4f());
     }
 }

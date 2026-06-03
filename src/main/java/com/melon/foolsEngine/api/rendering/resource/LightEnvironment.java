@@ -15,6 +15,7 @@ public class LightEnvironment {
 
     private final List<Light> lights = new ArrayList<>();
     private final Vector3f ambientColor = new Vector3f(0.06f, 0.06f, 0.06f);
+    private int shadowMapSize = 1024;
 
     public void add(Light light) {
         lights.add(light);
@@ -34,6 +35,10 @@ public class LightEnvironment {
 
     public void setAmbient(Vector3f color) {
         ambientColor.set(color);
+    }
+
+    public void setShadowMapSize(int size) {
+        this.shadowMapSize = size;
     }
 
     public Vector3f getAmbient() {
@@ -72,5 +77,6 @@ public class LightEnvironment {
         }
 
         shader.setInt("shadowMapArray", SHADOW_ARRAY_SLOT);
+        shader.setFloat("shadowMapSize", (float) shadowMapSize);
     }
 }
