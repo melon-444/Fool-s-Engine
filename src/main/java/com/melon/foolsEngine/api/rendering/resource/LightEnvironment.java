@@ -70,7 +70,7 @@ public class LightEnvironment {
                     && !l.shadowInfo.lightSpaceMatrices().isEmpty() && !l.shadowInfo.shadowMaps().isEmpty();
             float layer = hasShadow ? (float) l.shadowInfo.shadowLayer() : 0f;
             float outerCutOff = (float) Math.cos(Math.toRadians(l.outerTheta));
-            shader.setVec4("lightParams" + idx, (float) l.type, outerCutOff, hasShadow ? 1f : 0f, layer);
+            shader.setVec4("lightParams" + idx, (float) l.type.ordinal(), outerCutOff, hasShadow ? 1f : 0f, layer);
 
             if (hasShadow) {
                 Matrix4f lsMatrix = l.shadowInfo.lightSpaceMatrices().get(0);
