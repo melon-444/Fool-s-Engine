@@ -115,7 +115,7 @@ public class Light {
     }
 
     public void buildDirLightShadowCam(Camera mainCamera) {
-        if (type != DIRECTIONAL || shadowInfo == null || shadowInfo.shadowCamera == null) return;
+        if (type != DIRECTIONAL || shadowInfo == null || shadowInfo.shadowCamera() == null) return;
 
         Vector4f[] ndc = {
             new Vector4f(-1, -1, FRUSTUM_Z_NEAR, 1), new Vector4f(1, -1, FRUSTUM_Z_NEAR, 1),
@@ -158,7 +158,7 @@ public class Light {
         float halfH = (maxY - minY) * 0.5f + 15f;
         OrthogonalProjection ortho = new OrthogonalProjection(halfW, halfH, max(minZ - 30, 0.01f), maxZ + 30);
 
-        shadowInfo.shadowCamera.view.set(lightView);
-        shadowInfo.shadowCamera.projection = ortho.get(new Matrix4f());
+        shadowInfo.shadowCamera().view.set(lightView);
+        shadowInfo.shadowCamera().projection = ortho.get(new Matrix4f());
     }
 }

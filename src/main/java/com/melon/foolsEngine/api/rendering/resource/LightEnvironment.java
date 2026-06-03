@@ -67,13 +67,13 @@ public class LightEnvironment {
             shader.setVec4("lightPos" + idx, l.position.x, l.position.y, l.position.z, innerCutOff);
 
             boolean hasShadow = l.castsShadow() && l.shadowInfo != null
-                    && !l.shadowInfo.lightSpaceMatrices.isEmpty() && !l.shadowInfo.shadowMaps.isEmpty();
-            float layer = hasShadow ? (float) l.shadowInfo.shadowLayer : 0f;
+                    && !l.shadowInfo.lightSpaceMatrices().isEmpty() && !l.shadowInfo.shadowMaps().isEmpty();
+            float layer = hasShadow ? (float) l.shadowInfo.shadowLayer() : 0f;
             float outerCutOff = (float) Math.cos(Math.toRadians(l.outerTheta));
             shader.setVec4("lightParams" + idx, (float) l.type, outerCutOff, hasShadow ? 1f : 0f, layer);
 
             if (hasShadow) {
-                Matrix4f lsMatrix = l.shadowInfo.lightSpaceMatrices.get(0);
+                Matrix4f lsMatrix = l.shadowInfo.lightSpaceMatrices().get(0);
                 shader.setMat4("lightSpaceMatrices" + idx, lsMatrix.get(new float[16]));
             }
         }

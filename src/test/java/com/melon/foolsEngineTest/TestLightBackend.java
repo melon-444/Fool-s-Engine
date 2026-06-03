@@ -62,7 +62,6 @@ public class TestLightBackend {
         win.show();
         RenderFrame frame = foolsEngine.frame;
         frame.init();
-        frame.setBackGroundColor(0.05f, 0.05f, 0.1f, 1);
 
         LightEnvironment lightEnv = new LightEnvironment();
         lightEnv.setAmbient(0.08f, 0.08f, 0.08f);
@@ -71,6 +70,9 @@ public class TestLightBackend {
         RenderTarget shadowArray = foolsEngine.serviceFactory.createRenderTarget(
                 SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, RenderTarget.TARGET_DEPTH, MAX_SHADOW_LAYERS);
         ShadowManager shadowManager = new ShadowManager(frame, shadowArray, depthMaterial, MAX_SHADOW_LAYERS);
+        frame.setShadowManager(shadowManager);
+
+        RenderScene scene = new RenderScene();
 
         InputManager input = new InputManager();
         GLFWKeyBoard keyboard = new GLFWKeyBoard();
@@ -201,7 +203,7 @@ public class TestLightBackend {
             }
             if (iDown && !iWasDown) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
-                lightEnv.add(Light.spot(color, new Vector3f(lookDir), new Vector3f(cameraPos), 10f, 0f, 2.0f));
+                lightEnv.add(Light.spot(color, new Vector3f(lookDir), new Vector3f(cameraPos), 10f, 10f, 2.0f));
             }
             if (lDown && !lWasDown) {
                 lightEnv.clear();
@@ -226,7 +228,7 @@ public class TestLightBackend {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 Vector3f lightPos = new Vector3f(cameraPos);
                 Vector3f lightDir = new Vector3f(lookDir);
-                Light baseLight = Light.spot(color, lightDir, lightPos, 10f, 0f, 2.0f);
+                Light baseLight = Light.spot(color, lightDir, lightPos, 10f, 10f, 2.0f);
                 Light spotLight = shadowManager.enableSpotLightShadow(baseLight, SPOT_SHADOW_NEAR);
                 lightEnv.add(spotLight);
             }
@@ -241,13 +243,13 @@ public class TestLightBackend {
             nWasDown = nDown;
 
 
-            frame.beginFrame();
+            scene.clear();
 
             Vector3f cache = new Vector3f(dragonTransform1.position);
 
             for(int i=0;i<10;i++){
                 for(int j=0;j<10;j++){
-                    frame.submit(new RenderCommand(dragonMesh, material, new Matrix4f(dragonTransform1.getMatrix())));
+                    scene.submit(new RenderCommand(dragonMesh, material, new Matrix4f(dragonTransform1.getMatrix())));
                     dragonTransform1.position.add(0,0,2);
                     dragonTransform1.markDirty();
                 }
@@ -259,13 +261,10 @@ public class TestLightBackend {
             dragonTransform1.position.set(cache) ;
             dragonTransform1.markDirty();
 
-            List<Light> lights = lightEnv.getLights();
-            shadowManager.renderShadows(lights, camera);
-
-            frame.setCamera(camera);
-            frame.applyLightEnvironment(lightEnv);
-            frame.setBackGroundColor(lightEnv.getAmbient().x, lightEnv.getAmbient().y, lightEnv.getAmbient().z, 1.0f);
-            frame.endFrame();
+            scene.setCamera(camera);
+            scene.setLighting(lightEnv);
+            scene.setBackGroundColor(lightEnv.getAmbient().x, lightEnv.getAmbient().y, lightEnv.getAmbient().z, 1.0f);
+            frame.render(scene);
 
             input.endFrame();
             win.update();

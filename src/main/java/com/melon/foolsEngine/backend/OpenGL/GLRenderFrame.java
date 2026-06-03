@@ -3,6 +3,7 @@ package com.melon.foolsEngine.backend.OpenGL;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
 import com.melon.foolsEngine.api.rendering.render.RenderThreadPool;
+import com.melon.foolsEngine.api.rendering.resource.Light;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.Texture;
@@ -10,6 +11,8 @@ import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.rendering.resource.Camera;
 import com.melon.foolsEngine.api.rendering.resource.Material;
 import com.melon.foolsEngine.api.rendering.resource.RenderCommand;
+import com.melon.foolsEngine.api.rendering.resource.RenderScene;
+import com.melon.foolsEngine.api.rendering.resource.ShadowManager;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
@@ -26,6 +29,7 @@ class GLRenderFrame implements RenderFrame{
     private boolean init = false;
     private RenderThreadPool renderThreadPool;
     private LightEnvironment lightEnv;
+    private ShadowManager shadowManager;
 
     @Override
     public void init(){
@@ -87,6 +91,44 @@ class GLRenderFrame implements RenderFrame{
         if (!commands.isEmpty()) {
             renderCommands(commands, target, overrideMaterial, arrayLayer);
         }
+    }
+
+    @Override
+    public void render(RenderScene scene) {
+        initTest();
+
+        List<RenderCommand> commands = new ArrayList<>(scene.getCommands());
+        if (commands.isEmpty()) return;
+
+        if (shadowManager != null) {
+            LightEnvironment lighting = scene.getLighting();
+            Camera mainCamera = scene.getCamera();
+            if (lighting != null && mainCamera != null) {
+                for (Light light : lighting.getLights()) {
+                    if (!light.castsShadow()) continue;
+
+                    if (light.type == Light.DIRECTIONAL) {
+                        light.buildDirLightShadowCam(mainCamera);
+                        light.shadowInfo.lightSpaceMatrices().getFirst().set(light.shadowInfo.shadowCamera().vp());
+                    } else if (light.type == Light.SPOT) {
+                        light.shadowInfo.lightSpaceMatrices().getFirst().set(light.shadowInfo.shadowCamera().vp());
+                    }
+
+                    this.camera = light.shadowInfo.shadowCamera();
+                    renderCommands(commands, shadowManager.getShadowArray(), shadowManager.getDepthMaterial(), light.shadowInfo.shadowLayer());
+                }
+            }
+        }
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glClearColor(scene.getBgR(), scene.getBgG(), scene.getBgB(), scene.getBgA());
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClearDepth(0.0f);
+
+        this.camera = scene.getCamera();
+        this.lightEnv = scene.getLighting();
+
+        renderCommands(commands, null, null, -1);
     }
 
     private void renderCommands(List<RenderCommand> commands, RenderTarget target, Material overrideMaterial, int arrayLayer) {
@@ -162,8 +204,8 @@ class GLRenderFrame implements RenderFrame{
     private void bindShadowArrayTexture() {
         if (lightEnv == null || lightEnv.getLights().isEmpty()) return;
         for (var l : lightEnv.getLights()) {
-            if (l.castsShadow() && !l.shadowInfo.shadowMaps.isEmpty()) {
-                RenderTarget sm = l.shadowInfo.shadowMaps.get(0);
+            if (l.castsShadow() && !l.shadowInfo.shadowMaps().isEmpty()) {
+                RenderTarget sm = l.shadowInfo.shadowMaps().get(0);
                 glActiveTexture(GL_TEXTURE0 + LightEnvironment.SHADOW_ARRAY_SLOT);
                 if (sm.getType() == RenderTarget.TARGET_DEPTH) {
                     glBindTexture(GL_TEXTURE_2D_ARRAY, sm.getTextureId());
@@ -187,27 +229,36 @@ class GLRenderFrame implements RenderFrame{
     private record BatchKey(Mesh mesh, Material material) {}
 
     @Override
+    @Deprecated
     public void setCamera(Camera camera) {
         initTest();
         this.camera = camera;
     }
 
     @Override
+    @Deprecated
     public void submit(RenderCommand command) {
         initTest();
         commandQueue.add(command);
     }
 
     @Override
+    @Deprecated
     public void applyLightEnvironment(LightEnvironment env) {
         initTest();
         this.lightEnv = env;
     }
 
     @Override
+    @Deprecated
     public void setBackGroundColor(float r, float g, float b,float a) {
         initTest();
         glClearColor(r, g, b, a);
+    }
+
+    @Override
+    public void setShadowManager(ShadowManager shadowManager) {
+        this.shadowManager = shadowManager;
     }
 
     private static class TextureBinder {

@@ -7,17 +7,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class ShadowInfo {
-
-    public final Camera shadowCamera;
-    public final List<Matrix4f> lightSpaceMatrices;
-    public final List<RenderTarget> shadowMaps;
-    public final int shadowLayer;
+public record ShadowInfo(List<RenderTarget> shadowMaps, List<Matrix4f> lightSpaceMatrices, int shadowLayer,
+                         Camera shadowCamera) {
 
     public ShadowInfo(List<RenderTarget> shadowMaps, List<Matrix4f> lightSpaceMatrices,
                       int shadowLayer, Camera shadowCamera) {
-        this.shadowMaps = shadowMaps != null ? Collections.unmodifiableList(new ArrayList<>(shadowMaps)) : Collections.emptyList();
-        this.lightSpaceMatrices = lightSpaceMatrices != null ? Collections.unmodifiableList(new ArrayList<>(lightSpaceMatrices)) : Collections.emptyList();
+        this.shadowMaps = shadowMaps != null ? List.copyOf(shadowMaps) : Collections.emptyList();
+        this.lightSpaceMatrices = lightSpaceMatrices != null ? List.copyOf(lightSpaceMatrices) : Collections.emptyList();
         this.shadowLayer = shadowLayer;
         this.shadowCamera = shadowCamera;
     }
