@@ -1,6 +1,5 @@
 package com.melon.foolsEngine.api.rendering.resource;
 
-import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
 import org.joml.Matrix4f;
 
@@ -9,14 +8,12 @@ import java.util.List;
 
 public class ShadowManager {
 
-    private final RenderFrame frame;
     private final RenderTarget shadowArray;
     private final Material depthMaterial;
     private final int maxLayers;
     private int nextLayer;
 
-    public ShadowManager(RenderFrame frame, RenderTarget shadowArray, Material depthMaterial, int maxLayers) {
-        this.frame = frame;
+    public ShadowManager(RenderTarget shadowArray, Material depthMaterial, int maxLayers) {
         this.shadowArray = shadowArray;
         this.depthMaterial = depthMaterial;
         this.maxLayers = maxLayers;
@@ -49,20 +46,19 @@ public class ShadowManager {
                 layer, shadowNear);
     }
 
-    public void renderShadows(List<Light> lights, Camera mainCamera) {
-        for (Light light : lights) {
-            if (!light.castsShadow()) continue;
-
-            if (light.type == Light.DIRECTIONAL) {
-                light.buildDirLightShadowCam(mainCamera);
-                light.shadowInfo.lightSpaceMatrices().getFirst().set(light.shadowInfo.shadowCamera().vp());
-            } else if (light.type == Light.SPOT) {
-                light.shadowInfo.lightSpaceMatrices().getFirst().set(light.shadowInfo.shadowCamera().vp());
-            }
-
-            frame.setCamera(light.shadowInfo.shadowCamera());
-            frame.endFrame(shadowArray, depthMaterial, light.shadowInfo.shadowLayer());
+    public ShadowPassContext prepareShadow(Light light, Camera mainCamera) {
+        if (light.type == Light.DIRECTIONAL) {
+            light.buildDirLightShadowCam(mainCamera);
+            light.shadowInfo.lightSpaceMatrices().getFirst().set(light.shadowInfo.shadowCamera().vp());
+        } else if (light.type == Light.SPOT) {
+            light.shadowInfo.lightSpaceMatrices().getFirst().set(light.shadowInfo.shadowCamera().vp());
         }
+
+        return new ShadowPassContext(
+                light.shadowInfo.shadowCamera(),
+                shadowArray,
+                depthMaterial,
+                light.shadowInfo.shadowLayer());
     }
 
     public void reset() {

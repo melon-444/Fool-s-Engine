@@ -1,6 +1,7 @@
 package com.melon.foolsEngine.api.rendering.resource;
 
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
+import com.melon.foolsEngine.util.LightType;
 import com.melon.foolsEngine.util.OrthogonalProjection;
 import com.melon.foolsEngine.util.PerspectiveProjection;
 import org.joml.Matrix4f;
@@ -13,14 +14,14 @@ import static java.lang.Math.*;
 
 public class Light {
 
-    public static final int DIRECTIONAL = 0;
-    public static final int POINT = 1;
-    public static final int SPOT = 2;
+    public static final LightType DIRECTIONAL = LightType.PARALLEL;
+    public static final LightType POINT = LightType.POINT;
+    public static final LightType SPOT = LightType.SPOT;
 
     private static final float FRUSTUM_Z_NEAR = 1.0f;
     private static final float FRUSTUM_Z_FAR = 0.0002f;
 
-    public final int type;
+    public final LightType type;
     public final Vector3f color;
     public final Vector3f direction;
     public final Vector3f position;
@@ -29,7 +30,7 @@ public class Light {
     public final float outerTheta;
     public final ShadowInfo shadowInfo;
 
-    private Light(int type, Vector3f color, Vector3f direction, Vector3f position,
+    private Light(LightType type, Vector3f color, Vector3f direction, Vector3f position,
                   float intensity, float innerTheta, float outerTheta,
                   List<RenderTarget> shadowMaps, List<Matrix4f> lightSpaceMatrices,
                   int shadowLayer, Camera shadowCamera) {

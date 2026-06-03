@@ -5,6 +5,7 @@ import com.melon.foolsEngine.api.rendering.render.RenderTarget;
 import com.melon.foolsEngine.api.rendering.render.RenderThreadPool;
 import com.melon.foolsEngine.api.rendering.resource.Light;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
+import com.melon.foolsEngine.api.rendering.resource.ShadowPassContext;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.Texture;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
@@ -106,16 +107,9 @@ class GLRenderFrame implements RenderFrame{
             if (lighting != null && mainCamera != null) {
                 for (Light light : lighting.getLights()) {
                     if (!light.castsShadow()) continue;
-
-                    if (light.type == Light.DIRECTIONAL) {
-                        light.buildDirLightShadowCam(mainCamera);
-                        light.shadowInfo.lightSpaceMatrices().getFirst().set(light.shadowInfo.shadowCamera().vp());
-                    } else if (light.type == Light.SPOT) {
-                        light.shadowInfo.lightSpaceMatrices().getFirst().set(light.shadowInfo.shadowCamera().vp());
-                    }
-
-                    this.camera = light.shadowInfo.shadowCamera();
-                    renderCommands(commands, shadowManager.getShadowArray(), shadowManager.getDepthMaterial(), light.shadowInfo.shadowLayer());
+                    ShadowPassContext ctx = shadowManager.prepareShadow(light, mainCamera);
+                    this.camera = ctx.shadowCamera();
+                    renderCommands(commands, ctx.target(), ctx.depthMaterial(), ctx.layer());
                 }
             }
         }

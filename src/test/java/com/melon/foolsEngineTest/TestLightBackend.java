@@ -69,7 +69,7 @@ public class TestLightBackend {
 
         RenderTarget shadowArray = foolsEngine.serviceFactory.createRenderTarget(
                 SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, RenderTarget.TARGET_DEPTH, MAX_SHADOW_LAYERS);
-        ShadowManager shadowManager = new ShadowManager(frame, shadowArray, depthMaterial, MAX_SHADOW_LAYERS);
+        ShadowManager shadowManager = new ShadowManager(shadowArray, depthMaterial, MAX_SHADOW_LAYERS);
         frame.setShadowManager(shadowManager);
 
         RenderScene scene = new RenderScene();
