@@ -5,25 +5,51 @@ plugins {
 group = "com.melon.foolsEngine"
 version = "0.0.2"
 
-repositories {
-    flatDir {
-        dirs("lwjgl/lwjgl", "lwjgl/lwjgl-glfw", "lwjgl/lwjgl-opengl", "lwjgl/lwjgl-stb")
+val lwjglNatives = project.properties["lwjglNatives"] as? String ?: "windows"
+val lwjglUseMaven = project.properties["lwjglUseMaven"] == "true"
+val lwjglVersion = "3.3.6"
+
+if (lwjglUseMaven) {
+    repositories {
+        maven("https://jitpack.io/")
+        mavenCentral()
     }
-    maven("https://jitpack.io/")
-    mavenCentral()
-}
 
-dependencies {
-    api(files("${rootProject.properties["lwjgl_libs"]}lwjgl/lwjgl.jar"))
-    api(files("${rootProject.properties["lwjgl_libs"]}lwjgl-glfw/lwjgl-glfw.jar"))
-    api(files("${rootProject.properties["lwjgl_libs"]}lwjgl-opengl/lwjgl-opengl.jar"))
-    api(files("${rootProject.properties["lwjgl_libs"]}lwjgl-stb/lwjgl-stb.jar"))
+    dependencies {
+        api(platform("org.lwjgl:lwjgl-bom:$lwjglVersion"))
+        api("org.lwjgl", "lwjgl")
+        api("org.lwjgl", "lwjgl-glfw")
+        api("org.lwjgl", "lwjgl-opengl")
+        api("org.lwjgl", "lwjgl-stb")
+        runtimeOnly("org.lwjgl", "lwjgl",          classifier = "natives-$lwjglNatives")
+        runtimeOnly("org.lwjgl", "lwjgl-glfw",     classifier = "natives-$lwjglNatives")
+        runtimeOnly("org.lwjgl", "lwjgl-opengl",   classifier = "natives-$lwjglNatives")
+        runtimeOnly("org.lwjgl", "lwjgl-stb",      classifier = "natives-$lwjglNatives")
+        api("org.joml:joml:1.10.5")
+    }
+} else {
+    repositories {
+        flatDir {
+            dirs("lwjgl/lwjgl", "lwjgl/lwjgl-glfw", "lwjgl/lwjgl-opengl", "lwjgl/lwjgl-stb")
+        }
+        maven("https://jitpack.io/")
+        mavenCentral()
+    }
 
-    runtimeOnly(files("${rootProject.properties["lwjgl_libs"]}lwjgl/lwjgl-natives-windows.jar"))
-    runtimeOnly(files("${rootProject.properties["lwjgl_libs"]}lwjgl-glfw/lwjgl-glfw-natives-windows.jar"))
-    runtimeOnly(files("${rootProject.properties["lwjgl_libs"]}lwjgl-opengl/lwjgl-opengl-natives-windows.jar"))
-    runtimeOnly(files("${rootProject.properties["lwjgl_libs"]}lwjgl-stb/lwjgl-stb-natives-windows.jar"))
-    api("org.joml:joml:1.10.5")
+    val libs = rootProject.properties["lwjgl_libs"] as? String ?: "lwjgl/"
+
+    dependencies {
+        api(files("${libs}lwjgl/lwjgl.jar"))
+        api(files("${libs}lwjgl-glfw/lwjgl-glfw.jar"))
+        api(files("${libs}lwjgl-opengl/lwjgl-opengl.jar"))
+        api(files("${libs}lwjgl-stb/lwjgl-stb.jar"))
+
+        runtimeOnly(files("${libs}lwjgl/lwjgl-natives-${lwjglNatives}.jar"))
+        runtimeOnly(files("${libs}lwjgl-glfw/lwjgl-glfw-natives-${lwjglNatives}.jar"))
+        runtimeOnly(files("${libs}lwjgl-opengl/lwjgl-opengl-natives-${lwjglNatives}.jar"))
+        runtimeOnly(files("${libs}lwjgl-stb/lwjgl-stb-natives-${lwjglNatives}.jar"))
+        api("org.joml:joml:1.10.5")
+    }
 }
 
 val nmtJvmArgs = listOf("-XX:NativeMemoryTracking=detail")

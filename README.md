@@ -11,7 +11,7 @@ A custom 3D game engine in Java, built on LWJGL 3 with OpenGL 4.3+ rendering, En
 | Layer | Technology |
 |---|---|
 | Language | Java 17+ |
-| Graphics | OpenGL 4.3+ (LWJGL 3) |
+| Graphics | OpenGL 4.3+ (LWJGL 3.3.6) |
 | Windowing | GLFW (LWJGL) |
 | Math | JOML 1.10.5 |
 | Image loading | STBImage (LWJGL-STB) |
@@ -20,13 +20,35 @@ A custom 3D game engine in Java, built on LWJGL 3 with OpenGL 4.3+ rendering, En
 ## Prerequisites
 
 - JDK 17 or higher
-- Windows x64 (LWJGL natives are Windows-only)
+- LWJGL native libraries (included locally at `lwjgl/`, or fetched from Maven Central)
 
 ## Build
 
+### Local dependencies (default)
+
+LWJGL 3.3.6 JARs are bundled in the `lwjgl/` directory. The default platform is `windows`.  
+Specify a different platform via `gradle.properties`:
+
+```properties
+lwjglNatives=linux          # windows | linux | macos | macos-arm64
+```
+
 ```bash
-# Compile
 ./gradlew.bat compileJava
+```
+
+### Online Maven dependencies (alternative)
+
+Use Maven Central instead of local JARs — no file downloads needed:
+
+```properties
+lwjglUseMaven=true
+lwjglNatives=windows
+```
+
+```bash
+./gradlew.bat compileJava
+```
 
 # Compile with tests
 ./gradlew.bat compileJava compileTestJava

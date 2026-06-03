@@ -11,7 +11,7 @@
 | 层级 | 技术 |
 |---|---|
 | 语言 | Java 17+ |
-| 图形 API | OpenGL 4.3+ (LWJGL 3) |
+| 图形 API | OpenGL 4.3+ (LWJGL 3.3.6) |
 | 窗口系统 | GLFW (LWJGL) |
 | 数学库 | JOML 1.10.5 |
 | 图片加载 | STBImage (LWJGL-STB) |
@@ -20,13 +20,35 @@
 ## 环境要求
 
 - JDK 17 或更高版本
-- Windows x64（LWJGL 本地库仅包含 Windows 版本）
+- LWJGL 本地库（已内置在 `lwjgl/` 目录，也可从 Maven Central 获取）
 
 ## 构建
 
+### 本地依赖（默认）
+
+LWJGL 3.3.6 JAR 包已内置在 `lwjgl/` 目录。默认平台为 `windows`。  
+在 `gradle.properties` 中指定其他平台：
+
+```properties
+lwjglNatives=linux          # windows | linux | macos | macos-arm64
+```
+
 ```bash
-# 编译主代码
 ./gradlew.bat compileJava
+```
+
+### 在线 Maven 依赖（备选）
+
+切换为从 Maven Central 拉取，无需预先下载 JAR：
+
+```properties
+lwjglUseMaven=true
+lwjglNatives=windows
+```
+
+```bash
+./gradlew.bat compileJava
+```
 
 # 编译主代码 + 测试代码
 ./gradlew.bat compileJava compileTestJava
