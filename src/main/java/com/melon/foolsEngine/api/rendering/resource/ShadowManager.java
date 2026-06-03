@@ -55,9 +55,9 @@ public class ShadowManager {
 
             if (light.type == Light.DIRECTIONAL) {
                 light.buildDirLightShadowCam(mainCamera);
-                light.shadowInfo.lightSpaceMatrices.get(0).set(light.shadowInfo.shadowCamera.vp());
+                light.shadowInfo.lightSpaceMatrices.getFirst().set(light.shadowInfo.shadowCamera.vp());
             } else if (light.type == Light.SPOT) {
-                light.shadowInfo.lightSpaceMatrices.get(0).set(light.shadowInfo.shadowCamera.vp());
+                light.shadowInfo.lightSpaceMatrices.getFirst().set(light.shadowInfo.shadowCamera.vp());
             }
 
             frame.setCamera(light.shadowInfo.shadowCamera);
