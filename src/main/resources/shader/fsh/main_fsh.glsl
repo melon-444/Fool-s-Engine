@@ -71,8 +71,9 @@ void main() {
                 float texelSize = 1.0 / shadowMapSize;
                 float bias = 0.002;
                 shadow = 0.0;
-                for (int x = -1; x <= 1; ++x) {
-                    for (int y = -1; y <= 1; ++y) {
+                //PCF sampling
+                for (int x = -2; x <= 2; ++x) {
+                    for (int y = -2; y <= 2; ++y) {
                         float pcfClosest = texture(shadowMapArray, vec3(shadowUV + vec2(x, y) * texelSize, layer)).r;
                         if (proj.z >= pcfClosest - bias) {
                             shadow += 1.0;

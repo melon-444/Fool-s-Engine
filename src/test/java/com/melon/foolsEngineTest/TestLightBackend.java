@@ -23,7 +23,7 @@ import java.util.List;
 
 public class TestLightBackend {
     static FoolsEngine foolsEngine = FoolsEngine.create(1000, 100, 800, 600);
-    private static final int SHADOW_MAP_SIZE = 2048;
+    private static final int SHADOW_MAP_SIZE = 8192;
     private static final int MAX_SHADOW_LAYERS = 16;
     private static final float SPOT_SHADOW_NEAR = 0.1f;
 
