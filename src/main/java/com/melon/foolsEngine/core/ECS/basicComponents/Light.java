@@ -8,15 +8,17 @@ public class Light extends Component{
     public Vector3f color;
     public Vector3f direction;
     public Vector3f position;
-    public float thetaOfCutOff;
+    public float innerTheta;
+    public float outerTheta;
     public final LightType lightType;
     public boolean castsShadow = false;
 
-    public Light(Vector3f color, Vector3f direction, Vector3f position, float thetaOfCutOff) {
+    public Light(Vector3f color, Vector3f direction, Vector3f position, float innerTheta, float outerTheta) {
         this.color = color;
         this.direction = direction;
         this.position = position;
-        this.thetaOfCutOff = thetaOfCutOff;
+        this.innerTheta = innerTheta;
+        this.outerTheta = outerTheta;
         this.lightType = LightType.SPOT;
     }
 

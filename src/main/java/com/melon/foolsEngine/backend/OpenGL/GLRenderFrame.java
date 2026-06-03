@@ -162,8 +162,8 @@ class GLRenderFrame implements RenderFrame{
     private void bindShadowArrayTexture() {
         if (lightEnv == null || lightEnv.getLights().isEmpty()) return;
         for (var l : lightEnv.getLights()) {
-            if (l.castsShadow() && !l.shadowMaps.isEmpty()) {
-                RenderTarget sm = l.shadowMaps.get(0);
+            if (l.castsShadow() && !l.shadowInfo.shadowMaps.isEmpty()) {
+                RenderTarget sm = l.shadowInfo.shadowMaps.get(0);
                 glActiveTexture(GL_TEXTURE0 + LightEnvironment.SHADOW_ARRAY_SLOT);
                 if (sm.getType() == RenderTarget.TARGET_DEPTH) {
                     glBindTexture(GL_TEXTURE_2D_ARRAY, sm.getTextureId());

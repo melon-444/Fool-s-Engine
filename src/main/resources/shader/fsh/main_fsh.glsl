@@ -21,7 +21,7 @@ uniform int lightCount;
 uniform vec4 lightColor[MAX_LIGHTS];
 uniform vec4 lightDir[MAX_LIGHTS];
 uniform vec4 lightPos[MAX_LIGHTS];
-uniform vec4 lightParams[MAX_LIGHTS]; // x=type, y=cutOff, z=hasShadow, w=layer
+uniform vec4 lightParams[MAX_LIGHTS];
 uniform mat4 lightSpaceMatrices[MAX_LIGHTS];
 
 void main() {
@@ -47,8 +47,14 @@ void main() {
             float dist = length(toLight);
             L = toLight / dist;
             float theta = dot(-L, normalize(lightDir[i].xyz));
-            float cutOff = lightParams[i].y;
-            float spot = smoothstep(cutOff * 0.90, cutOff, theta);
+            float innerCutOff = lightPos[i].w;
+            float outerCutOff = lightParams[i].y;
+            float spot;
+            if (innerCutOff <= outerCutOff) {
+                spot = smoothstep(outerCutOff, innerCutOff, theta);
+            } else {
+                spot = step(outerCutOff, theta);
+            }
             attenuation = intensity * spot / (1.0 + 0.05 * dist + 0.005 * dist * dist);
         }
 

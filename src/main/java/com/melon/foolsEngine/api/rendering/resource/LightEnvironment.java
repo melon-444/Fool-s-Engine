@@ -63,15 +63,17 @@ public class LightEnvironment {
             String idx = "[" + i + "]";
             shader.setVec4("lightColor" + idx, l.color.x, l.color.y, l.color.z, l.intensity);
             shader.setVec4("lightDir" + idx, l.direction.x, l.direction.y, l.direction.z, 0f);
-            shader.setVec4("lightPos" + idx, l.position.x, l.position.y, l.position.z, 0f);
+            float innerCutOff = (float) Math.cos(Math.toRadians(l.innerTheta));
+            shader.setVec4("lightPos" + idx, l.position.x, l.position.y, l.position.z, innerCutOff);
 
-            boolean hasShadow = l.castsShadow() && l.lightSpaceMatrices != null
-                    && !l.lightSpaceMatrices.isEmpty() && !l.shadowMaps.isEmpty();
-            float layer = hasShadow ? (float) l.shadowLayer : 0f;
-            shader.setVec4("lightParams" + idx, (float) l.type, l.cutOff, hasShadow ? 1f : 0f, layer);
+            boolean hasShadow = l.castsShadow() && l.shadowInfo != null
+                    && !l.shadowInfo.lightSpaceMatrices.isEmpty() && !l.shadowInfo.shadowMaps.isEmpty();
+            float layer = hasShadow ? (float) l.shadowInfo.shadowLayer : 0f;
+            float outerCutOff = (float) Math.cos(Math.toRadians(l.outerTheta));
+            shader.setVec4("lightParams" + idx, (float) l.type, outerCutOff, hasShadow ? 1f : 0f, layer);
 
             if (hasShadow) {
-                Matrix4f lsMatrix = l.lightSpaceMatrices.get(0);
+                Matrix4f lsMatrix = l.shadowInfo.lightSpaceMatrices.get(0);
                 shader.setMat4("lightSpaceMatrices" + idx, lsMatrix.get(new float[16]));
             }
         }
