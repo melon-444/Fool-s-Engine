@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "com.melon.foolsEngine"
-version = "0.0.0-preview"
+version = "0.0.1-preview"
 
 repositories {
     flatDir {
