@@ -258,3 +258,15 @@ ImGuiHelper ──守卫──→ ImGuiInternal                         （仅 i
 - `LightCollector` ECS System 为桩代码。
 - 测试为手动集成 `JavaExec` 任务，未使用 JUnit 框架。
 - `Light.buildDirLightShadowCam()` 已标记 `@Deprecated`——逻辑已迁移至 `ShadowManager.updateDirShadowCamera()`，但旧方法体保留以保持向后兼容。
+
+## 许可证
+
+foolsEngine — 一个基于 Java 的自研 3D 游戏引擎
+Copyright (C) 2026  melon_444
+
+本程序为自由软件：您可以依据自由软件基金会发布的 GNU 通用公共许可证
+（版本 3 或您选择的任何更新版本）的条款重新分发和/或修改本程序。
+
+本程序的分发出于有用之目的，但**不提供任何担保**；甚至不提供对
+**适销性**或**特定用途适用性**的默示担保。详情请参见 [LICENSE](LICENSE) 中的
+GNU 通用公共许可证。
