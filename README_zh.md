@@ -209,7 +209,6 @@ Window.setCursorMode()                                         （光标控制�
 
 - 对不可变数据包使用 **Record 类型**（`ShadowInfo`, `ShadowPassContext`, `RenderCommand`, `MeshData`）。
 - 旧 API 标记 **`@Deprecated`** 而非立即删除（`RenderFrame` 上的 `setCamera`、`submit`、`applyLightEnvironment`）。新代码应使用 `frame.render(RenderScene)`。
-- 重构过程中**禁止修改 Shader**——渲染行为保持百分百一致。
 - **反转 Z 缓冲**深度范围：近平面 = 1.0，远平面 = 0.0。
 
 ## 已知限制

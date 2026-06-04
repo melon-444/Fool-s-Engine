@@ -125,6 +125,16 @@ public class ShadowManager {
         return depthMaterial;
     }
 
+    /** @return the number of currently allocated shadow layers */
+    public int getCurrentLayerCount() {
+        return nextLayer;
+    }
+
+    /** @return the maximum number of shadow layers */
+    public int getMaxLayers() {
+        return maxLayers;
+    }
+
     private int allocateLayer() {
         if (nextLayer >= maxLayers) {
             throw new IllegalStateException("Shadow layer limit exceeded: " + maxLayers);

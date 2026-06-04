@@ -1,6 +1,8 @@
 package com.melon.foolsEngineTest;
 
-import com.melon.foolsEngine.api.input.*;
+import com.melon.foolsEngine.api.input.Action;
+import com.melon.foolsEngine.api.input.FoolsEngineKeyCode;
+import com.melon.foolsEngine.api.input.InputManager;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
 import com.melon.foolsEngine.api.rendering.resource.*;
@@ -11,16 +13,14 @@ import com.melon.foolsEngine.backend.OpenGL.GLFWKeyBoard;
 import com.melon.foolsEngine.backend.OpenGL.GLFWMouse;
 import com.melon.foolsEngine.core.ECS.basicComponents.Transform;
 import com.melon.foolsEngine.core.FoolsEngine;
-import com.melon.foolsEngine.util.CursorMode;
-import com.melon.foolsEngine.util.ObjLoader;
-import com.melon.foolsEngine.util.PerspectiveProjection;
-import com.melon.foolsEngine.util.SignalType;
+import com.melon.foolsEngine.util.*;
+import com.melon.foolsEngine.util.imgui.ImGuiContext;
+import com.melon.foolsEngine.util.imgui.ImGuiDebugOverlay;
+import com.melon.foolsEngine.util.imgui.ImGuiRenderer;
 import org.joml.*;
 import org.joml.Math;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 
 public class TestLightBackend {
     static FoolsEngine foolsEngine = FoolsEngine.create(1000, 100, 800, 600);
@@ -32,7 +32,7 @@ public class TestLightBackend {
         WindowsManager manager = foolsEngine.serviceFactory.getWindowsManager();
         Window win = foolsEngine.mainWindow;
         win.setTitle("Test Light Backend - P:Dir  O:Point  I:Spot  ,:ShadowDir  N:ShadowSpot  L:Clear J:AmbientUp K: AmbientDown ESC:exit");
-        win.setSize(2048,1536);
+        win.setSize(2048, 1536);
 
         Mesh dragonMesh = foolsEngine.serviceFactory.getMesh();
         dragonMesh.upload(ObjLoader.loadMesh(Path.of("src/test/resources/shaders/model/dragon.obj")));
@@ -63,6 +63,11 @@ public class TestLightBackend {
         win.show();
         RenderFrame frame = foolsEngine.frame;
         frame.init();
+
+        ImGuiContext imGuiContext = new ImGuiContext();
+        imGuiContext.init(win.getID(), "#version 330");
+        ImGuiRenderer imGuiRenderer = new ImGuiRenderer(imGuiContext);
+        ImGuiDebugOverlay debugOverlay = new ImGuiDebugOverlay();
 
         LightEnvironment lightEnv = new LightEnvironment();
         lightEnv.setAmbient(0.08f, 0.08f, 0.08f);
@@ -101,6 +106,7 @@ public class TestLightBackend {
         Action exit = () -> SignalType.BUTTON;
         Action spawnShadowDirLight = () -> SignalType.BUTTON;
         Action spawnShadowSpotLight = () -> SignalType.BUTTON;
+        Action switchMouseMode = () -> SignalType.BUTTON;
 
         input.bind(keyboard, FoolsEngineKeyCode.W, moveForward);
         input.bind(keyboard, FoolsEngineKeyCode.S, moveBackward);
@@ -112,8 +118,6 @@ public class TestLightBackend {
         input.bind(keyboard, FoolsEngineKeyCode.J, ambientUp);
         input.bind(keyboard, FoolsEngineKeyCode.K, ambientDown);
 
-        input.bind(mouse, FoolsEngineKeyCode.CURSOR, lookDelta);
-
         input.bind(keyboard, FoolsEngineKeyCode.P, spawnDirLight);
         input.bind(keyboard, FoolsEngineKeyCode.O, spawnPointLight);
         input.bind(keyboard, FoolsEngineKeyCode.I, spawnSpotLight);
@@ -121,6 +125,9 @@ public class TestLightBackend {
         input.bind(keyboard, FoolsEngineKeyCode.COMMA, spawnShadowDirLight);
         input.bind(keyboard, FoolsEngineKeyCode.N, spawnShadowSpotLight);
         input.bind(keyboard, FoolsEngineKeyCode.ESC, exit);
+
+        input.bind(mouse, FoolsEngineKeyCode.CURSOR, lookDelta);
+        input.bind(mouse, FoolsEngineKeyCode.MOUSE_RIGHT, switchMouseMode);
 
         float moveSpeed = 5.0f;
         float lookSensitivity = 1.0f;
@@ -139,6 +146,7 @@ public class TestLightBackend {
         boolean kWasDown = false;
         boolean commaWasDown = false;
         boolean nWasDown = false;
+        boolean LMBWasDown = false;
 
         while (!win.shouldClose()) {
             long currentTime = System.nanoTime();
@@ -172,7 +180,7 @@ public class TestLightBackend {
                 break;
             }
 
-            Vector2f mouseDelta = input.getActionAxis2DDelta(lookDelta);
+            Vector2f mouseDelta = win.getCursorMode() == CursorMode.DISABLED ? input.getActionAxis2DDelta(lookDelta) : new Vector2f(0.0f);
             yaw -= mouseDelta.x * lookSensitivity;
             pitch -= mouseDelta.y * lookSensitivity;
             pitch = Math.min(89.0f, Math.max(-89.0f, pitch));
@@ -194,6 +202,7 @@ public class TestLightBackend {
             boolean kDown = input.isActionDown(ambientDown);
             boolean commaDown = input.isActionDown(spawnShadowDirLight);
             boolean nDown = input.isActionDown(spawnShadowSpotLight);
+            boolean LMBDown = input.isActionDown(switchMouseMode);
 
             if (pDown && !pWasDown) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
@@ -235,6 +244,13 @@ public class TestLightBackend {
                 lightEnv.add(spotLight);
             }
 
+            if (LMBDown && !LMBWasDown) {
+                if (win.getCursorMode() == CursorMode.DISABLED)
+                    win.setCursorMode(CursorMode.NORMAL);
+                else
+                    win.setCursorMode(CursorMode.DISABLED);
+            }
+
             pWasDown = pDown;
             oWasDown = oDown;
             iWasDown = iDown;
@@ -243,30 +259,41 @@ public class TestLightBackend {
             jWasDown = jDown;
             commaWasDown = commaDown;
             nWasDown = nDown;
+            LMBWasDown = LMBDown;
 
 
             scene.clear();
 
             Vector3f cache = new Vector3f(dragonTransform1.position);
 
-            for(int i=0;i<10;i++){
-                for(int j=0;j<10;j++){
+            for (int i = 0; i < 10; i++) {
+                for (int j = 0; j < 10; j++) {
                     scene.submit(new RenderCommand(dragonMesh, material, new Matrix4f(dragonTransform1.getMatrix())));
-                    dragonTransform1.position.add(0,0,2);
+                    dragonTransform1.position.add(0, 0, 2);
                     dragonTransform1.markDirty();
                 }
                 dragonTransform1.position.set(cache);
-                dragonTransform1.position.add(3*i,0,0);
+                dragonTransform1.position.add(3 * i, 0, 0);
                 dragonTransform1.markDirty();
             }
 
-            dragonTransform1.position.set(cache) ;
+            dragonTransform1.position.set(cache);
             dragonTransform1.markDirty();
 
             scene.setCamera(camera);
             scene.setLighting(lightEnv);
             scene.setBackGroundColor(lightEnv.getAmbient().x, lightEnv.getAmbient().y, lightEnv.getAmbient().z, 1.0f);
+
+            long renderStart = System.nanoTime();
             frame.render(scene);
+            float renderTimeMs = (System.nanoTime() - renderStart) / 1e6f;
+
+            imGuiRenderer.beginFrame();
+            debugOverlay.render(scene, shadowManager, deltaTime, renderTimeMs,
+                    cameraPos, yaw, pitch, frame.getDrawCallCount());
+            imGuiRenderer.endFrame();
+
+            //Logger.debug("FPS: %.1f | Cam: (%.2f, %.2f, %.2f) | Yaw: %.1f | Pitch: %.1f | Lights: %d", 1.0f / deltaTime, cameraPos.x, cameraPos.y, cameraPos.z, yaw, pitch, lightEnv.size());
 
             input.endFrame();
             win.update();
@@ -281,6 +308,7 @@ public class TestLightBackend {
         shader.destroy();
         depthShader.destroy();
         shadowManager.destroy();
+        imGuiContext.destroy();
         manager.destroyWindow(win, true);
     }
 }

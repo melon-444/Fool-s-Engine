@@ -75,6 +75,11 @@ public class LightEnvironment {
         return lights.size();
     }
 
+    /** @return the current shadow map resolution (affects PCF sampling) */
+    public int getShadowMapSize() {
+        return shadowMapSize;
+    }
+
     /**
      * Pushes all light data and shadow map binding info to the given shader.
      * Called internally by the renderer.

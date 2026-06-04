@@ -70,4 +70,12 @@ public interface RenderFrame {
      */
     default void setShadowManager(ShadowManager shadowManager) {
     }
+
+    /**
+     * Returns the number of draw calls issued in the last {@link #render(RenderScene)} call.
+     * Returns -1 if the backend does not track this metric.
+     */
+    default int getDrawCallCount() {
+        return -1;
+    }
 }

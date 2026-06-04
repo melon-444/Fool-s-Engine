@@ -31,6 +31,7 @@ class GLRenderFrame implements RenderFrame{
     private RenderThreadPool renderThreadPool;
     private LightEnvironment lightEnv;
     private ShadowManager shadowManager;
+    private int drawCallCounter;
 
     @Override
     public void init(){
@@ -98,6 +99,8 @@ class GLRenderFrame implements RenderFrame{
     public void render(RenderScene scene) {
         initTest();
 
+        drawCallCounter = 0;
+
         List<RenderCommand> commands = new ArrayList<>(scene.getCommands());
         if (commands.isEmpty()) return;
 
@@ -140,6 +143,8 @@ class GLRenderFrame implements RenderFrame{
         }
 
         Map<BatchKey, List<RenderCommand>> batches = groupCommands(commands);
+
+        drawCallCounter += batches.size();
 
         for (Map.Entry<BatchKey, List<RenderCommand>> entry : batches.entrySet()) {
             Mesh mesh = entry.getKey().mesh;
@@ -253,6 +258,11 @@ class GLRenderFrame implements RenderFrame{
     @Override
     public void setShadowManager(ShadowManager shadowManager) {
         this.shadowManager = shadowManager;
+    }
+
+    @Override
+    public int getDrawCallCount() {
+        return drawCallCounter;
     }
 
     private static class TextureBinder {

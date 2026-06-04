@@ -209,7 +209,6 @@ Window.setCursorMode()                                         (cursor control)
 
 - **Record types** for immutable data bundles (`ShadowInfo`, `ShadowPassContext`, `RenderCommand`, `MeshData`).
 - **`@Deprecated`** old API instead of immediate removal (`setCamera`, `submit`, `applyLightEnvironment` on `RenderFrame`). New code uses `frame.render(RenderScene)`.
-- **No shader modifications** during refactoring — rendering behavior preserved exactly.
 - **Reverse-Z** depth range: near=1.0, far=0.0.
 
 ## Known Limitations
