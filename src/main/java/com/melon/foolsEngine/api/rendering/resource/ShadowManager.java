@@ -7,7 +7,9 @@ import org.joml.Vector3f;
 import org.joml.Vector4f;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static java.lang.Math.*;
 
@@ -19,10 +21,10 @@ import static java.lang.Math.*;
  * <p>
  * Typical usage:
  * <pre>{@code
- *   ShadowManager sm = new ShadowManager(shadowArray, depthMaterial, maxLayers);
- *   frame.setShadowManager(sm);
+ *   LightEnvironment lightEnv = new LightEnvironment();
+ *   lightEnv.enableShadows(shadowArray, depthMaterial, maxLayers);
  *
- *   Light dirLight = sm.enableDirLightShadow(baseLight, mainCamera);
+ *   Light dirLight = lightEnv.enableDirLightShadow(baseLight, mainCamera);
  *   lightEnv.add(dirLight);
  *   // Shadow pass is handled automatically by frame.render(scene)
  * }</pre>
@@ -38,6 +40,7 @@ public class ShadowManager {
     private final RenderTarget shadowArray;
     private final Material depthMaterial;
     private final int maxLayers;
+    private final Set<Integer> releasedLayers = new HashSet<>();
     private int nextLayer;
 
     /**
@@ -190,9 +193,23 @@ public class ShadowManager {
                 up);
     }
 
-    /** Resets the layer allocator. Call when clearing all lights. */
+    /** Resets the layer allocator and free list. Call when clearing all lights. */
     public void reset() {
         nextLayer = 0;
+        releasedLayers.clear();
+    }
+
+    /**
+     * Releases a shadow layer for reuse by future shadow-casting lights.
+     * Called automatically by {@link LightEnvironment#remove(Light)}.
+     * Safe to call with layers not currently allocated (no-op).
+     *
+     * @param layer the layer index to release (from {@link Light#shadowInfo#shadowLayer})
+     */
+    public void releaseLayer(int layer) {
+        if (layer >= 0 && layer < nextLayer) {
+            releasedLayers.add(layer);
+        }
     }
 
     /** Destroys the underlying shadow array render target */
@@ -210,9 +227,9 @@ public class ShadowManager {
         return depthMaterial;
     }
 
-    /** @return the number of currently allocated shadow layers */
+    /** @return the number of currently active (non-released) shadow layers */
     public int getCurrentLayerCount() {
-        return nextLayer;
+        return nextLayer - releasedLayers.size();
     }
 
     /** @return the maximum number of shadow layers */
@@ -221,6 +238,11 @@ public class ShadowManager {
     }
 
     private int allocateLayer() {
+        if (!releasedLayers.isEmpty()) {
+            int layer = releasedLayers.iterator().next();
+            releasedLayers.remove(layer);
+            return layer;
+        }
         if (nextLayer >= maxLayers) {
             throw new IllegalStateException("Shadow layer limit exceeded: " + maxLayers);
         }

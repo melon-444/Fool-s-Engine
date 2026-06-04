@@ -9,12 +9,14 @@ A custom 3D game engine in Java, built on LWJGL 3 with OpenGL 4.3+ rendering, En
 ## Tech Stack
 
 | Layer | Technology |
-|---|---|
+|---|---|---|
 | Language | Java 17+ |
-| Graphics | OpenGL 4.3+ (LWJGL 3.3.6) |
+| Graphics | OpenGL 4.3+ (LWJGL 3.4.1) |
 | Windowing | GLFW (LWJGL) |
 | Math | JOML 1.10.5 |
 | Image loading | STBImage (LWJGL-STB) |
+| Debug UI | Dear ImGui (imgui-java 1.92.0, compile-only) |
+| Logging | built-in Logger (util/Logger) |
 | Build | Gradle (Kotlin DSL) |
 
 ## Prerequisites
@@ -50,9 +52,6 @@ lwjglNatives=windows
 ./gradlew.bat compileJava
 ```
 
-# Compile with tests
-./gradlew.bat compileJava compileTestJava
-```
 
 ## Run Tests
 
@@ -68,6 +67,9 @@ lwjglNatives=windows
 
 # Run all tests
 ./gradlew.bat runAllTests
+
+# Build fat JAR with all dependencies
+./gradlew.bat fatJar
 ```
 
 ### TestLightBackend Controls
@@ -83,6 +85,7 @@ lwjglNatives=windows
 | N | Spawn shadow-casting spot light |
 | L | Clear all lights |
 | J / K | Increase / decrease ambient |
+| C | Toggle ImGui debug overlay |
 | ESC | Exit |
 
 ## Key API
@@ -92,6 +95,11 @@ lwjglNatives=windows
 Window win = ...;
 win.setCursorMode(CursorMode.DISABLED); // NORMAL, HIDDEN, DISABLED
 
+// Input (through InputManager)
+InputManager input = foolsEngine.serviceFactory.createInputManager(win);
+input.bind(input.getKeyboard(), FoolsEngineKeyCode.W, action);
+if (input.isActionPressed(action)) { ... }
+
 // Rendering
 RenderScene scene = new RenderScene();
 scene.setCamera(camera);
@@ -99,13 +107,30 @@ scene.setLighting(lightEnv);
 scene.submit(new RenderCommand(mesh, material, transform));
 
 frame.init();
-frame.setShadowManager(shadowManager);
-frame.render(scene);
+frame.render(scene);  // shadow pass auto-detected from lightEnv
 
-// Shadows
-ShadowManager sm = new ShadowManager(shadowArray, depthMaterial, maxLayers);
-Light dirLight = sm.enableDirLightShadow(baseLight, mainCamera);
-Light spotLight = sm.enableSpotLightShadow(baseLight, nearPlane);
+// Shadows — owned by LightEnvironment, not by RenderFrame
+LightEnvironment lightEnv = new LightEnvironment();
+lightEnv.setAmbient(0.08f, 0.08f, 0.08f);
+lightEnv.enableShadows(shadowArray, depthMaterial, maxLayers);
+
+Light dirLight = lightEnv.enableDirLightShadow(baseLight, mainCamera);
+Light spotLight = lightEnv.enableSpotLightShadow(baseLight, nearPlane);
+lightEnv.add(dirLight);
+
+lightEnv.clear();     // clears lights + resets shadow layers
+lightEnv.destroy();   // destroys shadow resources
+
+// ImGui (optional — add imgui-java to your classpath)
+ImGuiContext ctx = new ImGuiContext();
+ctx.init(win.getID(), "#version 330");
+ImGuiRenderer renderer = new ImGuiRenderer(ctx);
+ImGuiDebugOverlay overlay = new ImGuiDebugOverlay();
+
+// In your render loop:
+renderer.beginFrame();
+overlay.render(scene, deltaTime, renderTimeMs, cameraPos, yaw, pitch, drawCalls);
+renderer.endFrame();
 ```
 
 ## Project Structure
@@ -144,7 +169,11 @@ src/main/java/com/melon/foolsEngine/
     events/                     # EventBus
     world/                      # Entity/Component/System managers, ServiceFactory
 
-  util/                         # SparseSet, Signature, Projection, CursorMode, ObjLoader, etc.
+   util/                         # Projection, CursorMode, ObjLoader, Signature, SparseSet, etc.
+     Logger.java                 # Built-in logging (TRACE → ERROR)
+     LogLevel.java               # Log severity enum
+     ImGuiHelper.java            # Optional ImGui input forwarding (no-op when imgui absent)
+     imgui/                      # ImGuiContext, ImGuiRenderer, ImGuiDebugOverlay (compile-only)
 
 src/main/resources/shader/
   vsh/main_vsh.glsl             # Main vertex shader (instanced)
@@ -161,7 +190,8 @@ src/main/resources/shader/
 frame.render(RenderScene)
     │
     ├─ Shadow Pass (per shadow-casting light)
-    │     ctx = shadowManager.prepareShadow(light, mainCamera)
+    │     sm = scene.getLighting().getShadowManager()  // from LightEnvironment
+    │     ctx = sm.prepareShadow(light, mainCamera)
     │     renderCommands(commands, ctx.target, ctx.depthMaterial, ctx.layer)
     │
     └─ Color Pass
@@ -171,7 +201,13 @@ frame.render(RenderScene)
 
 - **Reversed-Z**: `glDepthFunc(GL_GREATER)`, `glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE)` — superior depth precision at far distances.
 - **Instanced drawing**: Objects sharing the same Mesh+Material are batched into a single `glDrawElementsInstanced` call.
-- **Shadow mapping**: 2D texture array atlas with 5×5 PCF sampling in the fragment shader. `ShadowManager` handles layer allocation and shadow camera preparation; the renderer executes the draw.
+- **Shadow mapping**: 2D texture array atlas with 5x5 PCF sampling in the fragment shader. `ShadowManager` is owned by `LightEnvironment` and handles layer allocation (with a free-list for reuse), shadow camera updates, and light-space matrix sync; the renderer executes the draw.
+
+### ImGui Integration
+
+- **Lazy-loading**: All core engine ImGui calls go through `ImGuiHelper`, which detects via `Class.forName("imgui.ImGui")` whether imgui-java is on the classpath. When absent, every forwarding method becomes a no-op — `ImGuiInternal` (the actual imgui import holder) is never loaded by the JVM.
+- **Build**: imgui-java is `compileOnly` in `build.gradle.kts` — consumers who want ImGui must add the dependency themselves. Tests use `testImplementation`.
+- **Input forwarding**: Keyboard modifiers (Ctrl/Shift/Alt/Super), mouse buttons/position/wheel, and cursor mode changes are forwarded to ImGui through existing GLFW callbacks — no separate ImGui callbacks are installed.
 
 ### ECS
 
@@ -193,32 +229,35 @@ ServiceFactory → InternalFactoryStub → GLInternalFactory (OpenGL)
 
 `APIFactory` defines the contract. Each backend registers itself via static injection. Currently only OpenGL is functional.
 
-### Dependency Direction (post-refactor)
+### Dependency Direction
 
 ```
-RenderFrame  ──→  ShadowManager  ──→  ShadowPassContext      (no rendering)
-GLFWMouse    ──→  InputDevice<Window>                          (input only)
-Window.setCursorMode()                                         (cursor control)
+LightEnvironment ──owns──→ ShadowManager ──→ ShadowPassContext
+RenderFrame ──reads──→ LightEnvironment.getShadowManager()   (per frame)
+GLFWMouse / GLFWKeyBoard / GLWindow ──→ ImGuiHelper          (optional forwarding)
+ImGuiHelper ──guard──→ ImGuiInternal                         (only loaded if imgui present)
 ```
 
-- **RenderFrame** owns rendering execution (shadow pass loop + color pass).
-- **ShadowManager** manages shadow resources (layer allocation, ShadowInfo creation, light-space matrix sync). Returns `ShadowPassContext` — never calls draw commands.
-- **GLFWMouse** no longer controls cursor mode — cursor behavior is managed by `Window.setCursorMode(CursorMode)`.
+- **LightEnvironment** owns `ShadowManager` — `enableShadows()`, `enableDirLightShadow()`, `enableSpotLightShadow()` are all delegated. `remove()` auto-releases the shadow layer via `shadowManager.releaseLayer()`. `clear()` automatically resets all layers.
+- **RenderFrame** no longer holds a `ShadowManager` reference. It reads it from the scene's `LightEnvironment` each frame via `getShadowManager()`.
+- **GLFWMouse/GLFWKeyBoard/GLWindow** never directly import `imgui.ImGui`. All forwarding goes through `ImGuiHelper`, which safely no-ops when imgui-java is absent.
 
 ## Design Decisions
 
 - **Record types** for immutable data bundles (`ShadowInfo`, `ShadowPassContext`, `RenderCommand`, `MeshData`).
-- **`@Deprecated`** old API instead of immediate removal (`setCamera`, `submit`, `applyLightEnvironment` on `RenderFrame`). New code uses `frame.render(RenderScene)`.
+- **`@Deprecated`** old API instead of immediate removal (`setCamera`, `submit`, `applyLightEnvironment`, `setShadowManager` on `RenderFrame`). New code uses `frame.render(RenderScene)`.
 - **Reverse-Z** depth range: near=1.0, far=0.0.
+- **LightEnvironment owns ShadowManager**: shadow layers are per-light allocations. `clear()` auto-resets layers, preventing the user from forgetting `shadowManager.reset()`.
+- **ImGuiHelper lazy-loading**: Core engine never statically imports `imgui.ImGui`. A `Class.forName` guard + private inner class ensures the JVM never loads ImGui classes unless imgui-java is on the classpath.
+- **InputManager via Factory**: `createInputManager(win)` with generic `<E>` — api/test layers never reference concrete `GLFWKeyBoard`/`GLFWMouse` types.
 
 ## Known Limitations
 
-- Spot light shadow cameras are built once at creation; moving a spot light does not update its shadow camera.
-- `Light.buildDirLightShadowCam()` mixes light definition with shadow camera computation — a future `ShadowCameraBuilder` would be cleaner.
 - `renderCommands()` in `GLRenderFrame` is a 200-line private method mixing batching, texture binding, shader params, and draw calls — should be split into composable Pass executors.
 - Vulkan backend is stubbed but not implemented.
 - `LightCollector` ECS system is a stub.
 - Tests are manual integration `JavaExec` tasks, not JUnit.
+- `Light.buildDirLightShadowCam()` is `@Deprecated` — the logic now lives in `ShadowManager.updateDirShadowCamera()`, but the old method body is retained for backward compatibility.
 
 ## License
 

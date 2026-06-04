@@ -5,6 +5,7 @@ import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.Texture;
+import com.melon.foolsEngine.api.rendering.resource.TextureManager;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.WindowsManager;
 
@@ -25,6 +26,7 @@ public abstract class InternalFactoryStub implements APIFactory {
     protected abstract Mesh mesh();
     protected abstract RenderTarget renderTarget(int width, int height, int type);
     protected abstract <E> InputManager inputManager(E env);
+    protected abstract TextureManager textureManager(int width, int height, int maxLayers);
 
     protected RenderTarget renderTarget(int width, int height, int type, int layers) {
         return renderTarget(width, height, type);
@@ -90,5 +92,10 @@ public abstract class InternalFactoryStub implements APIFactory {
     @Override
     public <E> InputManager createInputManager(E env) {
         return inputManager(env);
+    }
+
+    @Override
+    public TextureManager createTextureManager(int width, int height, int maxLayers) {
+        return textureManager(width, height, maxLayers);
     }
 }

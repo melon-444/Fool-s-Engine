@@ -42,6 +42,11 @@ public class TestLightBackend {
         texture.upload(Path.of("src/test/resources/textures/test2.png"));
         material.set("textureSampler", texture);
 
+        TextureManager textureManager = foolsEngine.serviceFactory.createTextureManager(512, 512, 64);
+        Texture arrayTexture = textureManager.upload(Path.of("src/test/resources/textures/test2.png"));
+        Material arrayMaterial = new Material(shader);
+        arrayMaterial.set("textureSampler", arrayTexture);
+
         ShaderProgram depthShader = foolsEngine.serviceFactory.getShaderProgram();
         depthShader.load(Path.of("src/main/resources/shader/vsh/depth_vsh.glsl"), Path.of("src/main/resources/shader/fsh/depth_fsh.glsl"));
         Material depthMaterial = new Material(depthShader);
@@ -235,8 +240,9 @@ public class TestLightBackend {
             Vector3f cache = new Vector3f(dragonTransform1.position);
 
             for (int i = 0; i < 10; i++) {
+                Material mat = (i % 2 == 0) ? arrayMaterial : material;
                 for (int j = 0; j < 10; j++) {
-                    scene.submit(new RenderCommand(dragonMesh, material, new Matrix4f(dragonTransform1.getMatrix())));
+                    scene.submit(new RenderCommand(dragonMesh, mat, new Matrix4f(dragonTransform1.getMatrix())));
                     dragonTransform1.position.add(0, 0, 2);
                     dragonTransform1.markDirty();
                 }
@@ -250,6 +256,7 @@ public class TestLightBackend {
 
             scene.setCamera(camera);
             scene.setLighting(lightEnv);
+            scene.setTextureManager(textureManager);
             scene.setBackGroundColor(lightEnv.getAmbient().x, lightEnv.getAmbient().y, lightEnv.getAmbient().z, 1.0f);
 
             long renderStart = System.nanoTime();

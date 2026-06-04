@@ -13,6 +13,8 @@ out vec4 fragColor;
 
 uniform sampler2D textureSampler;
 uniform sampler2DArray shadowMapArray;
+uniform sampler2DArray textureArray;
+uniform int textureLayer;
 
 uniform vec3 ambientColor;
 uniform float shadowMapSize;
@@ -88,5 +90,11 @@ void main() {
     }
 
     colorSum += ambientColor;
-    fragColor = texture(textureSampler, a_uv) * vec4(colorSum, 1.0);
+    vec4 texColor;
+    if (textureLayer >= 0) {
+        texColor = texture(textureArray, vec3(a_uv, float(textureLayer)));
+    } else {
+        texColor = texture(textureSampler, a_uv);
+    }
+    fragColor = texColor * vec4(colorSum, 1.0);
 }

@@ -14,6 +14,7 @@ import com.melon.foolsEngine.api.rendering.resource.Material;
 import com.melon.foolsEngine.api.rendering.resource.RenderCommand;
 import com.melon.foolsEngine.api.rendering.resource.RenderScene;
 import com.melon.foolsEngine.api.rendering.resource.ShadowManager;
+import com.melon.foolsEngine.api.rendering.resource.TextureManager;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
@@ -126,6 +127,11 @@ class GLRenderFrame implements RenderFrame{
         this.camera = scene.getCamera();
         this.lightEnv = scene.getLighting();
 
+        TextureManager textureManager = scene.getTextureManager();
+        if (textureManager != null) {
+            textureManager.flushMipmaps();
+        }
+
         renderCommands(commands, null, null, -1);
     }
 
@@ -166,6 +172,7 @@ class GLRenderFrame implements RenderFrame{
             glMesh.uploadInstanceData(transforms);
 
             shader.bind();
+            shader.setInt("textureLayer", -1);
             if (overrideMaterial == null && lightEnv != null) {
                 bindShadowArrayTexture();
                 lightEnv.apply(shader);
@@ -186,8 +193,15 @@ class GLRenderFrame implements RenderFrame{
                 } else if (param instanceof Matrix4f m) {
                     shader.setMat4(key, m.get(new float[16]));
                 } else if (param instanceof Texture t) {
-                    int slot = binder.bind(t);
-                    shader.setInt(key, slot);
+                    TextureManager tm = t.belongsTo();
+                    if (tm != null) {
+                        tm.bind(TextureManager.TEXTURE_ARRAY_SLOT);
+                        shader.setInt("textureArray", TextureManager.TEXTURE_ARRAY_SLOT);
+                        shader.setInt("textureLayer", t.getLayer());
+                    } else {
+                        int slot = binder.bind(t);
+                        shader.setInt(key, slot);
+                    }
                 }
             }
             shader.setMat4("vp", camera.vp().get(new float[16]));

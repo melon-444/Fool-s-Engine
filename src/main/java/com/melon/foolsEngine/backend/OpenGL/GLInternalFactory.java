@@ -6,6 +6,7 @@ import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.Texture;
+import com.melon.foolsEngine.api.rendering.resource.TextureManager;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.WindowsManager;
 
@@ -67,5 +68,10 @@ public class GLInternalFactory extends InternalFactoryStub {
             return im;
         }
         throw new IllegalArgumentException("OpenGL implementation needs GL window instance instead of " + env.getClass().getName());
+    }
+
+    @Override
+    protected TextureManager textureManager(int width, int height, int maxLayers) {
+        return new GLTextureManager(width, height, maxLayers);
     }
 }

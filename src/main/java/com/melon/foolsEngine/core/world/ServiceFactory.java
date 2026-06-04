@@ -8,6 +8,7 @@ import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.Texture;
+import com.melon.foolsEngine.api.rendering.resource.TextureManager;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.WindowsManager;
 
@@ -95,6 +96,15 @@ public class ServiceFactory implements APIFactory {
         return switch (BackEndType) {
             case OPENGL_BACKEND -> InternalFactoryStub.OpenGLINSTANCE().createInputManager(env);
             case VULKAN_BACKEND -> InternalFactoryStub.VulkanINSTANCE().createInputManager(env);
+            default -> throw new RuntimeException("Unsupported backend type");
+        };
+    }
+
+    @Override
+    public TextureManager createTextureManager(int width, int height, int maxLayers) {
+        return switch (BackEndType) {
+            case OPENGL_BACKEND -> InternalFactoryStub.OpenGLINSTANCE().createTextureManager(width, height, maxLayers);
+            case VULKAN_BACKEND -> InternalFactoryStub.VulkanINSTANCE().createTextureManager(width, height, maxLayers);
             default -> throw new RuntimeException("Unsupported backend type");
         };
     }

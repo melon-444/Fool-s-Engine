@@ -85,8 +85,6 @@ public class TestBackend {
 
 
         while (!win.shouldClose()) {
-
-
             scene.setCamera(camera);
             scene.submit(new RenderCommand(dragon_mesh, material, trans.getMatrix()));
             frame.render(scene);
@@ -97,8 +95,6 @@ public class TestBackend {
             deg %= 360;
             if (deg < 180) material.set("textureSampler", texture);
             else material.set("textureSampler", texture1);
-
-
         }
         shader.destroy();
         manager.destroyWindow(win, true);

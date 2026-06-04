@@ -5,6 +5,7 @@ import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.Texture;
+import com.melon.foolsEngine.api.rendering.resource.TextureManager;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.WindowsManager;
 
@@ -40,4 +41,13 @@ public interface APIFactory {
      * @return a ready-to-use InputManager (just add bindings)
      */
     <E> InputManager createInputManager(E env);
+
+    /**
+     * Creates a TextureManager that packs same-size textures into a single
+     * {@code GL_TEXTURE_2D_ARRAY}, avoiding atlas bleeding.
+     * @param width required texture width for all uploads
+     * @param height required texture height for all uploads
+     * @param maxLayers maximum number of texture layers
+     */
+    TextureManager createTextureManager(int width, int height, int maxLayers);
 }

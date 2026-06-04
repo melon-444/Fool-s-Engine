@@ -21,6 +21,7 @@ public class RenderScene {
 
     private Camera camera;
     private LightEnvironment lightEnv;
+    private TextureManager textureManager;
     private final List<RenderCommand> commands = new ArrayList<>();
     private float bgR = 0.05f;
     private float bgG = 0.05f;
@@ -45,6 +46,16 @@ public class RenderScene {
     /** @return the current light environment, or null */
     public LightEnvironment getLighting() {
         return lightEnv;
+    }
+
+    /** Sets the texture manager for this frame (for array-texture enabled materials) */
+    public void setTextureManager(TextureManager manager) {
+        this.textureManager = manager;
+    }
+
+    /** @return the current texture manager, or null */
+    public TextureManager getTextureManager() {
+        return textureManager;
     }
 
     /** Submits a draw command for rendering this frame */

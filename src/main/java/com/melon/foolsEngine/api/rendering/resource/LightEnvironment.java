@@ -42,8 +42,14 @@ public class LightEnvironment {
         lights.add(light);
     }
 
-    /** Removes a light from the environment */
+    /**
+     * Removes a light from the environment.
+     * If the light casts shadows, its shadow layer is released for reuse.
+     */
     public void remove(Light light) {
+        if (shadowManager != null && light.castsShadow()) {
+            shadowManager.releaseLayer(light.shadowInfo.shadowLayer());
+        }
         lights.remove(light);
     }
 
