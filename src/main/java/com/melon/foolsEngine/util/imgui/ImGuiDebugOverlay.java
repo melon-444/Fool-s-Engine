@@ -27,7 +27,6 @@ public class ImGuiDebugOverlay {
 
         ImGui.text("MouseX: " + io.getMousePosX());
         ImGui.text("MouseY: " + io.getMousePosY());
-
         ImGui.text("WantCaptureMouse: " + io.getWantCaptureMouse());
 
         ImGui.separator();

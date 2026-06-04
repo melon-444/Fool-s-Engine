@@ -93,3 +93,32 @@ tasks.register("runAllTests") {
     group = "test with nmt"
     description = "Runs all test classes with NativeMemoryTracking=detail"
 }
+
+tasks.register<Jar>("fatJar") {
+    archiveClassifier.set("all")
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    dependsOn(configurations.runtimeClasspath)
+
+    from(sourceSets.main.get().output)
+    from(sourceSets.test.get().output)
+
+    from({
+        configurations.runtimeClasspath.get()
+            .filter { it.exists() && it.name.endsWith(".jar") }
+            .map { zipTree(it) }
+    })
+
+    val lwjglBase = file("lwjgl")
+    if (lwjglBase.exists()) {
+        for (subdir in lwjglBase.listFiles() ?: emptyArray()) {
+            if (subdir.isDirectory) {
+                from(fileTree(subdir) { include("*natives*.jar") }.map { zipTree(it) })
+            }
+        }
+    }
+
+    manifest {
+        attributes["Main-Class"] = "com.melon.foolsEngineTest.TestLightBackend"
+    }
+}

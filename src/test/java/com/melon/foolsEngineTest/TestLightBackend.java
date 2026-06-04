@@ -107,6 +107,7 @@ public class TestLightBackend {
         Action spawnShadowDirLight = () -> SignalType.BUTTON;
         Action spawnShadowSpotLight = () -> SignalType.BUTTON;
         Action switchMouseMode = () -> SignalType.BUTTON;
+        Action switchDebugWindow = () -> SignalType.BUTTON;
 
         input.bind(keyboard, FoolsEngineKeyCode.W, moveForward);
         input.bind(keyboard, FoolsEngineKeyCode.S, moveBackward);
@@ -126,6 +127,8 @@ public class TestLightBackend {
         input.bind(keyboard, FoolsEngineKeyCode.N, spawnShadowSpotLight);
         input.bind(keyboard, FoolsEngineKeyCode.ESC, exit);
 
+        input.bind(keyboard, FoolsEngineKeyCode.C, switchDebugWindow);
+
         input.bind(mouse, FoolsEngineKeyCode.CURSOR, lookDelta);
         input.bind(mouse, FoolsEngineKeyCode.MOUSE_RIGHT, switchMouseMode);
 
@@ -135,6 +138,8 @@ public class TestLightBackend {
         float pitch = 0;
 
         long lastTime = System.nanoTime();
+
+        boolean renderDebug = false;
 
         java.util.Random rng = new java.util.Random();
 
@@ -146,7 +151,8 @@ public class TestLightBackend {
         boolean kWasDown = false;
         boolean commaWasDown = false;
         boolean nWasDown = false;
-        boolean LMBWasDown = false;
+        boolean RMBWasDown = false;
+        boolean CWasDown = false;
 
         while (!win.shouldClose()) {
             long currentTime = System.nanoTime();
@@ -202,7 +208,8 @@ public class TestLightBackend {
             boolean kDown = input.isActionDown(ambientDown);
             boolean commaDown = input.isActionDown(spawnShadowDirLight);
             boolean nDown = input.isActionDown(spawnShadowSpotLight);
-            boolean LMBDown = input.isActionDown(switchMouseMode);
+            boolean RMBDown = input.isActionDown(switchMouseMode);
+            boolean CDown = input.isActionDown(switchDebugWindow);
 
             if (pDown && !pWasDown) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
@@ -244,11 +251,15 @@ public class TestLightBackend {
                 lightEnv.add(spotLight);
             }
 
-            if (LMBDown && !LMBWasDown) {
+            if (RMBDown && !RMBWasDown) {
                 if (win.getCursorMode() == CursorMode.DISABLED)
                     win.setCursorMode(CursorMode.NORMAL);
                 else
                     win.setCursorMode(CursorMode.DISABLED);
+            }
+
+            if (CDown&&!CWasDown) {
+                renderDebug = !renderDebug;
             }
 
             pWasDown = pDown;
@@ -259,7 +270,8 @@ public class TestLightBackend {
             jWasDown = jDown;
             commaWasDown = commaDown;
             nWasDown = nDown;
-            LMBWasDown = LMBDown;
+            RMBWasDown = RMBDown;
+            CWasDown =  CDown;
 
 
             scene.clear();
@@ -288,10 +300,12 @@ public class TestLightBackend {
             frame.render(scene);
             float renderTimeMs = (System.nanoTime() - renderStart) / 1e6f;
 
-            imGuiRenderer.beginFrame();
-            debugOverlay.render(scene, shadowManager, deltaTime, renderTimeMs,
-                    cameraPos, yaw, pitch, frame.getDrawCallCount());
-            imGuiRenderer.endFrame();
+            if(renderDebug){
+                imGuiRenderer.beginFrame();
+                debugOverlay.render(scene, shadowManager, deltaTime, renderTimeMs,
+                        cameraPos, yaw, pitch, frame.getDrawCallCount());
+                imGuiRenderer.endFrame();
+            }
 
             //Logger.debug("FPS: %.1f | Cam: (%.2f, %.2f, %.2f) | Yaw: %.1f | Pitch: %.1f | Lights: %d", 1.0f / deltaTime, cameraPos.x, cameraPos.y, cameraPos.z, yaw, pitch, lightEnv.size());
 
