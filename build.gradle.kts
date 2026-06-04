@@ -73,7 +73,7 @@ if (lwjglUseMaven) {
     }
 }
 
-val nmtJvmArgs = listOf("-XX:NativeMemoryTracking=detail")
+val nmtJvmArgs = listOf("-XX:NativeMemoryTracking=detail","-Xlint:deprecation")
 
 tasks.register<JavaExec>("runTestBackend") {
     dependsOn(tasks.compileTestJava)

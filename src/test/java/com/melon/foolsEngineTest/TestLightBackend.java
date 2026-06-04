@@ -42,7 +42,7 @@ public class TestLightBackend {
         texture.upload(Path.of("src/test/resources/textures/test2.png"));
         material.set("textureSampler", texture);
 
-        TextureManager textureManager = foolsEngine.serviceFactory.createTextureManager(128, 128, 64);
+        TextureManager textureManager = foolsEngine.serviceFactory.createTextureManager(256, 256, 64);
         Texture arrayTexture = textureManager.upload(Path.of("src/test/resources/textures/test2.png"));
         Material arrayMaterial = new Material(shader);
         arrayMaterial.set("textureSampler", arrayTexture);
