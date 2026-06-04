@@ -9,7 +9,7 @@ A custom 3D game engine in Java, built on LWJGL 3 with OpenGL 4.3+ rendering, En
 ## Tech Stack
 
 | Layer | Technology |
-|---|---|---|
+|---|---|
 | Language | Java 17+ |
 | Graphics | OpenGL 4.3+ (LWJGL 3.4.1) |
 | Windowing | GLFW (LWJGL) |
