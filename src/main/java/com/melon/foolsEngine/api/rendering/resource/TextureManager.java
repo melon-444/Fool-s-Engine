@@ -1,5 +1,8 @@
 package com.melon.foolsEngine.api.rendering.resource;
 
+import com.melon.foolsEngine.util.LoadMode;
+import com.melon.foolsEngine.util.WrapMode;
+
 import java.nio.file.Path;
 
 /**
@@ -27,17 +30,38 @@ public interface TextureManager {
     /**
      * Uploads an image to the texture array, allocating the next free layer.
      * The image must match the array dimensions declared at construction time.
+     * <p>
+     * Equivalent to {@code upload(path, LoadMode.STRETCH)}.
      *
      * @return a {@link Texture} whose {@code belongsTo()} is this manager
      */
     Texture upload(Path path);
 
     /**
-     * Uploads an image to a specific layer, overwriting any existing content.
+     * Uploads an image using the specified {@link LoadMode}.
+     * For {@link LoadMode#CROP_WRAP}, defaults to {@link WrapMode#CLAMP_TO_BORDER}.
+     */
+    Texture upload(Path path, LoadMode mode);
+
+    /**
+     * Uploads an image with full control over sizing strategy.
      *
-     * @return a {@link Texture} referencing the given layer
+     * @param path image file path
+     * @param mode how to handle size mismatches
+     * @param wrap wrapping strategy (only relevant for {@link LoadMode#CROP_WRAP} with smaller images)
+     */
+    Texture upload(Path path, LoadMode mode, WrapMode wrap);
+
+    /**
+     * Uploads an image to a specific layer, overwriting any existing content.
+     * Uses {@link LoadMode#STRETCH}.
      */
     Texture upload(Path path, int layer);
+
+    /**
+     * Uploads an image to a specific layer with full sizing control.
+     */
+    Texture upload(Path path, int layer, LoadMode mode, WrapMode wrap);
 
     /**
      * Returns a static 1x1 white placeholder texture. Safe to use without calling

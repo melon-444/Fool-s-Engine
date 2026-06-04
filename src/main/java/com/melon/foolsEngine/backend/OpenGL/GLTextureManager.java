@@ -1,7 +1,9 @@
 package com.melon.foolsEngine.backend.OpenGL;
 
+import com.melon.foolsEngine.util.LoadMode;
 import com.melon.foolsEngine.api.rendering.resource.Texture;
 import com.melon.foolsEngine.api.rendering.resource.TextureManager;
+import com.melon.foolsEngine.util.WrapMode;
 import org.lwjgl.stb.STBImage;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
@@ -27,6 +29,7 @@ class GLTextureManager implements TextureManager {
     private boolean mipmapDirty;
 
     private static final int PLACEHOLDER_LAYER = 0;
+    private static final int RGBA_BYTES = 4;
     private final GLArrayTexture placeholder;
     private int lastBoundSlot = -1;
 
@@ -55,32 +58,53 @@ class GLTextureManager implements TextureManager {
 
     private void uploadPlaceholder() {
         byte[] white = { (byte) 255, (byte) 255, (byte) 255, (byte) 255 };
-        ByteBuffer buf = MemoryUtil.memAlloc(4);
+        ByteBuffer buf = MemoryUtil.memAlloc(RGBA_BYTES);
         try {
             buf.put(white).flip();
             glBindTexture(GL_TEXTURE_2D_ARRAY, arrayTexId);
-            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, PLACEHOLDER_LAYER, 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, PLACEHOLDER_LAYER, 1, 1, 1,
+                    GL_RGBA, GL_UNSIGNED_BYTE, buf);
         } finally {
             MemoryUtil.memFree(buf);
         }
     }
 
+    // ---- upload overloads ----
+
     @Override
     public Texture upload(Path path) {
+        return upload(path, LoadMode.STRETCH, WrapMode.CLAMP_TO_BORDER);
+    }
+
+    @Override
+    public Texture upload(Path path, LoadMode mode) {
+        return upload(path, mode, WrapMode.CLAMP_TO_BORDER);
+    }
+
+    @Override
+    public Texture upload(Path path, LoadMode mode, WrapMode wrap) {
         int layer = allocateLayer();
-        uploadInternal(path, layer);
+        uploadInternal(path, layer, mode, wrap);
         return new GLArrayTexture(this, layer);
     }
 
     @Override
     public Texture upload(Path path, int layer) {
-        uploadInternal(path, layer);
+        uploadInternal(path, layer, LoadMode.STRETCH, WrapMode.CLAMP_TO_BORDER);
         return new GLArrayTexture(this, layer);
     }
 
-    private void uploadInternal(Path path, int layer) {
-        ByteBuffer image;
-        int imgWidth, imgHeight;
+    @Override
+    public Texture upload(Path path, int layer, LoadMode mode, WrapMode wrap) {
+        uploadInternal(path, layer, mode, wrap);
+        return new GLArrayTexture(this, layer);
+    }
+
+    // ---- core upload ----
+
+    private void uploadInternal(Path path, int layer, LoadMode mode, WrapMode wrap) {
+        ByteBuffer rawImage;
+        int srcW, srcH;
         try (MemoryStack stack = MemoryStack.stackPush();
              FileInputStream fis = new FileInputStream(path.toFile())) {
 
@@ -93,37 +117,162 @@ class GLTextureManager implements TextureManager {
             ByteBuffer buffer = MemoryUtil.memAlloc(data.length);
             try {
                 buffer.put(data).flip();
-                image = STBImage.stbi_load_from_memory(buffer, w, h, channels, 4);
+                rawImage = STBImage.stbi_load_from_memory(buffer, w, h, channels, RGBA_BYTES);
             } finally {
                 MemoryUtil.memFree(buffer);
             }
 
-            if (image == null) {
+            if (rawImage == null) {
                 throw new RuntimeException("Failed to load texture: " + STBImage.stbi_failure_reason());
             }
 
-            imgWidth = w.get();
-            imgHeight = h.get();
+            srcW = w.get();
+            srcH = h.get();
         } catch (IOException e) {
             throw new RuntimeException("Failed to load texture: " + e);
         }
 
-        if (imgWidth != width || imgHeight != height) {
-            MemoryUtil.memFree(image);
-            throw new IllegalArgumentException(
-                    "Texture size mismatch: expected " + width + "x" + height +
-                    ", got " + imgWidth + "x" + imgHeight);
-        }
-
+        ByteBuffer finalImage = rawImage;
         try {
+            if (srcW != width || srcH != height) {
+                finalImage = processSize(rawImage, srcW, srcH, mode, wrap);
+            }
             glBindTexture(GL_TEXTURE_2D_ARRAY, arrayTexId);
-            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layer, imgWidth, imgHeight, 1,
-                    GL_RGBA, GL_UNSIGNED_BYTE, image);
+            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layer, width, height, 1,
+                    GL_RGBA, GL_UNSIGNED_BYTE, finalImage);
             mipmapDirty = true;
         } finally {
-            MemoryUtil.memFree(image);
+            if (finalImage != rawImage) {
+                MemoryUtil.memFree(finalImage);
+            }
+            MemoryUtil.memFree(rawImage);
         }
     }
+
+    // ---- CPU size processing ----
+
+    private ByteBuffer processSize(ByteBuffer src, int srcW, int srcH, LoadMode mode, WrapMode wrap) {
+        return switch (mode) {
+            case STRETCH -> stretchNearest(src, srcW, srcH);
+            case CROP_WRAP -> cropOrWrap(src, srcW, srcH, wrap);
+            case STRICT -> throw new IllegalArgumentException(
+                    "Texture size mismatch: expected " + width + "x" + height +
+                    ", got " + srcW + "x" + srcH);
+        };
+    }
+
+    private ByteBuffer stretchNearest(ByteBuffer src, int srcW, int srcH) {
+        ByteBuffer dst = MemoryUtil.memAlloc(width * height * RGBA_BYTES);
+        try {
+            float scaleX = (float) srcW / width;
+            float scaleY = (float) srcH / height;
+            byte[] row = new byte[width * RGBA_BYTES];
+            for (int y = 0; y < height; y++) {
+                int srcY = (int) (y * scaleY);
+                int srcRowOffset = srcY * srcW * RGBA_BYTES;
+                for (int x = 0; x < width; x++) {
+                    int srcX = (int) (x * scaleX);
+                    int srcOffset = srcRowOffset + srcX * RGBA_BYTES;
+                    System.arraycopy(
+                            readPixel(src, srcOffset),
+                            0, row, x * RGBA_BYTES, RGBA_BYTES);
+                }
+                dst.put(row);
+            }
+            dst.flip();
+        } catch (Exception e) {
+            MemoryUtil.memFree(dst);
+            throw e;
+        }
+        return dst;
+    }
+
+    private ByteBuffer cropOrWrap(ByteBuffer src, int srcW, int srcH, WrapMode wrap) {
+        ByteBuffer dst = MemoryUtil.memAlloc(width * height * RGBA_BYTES);
+        try {
+            int copyW = Math.min(srcW, width);
+            int copyH = Math.min(srcH, height);
+
+            for (int y = 0; y < copyH; y++) {
+                src.position(y * srcW * RGBA_BYTES);
+                byte[] row = new byte[copyW * RGBA_BYTES];
+                src.get(row);
+                dst.position(y * width * RGBA_BYTES);
+                dst.put(row);
+            }
+
+            int startY = (srcH < height) ? srcH : height;
+            for (int y = startY; y < height; y++) {
+                fillRow(dst, y * width * RGBA_BYTES, src, srcW, srcH, y, wrap);
+            }
+
+            for (int y = 0; y < Math.min(height, srcH); y++) {
+                if (srcW < width) {
+                    fillColumn(dst, y, srcW, src, srcW, srcH, y, wrap);
+                }
+            }
+
+            dst.position(0);
+        } catch (Exception e) {
+            MemoryUtil.memFree(dst);
+            throw e;
+        }
+        return dst;
+    }
+
+    private void fillRow(ByteBuffer dst, int dstOffset, ByteBuffer src,
+                          int srcW, int srcH, int dstY, WrapMode wrap) {
+        byte[] row = new byte[width * RGBA_BYTES];
+        if (dstY >= srcH) {
+            for (int x = 0; x < width; x++) {
+                int sx, sy = wrapCoord(dstY, srcH, wrap);
+                sx = (x < srcW) ? x : wrapCoord(x, srcW, wrap);
+                int srcOffset = (sy * srcW + sx) * RGBA_BYTES;
+                System.arraycopy(readPixel(src, srcOffset), 0,
+                        row, x * RGBA_BYTES, RGBA_BYTES);
+            }
+        }
+        dst.position(dstOffset);
+        dst.put(row);
+    }
+
+    private void fillColumn(ByteBuffer dst, int dstY, int dstStartX, ByteBuffer src,
+                             int srcW, int srcH, int rowDstY, WrapMode wrap) {
+        byte[] pixel = new byte[RGBA_BYTES];
+        int rowBase = dstY * width * RGBA_BYTES;
+        for (int x = dstStartX; x < width; x++) {
+            int sx = wrapCoord(x, srcW, wrap);
+            int sy = wrapCoord(rowDstY, srcH, wrap);
+            int srcOffset = (sy * srcW + sx) * RGBA_BYTES;
+            System.arraycopy(readPixel(src, srcOffset), 0, pixel, 0, RGBA_BYTES);
+            dst.position(rowBase + x * RGBA_BYTES);
+            dst.put(pixel);
+        }
+    }
+
+    private int wrapCoord(int v, int size, WrapMode wrap) {
+        return switch (wrap) {
+            case CLAMP_TO_BORDER -> -1; // signal to fill with zero
+            case REPEAT -> v % size;
+            case MIRRORED_REPEAT -> {
+                int tile = v / size;
+                int rem = v % size;
+                yield (tile & 1) == 0 ? rem : size - 1 - rem;
+            }
+            case CLAMP_TO_EDGE -> Math.min(v, size - 1);
+        };
+    }
+
+    private byte[] readPixel(ByteBuffer src, int offset) {
+        byte[] pixel = new byte[RGBA_BYTES];
+        int saved = src.position();
+        src.position(offset);
+        src.get(pixel);
+        src.position(saved);
+        return pixel;
+    }
+
+    // ---- rest ----
 
     @Override
     public Texture getPlaceholder() {
