@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "com.melon.foolsEngine"
-version = "0.0.2"
+version = "0.0.5"
 
 val lwjglNatives = project.properties["lwjglNatives"] as? String ?: "windows"
 val lwjglUseMaven = project.properties["lwjglUseMaven"] == "true"
