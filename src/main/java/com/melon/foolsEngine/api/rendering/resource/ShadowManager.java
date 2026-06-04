@@ -1,10 +1,15 @@
 package com.melon.foolsEngine.api.rendering.resource;
 
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
+import com.melon.foolsEngine.util.OrthogonalProjection;
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
+import org.joml.Vector4f;
 
 import java.util.Collections;
 import java.util.List;
+
+import static java.lang.Math.*;
 
 /**
  * Manages shadow map resources: layer allocation, shadow camera creation, and per-frame shadow preparation.
@@ -23,6 +28,12 @@ import java.util.List;
  * }</pre>
  */
 public class ShadowManager {
+
+    private static final float FRUSTUM_Z_NEAR = 1.0f;
+    private static final float FRUSTUM_Z_FAR = 0.0002f;
+    private static final float DIR_SHADOW_BACK_OFFSET = 30f;
+    private static final float DIR_SHADOW_XY_PADDING = 15f;
+    private static final float DIR_SHADOW_Z_PADDING = 30f;
 
     private final RenderTarget shadowArray;
     private final Material depthMaterial;
@@ -58,7 +69,7 @@ public class ShadowManager {
                 Collections.singletonList(lsMatrix),
                 layer, shadowCam);
 
-        shadowLight.buildDirLightShadowCam(mainCamera);
+        updateDirShadowCamera(shadowLight, mainCamera);
         return shadowLight;
     }
 
@@ -92,17 +103,91 @@ public class ShadowManager {
      */
     public ShadowPassContext prepareShadow(Light light, Camera mainCamera) {
         if (light.type == Light.DIRECTIONAL) {
-            light.buildDirLightShadowCam(mainCamera);
-            light.shadowInfo.lightSpaceMatrices().getFirst().set(light.shadowInfo.shadowCamera().vp());
+            updateDirShadowCamera(light, mainCamera);
         } else if (light.type == Light.SPOT) {
-            light.shadowInfo.lightSpaceMatrices().getFirst().set(light.shadowInfo.shadowCamera().vp());
+            updateSpotShadowCamera(light);
         }
+
+        light.shadowInfo.lightSpaceMatrices().getFirst().set(
+                light.shadowInfo.shadowCamera().vp());
 
         return new ShadowPassContext(
                 light.shadowInfo.shadowCamera(),
                 shadowArray,
                 depthMaterial,
                 light.shadowInfo.shadowLayer());
+    }
+
+    /**
+     * Rebuilds a directional light's shadow camera frustum from the main camera's view.
+     * Formerly part of {@link Light#buildDirLightShadowCam(Camera)}.
+     */
+    private void updateDirShadowCamera(Light light, Camera mainCamera) {
+        if (light.type != Light.DIRECTIONAL || light.shadowInfo == null
+                || light.shadowInfo.shadowCamera() == null) return;
+
+        Vector4f[] ndc = {
+            new Vector4f(-1, -1, FRUSTUM_Z_NEAR, 1), new Vector4f(1, -1, FRUSTUM_Z_NEAR, 1),
+            new Vector4f(-1,  1, FRUSTUM_Z_NEAR, 1), new Vector4f(1,  1, FRUSTUM_Z_NEAR, 1),
+            new Vector4f(-1, -1, FRUSTUM_Z_FAR,  1), new Vector4f(1, -1, FRUSTUM_Z_FAR,  1),
+            new Vector4f(-1,  1, FRUSTUM_Z_FAR,  1), new Vector4f(1,  1, FRUSTUM_Z_FAR,  1),
+        };
+
+        Matrix4f invVP = new Matrix4f(mainCamera.vp());
+        invVP.invert();
+
+        Vector3f[] corners = new Vector3f[8];
+        Vector3f center = new Vector3f();
+        for (int i = 0; i < 8; i++) {
+            Vector4f w = ndc[i].mul(invVP, new Vector4f());
+            float invW = 1f / w.w;
+            corners[i] = new Vector3f(w.x * invW, w.y * invW, w.z * invW);
+            center.add(corners[i]);
+        }
+        center.div(8);
+
+        Vector3f dir = new Vector3f(light.direction).normalize();
+        Vector3f up = new Vector3f(0, 1, 0);
+        if (abs(dir.y) > 0.99f) up.set(1, 0, 0);
+        Vector3f lightPos = new Vector3f(center).add(new Vector3f(dir).mul(-DIR_SHADOW_BACK_OFFSET));
+
+        Matrix4f lightView = new Matrix4f().lookAt(lightPos, center, up);
+
+        float minX = Float.MAX_VALUE, maxX = -Float.MAX_VALUE;
+        float minY = Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
+        float minZ = Float.MAX_VALUE, maxZ = -Float.MAX_VALUE;
+        for (Vector3f c : corners) {
+            Vector4f ls = new Vector4f(c, 1).mul(lightView);
+            minX = min(minX, ls.x); maxX = max(maxX, ls.x);
+            minY = min(minY, ls.y); maxY = max(maxY, ls.y);
+            minZ = min(minZ, -ls.z); maxZ = max(maxZ, -ls.z);
+        }
+
+        float halfW = (maxX - minX) * 0.5f + DIR_SHADOW_XY_PADDING;
+        float halfH = (maxY - minY) * 0.5f + DIR_SHADOW_XY_PADDING;
+        OrthogonalProjection ortho = new OrthogonalProjection(halfW, halfH,
+                max(minZ - DIR_SHADOW_Z_PADDING, 0.01f), maxZ + DIR_SHADOW_Z_PADDING);
+
+        Camera shadowCam = light.shadowInfo.shadowCamera();
+        shadowCam.view.set(lightView);
+        shadowCam.projection = ortho.get(new Matrix4f());
+    }
+
+    /**
+     * Rebuilds a spot light's shadow camera view matrix from the light's current position
+     * and direction. The perspective projection remains unchanged after creation.
+     */
+    private void updateSpotShadowCamera(Light light) {
+        if (light.type != Light.SPOT || light.shadowInfo == null
+                || light.shadowInfo.shadowCamera() == null) return;
+
+        Camera shadowCam = light.shadowInfo.shadowCamera();
+        Vector3f dir = new Vector3f(light.direction).normalize();
+        Vector3f up = new Vector3f(0, abs(dir.y) < 0.99f ? 1 : 0, 0);
+        shadowCam.view.identity().lookAt(
+                light.position,
+                new Vector3f(light.position).add(dir),
+                up);
     }
 
     /** Resets the layer allocator. Call when clearing all lights. */

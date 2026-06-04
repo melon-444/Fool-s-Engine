@@ -7,7 +7,7 @@ version = "0.0.2"
 
 val lwjglNatives = project.properties["lwjglNatives"] as? String ?: "windows"
 val lwjglUseMaven = project.properties["lwjglUseMaven"] == "true"
-val lwjglVersion = "3.3.6"
+val lwjglVersion = "3.4.1"
 val imguiVersion = "1.92.0"
 
 if (lwjglUseMaven) {
@@ -28,7 +28,9 @@ if (lwjglUseMaven) {
         runtimeOnly("org.lwjgl", "lwjgl-stb",      classifier = "natives-$lwjglNatives")
         api("org.joml:joml:1.10.5")
         api("io.github.spair:imgui-java-binding:$imguiVersion")
-        api("io.github.spair:imgui-java-lwjgl3:$imguiVersion")
+        api("io.github.spair:imgui-java-lwjgl3:$imguiVersion"){
+            exclude(group = "org.lwjgl")
+        }
         runtimeOnly("io.github.spair:imgui-java-natives-$lwjglNatives:$imguiVersion")
     }
 } else {
@@ -54,7 +56,9 @@ if (lwjglUseMaven) {
         runtimeOnly(files("${libs}lwjgl-stb/lwjgl-stb-natives-${lwjglNatives}.jar"))
         api("org.joml:joml:1.10.5")
         api("io.github.spair:imgui-java-binding:$imguiVersion")
-        api("io.github.spair:imgui-java-lwjgl3:$imguiVersion")
+        api("io.github.spair:imgui-java-lwjgl3:$imguiVersion"){
+            exclude(group = "org.lwjgl")
+        }
         runtimeOnly("io.github.spair:imgui-java-natives-$lwjglNatives:$imguiVersion")
     }
 }

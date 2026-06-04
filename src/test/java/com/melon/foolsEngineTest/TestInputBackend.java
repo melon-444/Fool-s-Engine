@@ -17,7 +17,9 @@ import org.joml.Math;
 
 import java.nio.file.Path;
 
+
 public class TestInputBackend {
+    private static final int SHADOW_MAP_SIZE = 4096;
     static FoolsEngine foolsEngine = FoolsEngine.create(1000, 100, 800, 600);
 
     public static void main(String[] args) {
@@ -82,6 +84,12 @@ public class TestInputBackend {
 
         long lastTime = System.nanoTime();
 
+        LightEnvironment lightEnv = new LightEnvironment();
+        lightEnv.setAmbient(0.08f, 0.08f, 0.08f);
+        lightEnv.setShadowMapSize(SHADOW_MAP_SIZE);
+        lightEnv.add(Light.spot(new Vector3f(1.0f),new Vector3f(0,-1f,0),new Vector3f(0,5,0),10f,10f));
+        RenderScene scene = new RenderScene();
+
         while (!win.shouldClose()) {
             long currentTime = System.nanoTime();
             float deltaTime = (currentTime - lastTime) / 1e9f;
@@ -130,10 +138,11 @@ public class TestInputBackend {
             cameraTarget = new Vector3f(cameraPos).add(lookDir);
             camera.view.identity().lookAt(cameraPos, cameraTarget, worldUp);
 
-            frame.beginFrame();
-            frame.setCamera(camera);
-            frame.submit(new RenderCommand(dragonMesh, material, dragonTransform.getMatrix()));
-            frame.endFrame();
+            scene.setLighting(lightEnv);
+            scene.setCamera(camera);
+            scene.submit(new RenderCommand(dragonMesh, material, dragonTransform.getMatrix()));
+            scene.setBackGroundColor(.2f,.6f,1f,1.0f);
+            frame.render(scene);
 
             input.endFrame();
             win.update();

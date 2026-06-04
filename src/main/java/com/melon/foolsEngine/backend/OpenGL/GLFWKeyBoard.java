@@ -5,7 +5,6 @@ import com.melon.foolsEngine.api.input.InputDevice;
 import com.melon.foolsEngine.api.windows.Window;
 import imgui.ImGui;
 import org.joml.Vector2f;
-import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.lwjgl.system.Callback;
 
 import java.util.HashMap;
@@ -13,8 +12,8 @@ import java.util.Map;
 
 import static org.lwjgl.glfw.GLFW.*;
 
-class GLFWKeyBoard implements InputDevice<Window>{
-    private final Map<Integer,Boolean> keyboard = new HashMap<>();
+class GLFWKeyBoard implements InputDevice<Window> {
+    private final Map<Integer, Boolean> keyboard = new HashMap<>();
 
     @Override
     public boolean getButton(FoolsEngineKeyCode id) {
@@ -33,12 +32,12 @@ class GLFWKeyBoard implements InputDevice<Window>{
 
     @Override
     public Vector2f getAxis2D(FoolsEngineKeyCode id) {
-        return new Vector2f(0,0);
+        return new Vector2f(0, 0);
     }
 
     @Override
     public Vector2f getAxis2DDelta(FoolsEngineKeyCode id) {
-        return new Vector2f(0,0);
+        return new Vector2f(0, 0);
     }
 
     @Override
@@ -53,9 +52,9 @@ class GLFWKeyBoard implements InputDevice<Window>{
 
     @Override
     public void attachEnvironment(Window env) {
-        if(!(env instanceof GLWindow))
+        if (!(env instanceof GLWindow))
             throw new IllegalStateException("not a GLFW Window");
-        cb = glfwSetKeyCallback(env.getID(), (window,  key,  scancode,  action,  mods)->{
+        cb = glfwSetKeyCallback(env.getID(), (window, key, scancode, action, mods) -> {
             switch (action) {
                 case GLFW_RELEASE:
                     keyboard.put(key, false);
@@ -66,18 +65,20 @@ class GLFWKeyBoard implements InputDevice<Window>{
                 case GLFW_REPEAT:
                     break;
             }
+            if (ImGui.getCurrentContext().ptr != 0) {
 
-            if (key == GLFW_KEY_LEFT_SHIFT || key == GLFW_KEY_RIGHT_SHIFT) {
-                ImGui.getIO().setKeyShift(action != GLFW_RELEASE);
-            }
-            if (key == GLFW_KEY_LEFT_CONTROL || key == GLFW_KEY_RIGHT_CONTROL) {
-                ImGui.getIO().setKeyCtrl(action != GLFW_RELEASE);
-            }
-            if (key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT) {
-                ImGui.getIO().setKeyAlt(action != GLFW_RELEASE);
-            }
-            if (key == GLFW_KEY_LEFT_SUPER || key == GLFW_KEY_RIGHT_SUPER) {
-                ImGui.getIO().setKeySuper(action != GLFW_RELEASE);
+                if (key == GLFW_KEY_LEFT_SHIFT || key == GLFW_KEY_RIGHT_SHIFT) {
+                    ImGui.getIO().setKeyShift(action != GLFW_RELEASE);
+                }
+                if (key == GLFW_KEY_LEFT_CONTROL || key == GLFW_KEY_RIGHT_CONTROL) {
+                    ImGui.getIO().setKeyCtrl(action != GLFW_RELEASE);
+                }
+                if (key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT) {
+                    ImGui.getIO().setKeyAlt(action != GLFW_RELEASE);
+                }
+                if (key == GLFW_KEY_LEFT_SUPER || key == GLFW_KEY_RIGHT_SUPER) {
+                    ImGui.getIO().setKeySuper(action != GLFW_RELEASE);
+                }
             }
         });
     }

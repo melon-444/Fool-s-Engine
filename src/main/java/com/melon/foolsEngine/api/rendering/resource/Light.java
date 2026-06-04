@@ -194,10 +194,12 @@ public class Light {
     }
 
     /**
-     * Rebuilds the directional light's shadow camera based on the main camera frustum.
-     * Called each frame by the renderer's shadow pass.
-     * Has no effect on non-directional lights.
+     * @deprecated Shadow camera updates are now handled by
+     * {@link ShadowManager#prepareShadow(Light, Camera)} which calls the internal
+     * {@code updateDirShadowCamera} / {@code updateSpotShadowCamera} methods.
+     * This method is retained for backward compatibility only.
      */
+    @Deprecated
     public void buildDirLightShadowCam(Camera mainCamera) {
         if (type != DIRECTIONAL || shadowInfo == null || shadowInfo.shadowCamera() == null) return;
 
