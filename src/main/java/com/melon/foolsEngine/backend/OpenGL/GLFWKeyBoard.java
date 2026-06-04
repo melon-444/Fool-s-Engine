@@ -13,7 +13,7 @@ import java.util.Map;
 
 import static org.lwjgl.glfw.GLFW.*;
 
-public class GLFWKeyBoard implements InputDevice<Window>{
+class GLFWKeyBoard implements InputDevice<Window>{
     private final Map<Integer,Boolean> keyboard = new HashMap<>();
 
     @Override

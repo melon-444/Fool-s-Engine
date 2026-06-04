@@ -1,5 +1,6 @@
 package com.melon.foolsEngine.api.input;
 
+import com.melon.foolsEngine.api.windows.Window;
 import org.joml.Vector2f;
 
 import java.util.ArrayList;
@@ -11,9 +12,30 @@ public class InputManager {
     private final InputState state = new InputState();
     private final ActionMapping map = new ActionMapping();
 
+    private InputDevice<Window> keyboard;
+    private InputDevice<Window> mouse;
+
     public void register(InputDevice<?> inputDevice) {
         inputDevices.add(inputDevice);
         map.register(inputDevice);
+    }
+
+    public void registerKeyboard(InputDevice<Window> kb) {
+        keyboard = kb;
+        register(kb);
+    }
+
+    public void registerMouse(InputDevice<Window> m) {
+        mouse = m;
+        register(m);
+    }
+
+    public InputDevice<Window> getKeyboard() {
+        return keyboard;
+    }
+
+    public InputDevice<Window> getMouse() {
+        return mouse;
     }
 
     public void bind(InputDevice<?> inputDevice, FoolsEngineKeyCode id, Action action) {

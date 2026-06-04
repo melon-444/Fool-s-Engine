@@ -6,8 +6,6 @@ import com.melon.foolsEngine.api.rendering.resource.*;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.api.windows.WindowsManager;
-import com.melon.foolsEngine.backend.OpenGL.GLFWKeyBoard;
-import com.melon.foolsEngine.backend.OpenGL.GLFWMouse;
 import com.melon.foolsEngine.core.ECS.basicComponents.Transform;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.CursorMode;
@@ -18,8 +16,6 @@ import org.joml.*;
 import org.joml.Math;
 
 import java.nio.file.Path;
-
-import static org.lwjgl.glfw.GLFW.*;
 
 public class TestInputBackend {
     static FoolsEngine foolsEngine = FoolsEngine.create(1000, 100, 800, 600);
@@ -55,15 +51,8 @@ public class TestInputBackend {
         frame.init();
         frame.setBackGroundColor(0.2f, 0.3f, 0.35f, 1);
 
-        InputManager input = new InputManager();
-        GLFWKeyBoard keyboard = new GLFWKeyBoard();
-        GLFWMouse mouse = new GLFWMouse();
-
-        keyboard.attachEnvironment(win);
-        mouse.attachEnvironment(win);
+        InputManager input = foolsEngine.serviceFactory.createInputManager(win);
         win.setCursorMode(CursorMode.DISABLED);
-        input.register(keyboard);
-        input.register(mouse);
 
         Action moveForward = () -> SignalType.BUTTON;
         Action moveBackward = () -> SignalType.BUTTON;
@@ -74,16 +63,16 @@ public class TestInputBackend {
         Action lookDelta = () -> SignalType.AXIS_2DDel;
         Action exit = () -> SignalType.BUTTON;
 
-        input.bind(keyboard, FoolsEngineKeyCode.W, moveForward);
-        input.bind(keyboard, FoolsEngineKeyCode.S, moveBackward);
-        input.bind(keyboard, FoolsEngineKeyCode.A, moveLeft);
-        input.bind(keyboard, FoolsEngineKeyCode.D, moveRight);
-        input.bind(keyboard, FoolsEngineKeyCode.SPACE, moveUp);
-        input.bind(keyboard, FoolsEngineKeyCode.LEFT_SHIFT, moveDown);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.W, moveForward);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.S, moveBackward);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.A, moveLeft);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.D, moveRight);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.SPACE, moveUp);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.LEFT_SHIFT, moveDown);
 
-        input.bind(mouse, FoolsEngineKeyCode.CURSOR, lookDelta);
+        input.bind(input.getMouse(), FoolsEngineKeyCode.CURSOR, lookDelta);
 
-        input.bind(mouse, FoolsEngineKeyCode.ESC, exit);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.ESC, exit);
 
 
         float moveSpeed = 5.0f;

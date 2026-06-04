@@ -13,7 +13,7 @@ import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import static org.lwjgl.glfw.GLFW.GLFW_REPEAT;
 
-public class GLFWMouse implements InputDevice<Window> {
+class GLFWMouse implements InputDevice<Window> {
 
     private float scrollY = 0.0f;
     private float scrollX = 0.0f;
@@ -156,6 +156,7 @@ public class GLFWMouse implements InputDevice<Window> {
         cb_button = null;
         cb_wheel = null;
         cb_position = null;
+        env = null;
         firstMouse = true;
     }
 

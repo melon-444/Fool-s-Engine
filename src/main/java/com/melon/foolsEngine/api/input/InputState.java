@@ -26,6 +26,7 @@ class InputState {
 
     public void clearSignalCache() {
         SignalFlagCache.clear();
+        Pressed.clear();
     }
 
     public void setDown(Action action, boolean down){

@@ -9,8 +9,6 @@ import com.melon.foolsEngine.api.rendering.resource.*;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.api.windows.WindowsManager;
-import com.melon.foolsEngine.backend.OpenGL.GLFWKeyBoard;
-import com.melon.foolsEngine.backend.OpenGL.GLFWMouse;
 import com.melon.foolsEngine.core.ECS.basicComponents.Transform;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.*;
@@ -80,15 +78,8 @@ public class TestLightBackend {
 
         RenderScene scene = new RenderScene();
 
-        InputManager input = new InputManager();
-        GLFWKeyBoard keyboard = new GLFWKeyBoard();
-        GLFWMouse mouse = new GLFWMouse();
-
-        keyboard.attachEnvironment(win);
-        mouse.attachEnvironment(win);
+        InputManager input = foolsEngine.serviceFactory.createInputManager(win);
         win.setCursorMode(CursorMode.DISABLED);
-        input.register(keyboard);
-        input.register(mouse);
 
         Action moveForward = () -> SignalType.BUTTON;
         Action moveBackward = () -> SignalType.BUTTON;
@@ -109,28 +100,28 @@ public class TestLightBackend {
         Action switchMouseMode = () -> SignalType.BUTTON;
         Action switchDebugWindow = () -> SignalType.BUTTON;
 
-        input.bind(keyboard, FoolsEngineKeyCode.W, moveForward);
-        input.bind(keyboard, FoolsEngineKeyCode.S, moveBackward);
-        input.bind(keyboard, FoolsEngineKeyCode.A, moveLeft);
-        input.bind(keyboard, FoolsEngineKeyCode.D, moveRight);
-        input.bind(keyboard, FoolsEngineKeyCode.SPACE, moveUp);
-        input.bind(keyboard, FoolsEngineKeyCode.LEFT_SHIFT, moveDown);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.W, moveForward);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.S, moveBackward);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.A, moveLeft);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.D, moveRight);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.SPACE, moveUp);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.LEFT_SHIFT, moveDown);
 
-        input.bind(keyboard, FoolsEngineKeyCode.J, ambientUp);
-        input.bind(keyboard, FoolsEngineKeyCode.K, ambientDown);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.J, ambientUp);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.K, ambientDown);
 
-        input.bind(keyboard, FoolsEngineKeyCode.P, spawnDirLight);
-        input.bind(keyboard, FoolsEngineKeyCode.O, spawnPointLight);
-        input.bind(keyboard, FoolsEngineKeyCode.I, spawnSpotLight);
-        input.bind(keyboard, FoolsEngineKeyCode.L, clearLights);
-        input.bind(keyboard, FoolsEngineKeyCode.COMMA, spawnShadowDirLight);
-        input.bind(keyboard, FoolsEngineKeyCode.N, spawnShadowSpotLight);
-        input.bind(keyboard, FoolsEngineKeyCode.ESC, exit);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.P, spawnDirLight);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.O, spawnPointLight);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.I, spawnSpotLight);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.L, clearLights);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.COMMA, spawnShadowDirLight);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.N, spawnShadowSpotLight);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.ESC, exit);
 
-        input.bind(keyboard, FoolsEngineKeyCode.C, switchDebugWindow);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.C, switchDebugWindow);
 
-        input.bind(mouse, FoolsEngineKeyCode.CURSOR, lookDelta);
-        input.bind(mouse, FoolsEngineKeyCode.MOUSE_RIGHT, switchMouseMode);
+        input.bind(input.getMouse(), FoolsEngineKeyCode.CURSOR, lookDelta);
+        input.bind(input.getMouse(), FoolsEngineKeyCode.MOUSE_RIGHT, switchMouseMode);
 
         float moveSpeed = 5.0f;
         float lookSensitivity = 1.0f;
@@ -142,17 +133,6 @@ public class TestLightBackend {
         boolean renderDebug = false;
 
         java.util.Random rng = new java.util.Random();
-
-        boolean pWasDown = false;
-        boolean oWasDown = false;
-        boolean iWasDown = false;
-        boolean lWasDown = false;
-        boolean jWasDown = false;
-        boolean kWasDown = false;
-        boolean commaWasDown = false;
-        boolean nWasDown = false;
-        boolean RMBWasDown = false;
-        boolean CWasDown = false;
 
         while (!win.shouldClose()) {
             long currentTime = System.nanoTime();
@@ -200,41 +180,30 @@ public class TestLightBackend {
             cameraTarget = new Vector3f(cameraPos).add(lookDir);
             camera.view.identity().lookAt(cameraPos, cameraTarget, worldUp);
 
-            boolean pDown = input.isActionDown(spawnDirLight);
-            boolean oDown = input.isActionDown(spawnPointLight);
-            boolean iDown = input.isActionDown(spawnSpotLight);
-            boolean lDown = input.isActionDown(clearLights);
-            boolean jDown = input.isActionDown(ambientUp);
-            boolean kDown = input.isActionDown(ambientDown);
-            boolean commaDown = input.isActionDown(spawnShadowDirLight);
-            boolean nDown = input.isActionDown(spawnShadowSpotLight);
-            boolean RMBDown = input.isActionDown(switchMouseMode);
-            boolean CDown = input.isActionDown(switchDebugWindow);
-
-            if (pDown && !pWasDown) {
+            if (input.isActionPressed(spawnDirLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 lightEnv.add(Light.directional(color, new Vector3f(lookDir)));
             }
-            if (oDown && !oWasDown) {
+            if (input.isActionPressed(spawnPointLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 lightEnv.add(Light.point(color, new Vector3f(cameraPos), 3.0f));
             }
-            if (iDown && !iWasDown) {
+            if (input.isActionPressed(spawnSpotLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 lightEnv.add(Light.spot(color, new Vector3f(lookDir), new Vector3f(cameraPos), 10f, 10f, 2.0f));
             }
-            if (lDown && !lWasDown) {
+            if (input.isActionPressed(clearLights)) {
                 lightEnv.clear();
                 shadowManager.reset();
             }
-            if (jDown && !jWasDown) {
+            if (input.isActionPressed(ambientUp)) {
                 lightEnv.getAmbient().mul(1.1f);
             }
-            if (kDown && !kWasDown) {
+            if (input.isActionPressed(ambientDown)) {
                 lightEnv.getAmbient().mul(0.9f);
             }
 
-            if (commaDown && !commaWasDown) {
+            if (input.isActionPressed(spawnShadowDirLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 Vector3f lightDir = new Vector3f(lookDir);
                 Light baseLight = Light.directional(color, lightDir, 1.0f);
@@ -242,7 +211,7 @@ public class TestLightBackend {
                 lightEnv.add(dirLight);
             }
 
-            if (nDown && !nWasDown) {
+            if (input.isActionPressed(spawnShadowSpotLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 Vector3f lightPos = new Vector3f(cameraPos);
                 Vector3f lightDir = new Vector3f(lookDir);
@@ -251,27 +220,16 @@ public class TestLightBackend {
                 lightEnv.add(spotLight);
             }
 
-            if (RMBDown && !RMBWasDown) {
+            if (input.isActionPressed(switchMouseMode)) {
                 if (win.getCursorMode() == CursorMode.DISABLED)
                     win.setCursorMode(CursorMode.NORMAL);
                 else
                     win.setCursorMode(CursorMode.DISABLED);
             }
 
-            if (CDown&&!CWasDown) {
+            if (input.isActionPressed(switchDebugWindow)) {
                 renderDebug = !renderDebug;
             }
-
-            pWasDown = pDown;
-            oWasDown = oDown;
-            iWasDown = iDown;
-            lWasDown = lDown;
-            kWasDown = kDown;
-            jWasDown = jDown;
-            commaWasDown = commaDown;
-            nWasDown = nDown;
-            RMBWasDown = RMBDown;
-            CWasDown =  CDown;
 
 
             scene.clear();
