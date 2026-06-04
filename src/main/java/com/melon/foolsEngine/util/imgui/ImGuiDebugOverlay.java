@@ -13,8 +13,7 @@ import imgui.flag.ImGuiCond;
 
 public class ImGuiDebugOverlay {
 
-    public void render(RenderScene scene, ShadowManager shadowManager,
-                       float deltaTime, float renderTimeMs,
+    public void render(RenderScene scene, float deltaTime, float renderTimeMs,
                        Vector3f cameraPos, float yaw, float pitch,
                        int drawCallCount) {
 
@@ -64,12 +63,12 @@ public class ImGuiDebugOverlay {
 
         ImGui.separator();
 
-        if (shadowManager != null && ImGui.collapsingHeader("Shadows")) {
-            int layers = shadowManager.getCurrentLayerCount();
-            int maxLayers = shadowManager.getMaxLayers();
-            ImGui.text(String.format("Layers Used: %d / %d", layers, maxLayers));
-
-            if (lightEnv != null) {
+        if (lightEnv != null) {
+            ShadowManager shadowManager = lightEnv.getShadowManager();
+            if (shadowManager != null && ImGui.collapsingHeader("Shadows")) {
+                int layers = shadowManager.getCurrentLayerCount();
+                int maxLayers = shadowManager.getMaxLayers();
+                ImGui.text(String.format("Layers Used: %d / %d", layers, maxLayers));
                 ImGui.text(String.format("Map Size: %d", lightEnv.getShadowMapSize()));
             }
         }

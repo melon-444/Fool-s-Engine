@@ -3,7 +3,7 @@ package com.melon.foolsEngine.backend.OpenGL;
 import com.melon.foolsEngine.api.input.FoolsEngineKeyCode;
 import com.melon.foolsEngine.api.input.InputDevice;
 import com.melon.foolsEngine.api.windows.Window;
-import imgui.ImGui;
+import com.melon.foolsEngine.util.ImGuiHelper;
 import org.joml.Vector2f;
 import org.lwjgl.system.Callback;
 import java.util.HashMap;
@@ -88,21 +88,14 @@ class GLFWMouse implements InputDevice<Window> {
             switch (action) {
                 case GLFW_RELEASE:
                     mouseButton.put(button, false);
-                    if (ImGui.getCurrentContext().ptr != 0) {
-                        ImGui.getIO().setMouseClicked(button, false);
-                        ImGui.getIO().setMouseDown(button, false);
-                    }
+                    ImGuiHelper.setMousePress(button, false);
                     break;
                 case GLFW_PRESS:
                     mouseButton.put(button, true);
-                    if (ImGui.getCurrentContext().ptr != 0) {
-                        ImGui.getIO().setMouseClicked(button, true);
-                        ImGui.getIO().setMouseDown(button, true);
-                    }
+                    ImGuiHelper.setMousePress(button, true);
                     break;
                 case GLFW_REPEAT:
-                    if (ImGui.getCurrentContext().ptr != 0)
-                        ImGui.getIO().setMouseDown(button,true);
+                    ImGuiHelper.setMouseRepeat(button);
                     break;
             }
         });
@@ -113,10 +106,8 @@ class GLFWMouse implements InputDevice<Window> {
             scrollX = (float)xoffset;
             mouseWheel.put(GLFW_MOUSE_BUTTON_MIDDLE,scrollY);
             mouseWheelDel.put(GLFW_MOUSE_BUTTON_MIDDLE,scrollDeltaY);
-            if (ImGui.getCurrentContext().ptr != 0) {
-                ImGui.getIO().setMouseWheel(scrollY);
-                ImGui.getIO().setMouseWheelH(scrollX);
-            }
+            ImGuiHelper.setMouseWheel(scrollY);
+            ImGuiHelper.setMouseWheelH(scrollX);
         });
         cb_position = glfwSetCursorPosCallback(env.getID(), (window,  xpos,  ypos)->{
                 float newX = (float)xpos;
@@ -127,8 +118,7 @@ class GLFWMouse implements InputDevice<Window> {
                     screenY = newY;
                     firstMouse = false;
                     mousePosition.put(GLFW_CURSOR, new Vector2f(screenX, screenY));
-                    if (ImGui.getCurrentContext().ptr != 0)
-                        ImGui.getIO().setMousePos(screenX,screenY);
+                    ImGuiHelper.setMousePos(screenX, screenY);
                     return;
                 }
 
@@ -136,10 +126,8 @@ class GLFWMouse implements InputDevice<Window> {
                 screenDeltaY = newY - screenY;
                 screenX = newX;
                 screenY = newY;
-                if (ImGui.getCurrentContext().ptr != 0) {
-                    ImGui.getIO().setMousePos(screenX,screenY);
-                    ImGui.getIO().setMouseDelta(screenDeltaX,screenDeltaY);
-                }
+                ImGuiHelper.setMousePos(screenX, screenY);
+                ImGuiHelper.setMouseDelta(screenDeltaX, screenDeltaY);
 
                 if (Math.abs(screenDeltaX) > 200 || Math.abs(screenDeltaY) > 200) {
                     mousePosition.put(GLFW_CURSOR, new Vector2f(screenX, screenY));

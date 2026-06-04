@@ -27,11 +27,16 @@ if (lwjglUseMaven) {
         runtimeOnly("org.lwjgl", "lwjgl-opengl",   classifier = "natives-$lwjglNatives")
         runtimeOnly("org.lwjgl", "lwjgl-stb",      classifier = "natives-$lwjglNatives")
         api("org.joml:joml:1.10.5")
-        api("io.github.spair:imgui-java-binding:$imguiVersion")
-        api("io.github.spair:imgui-java-lwjgl3:$imguiVersion"){
+        compileOnly("io.github.spair:imgui-java-binding:$imguiVersion")
+        compileOnly("io.github.spair:imgui-java-lwjgl3:$imguiVersion"){
             exclude(group = "org.lwjgl")
         }
         runtimeOnly("io.github.spair:imgui-java-natives-$lwjglNatives:$imguiVersion")
+        testImplementation("io.github.spair:imgui-java-binding:$imguiVersion")
+        testImplementation("io.github.spair:imgui-java-lwjgl3:$imguiVersion"){
+            exclude(group = "org.lwjgl")
+        }
+        testRuntimeOnly("io.github.spair:imgui-java-natives-$lwjglNatives:$imguiVersion")
     }
 } else {
     repositories {
@@ -55,11 +60,16 @@ if (lwjglUseMaven) {
         runtimeOnly(files("${libs}lwjgl-opengl/lwjgl-opengl-natives-${lwjglNatives}.jar"))
         runtimeOnly(files("${libs}lwjgl-stb/lwjgl-stb-natives-${lwjglNatives}.jar"))
         api("org.joml:joml:1.10.5")
-        api("io.github.spair:imgui-java-binding:$imguiVersion")
-        api("io.github.spair:imgui-java-lwjgl3:$imguiVersion"){
+        compileOnly("io.github.spair:imgui-java-binding:$imguiVersion")
+        compileOnly("io.github.spair:imgui-java-lwjgl3:$imguiVersion"){
             exclude(group = "org.lwjgl")
         }
         runtimeOnly("io.github.spair:imgui-java-natives-$lwjglNatives:$imguiVersion")
+        testImplementation("io.github.spair:imgui-java-binding:$imguiVersion")
+        testImplementation("io.github.spair:imgui-java-lwjgl3:$imguiVersion"){
+            exclude(group = "org.lwjgl")
+        }
+        testRuntimeOnly("io.github.spair:imgui-java-natives-$lwjglNatives:$imguiVersion")
     }
 }
 

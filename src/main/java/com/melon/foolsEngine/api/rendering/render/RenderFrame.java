@@ -64,10 +64,11 @@ public interface RenderFrame {
     @Deprecated void applyLightEnvironment(LightEnvironment env);
 
     /**
-     * Injects a ShadowManager for automatic shadow pass rendering.
-     * If set, {@link #render(RenderScene)} will render shadow maps before the main scene.
-     * Default implementation is a no-op (for backends without shadow support).
+     * @deprecated Use {@link LightEnvironment#enableShadows(com.melon.foolsEngine.api.rendering.render.RenderTarget, com.melon.foolsEngine.api.rendering.resource.Material, int)}
+     * instead. The renderer now reads the ShadowManager from the scene's
+     * LightEnvironment via {@link LightEnvironment#getShadowManager()}.
      */
+    @Deprecated
     default void setShadowManager(ShadowManager shadowManager) {
     }
 

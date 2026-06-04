@@ -73,8 +73,7 @@ public class TestLightBackend {
 
         RenderTarget shadowArray = foolsEngine.serviceFactory.createRenderTarget(
                 SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, RenderTarget.TARGET_DEPTH, MAX_SHADOW_LAYERS);
-        ShadowManager shadowManager = new ShadowManager(shadowArray, depthMaterial, MAX_SHADOW_LAYERS);
-        frame.setShadowManager(shadowManager);
+        lightEnv.enableShadows(shadowArray, depthMaterial, MAX_SHADOW_LAYERS);
 
         RenderScene scene = new RenderScene();
 
@@ -194,7 +193,6 @@ public class TestLightBackend {
             }
             if (input.isActionPressed(clearLights)) {
                 lightEnv.clear();
-                shadowManager.reset();
             }
             if (input.isActionPressed(ambientUp)) {
                 lightEnv.getAmbient().mul(1.1f);
@@ -207,7 +205,7 @@ public class TestLightBackend {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 Vector3f lightDir = new Vector3f(lookDir);
                 Light baseLight = Light.directional(color, lightDir, 1.0f);
-                Light dirLight = shadowManager.enableDirLightShadow(baseLight, camera);
+                Light dirLight = lightEnv.enableDirLightShadow(baseLight, camera);
                 lightEnv.add(dirLight);
             }
 
@@ -216,7 +214,7 @@ public class TestLightBackend {
                 Vector3f lightPos = new Vector3f(cameraPos);
                 Vector3f lightDir = new Vector3f(lookDir);
                 Light baseLight = Light.spot(color, lightDir, lightPos, 10f, 10f, 2.0f);
-                Light spotLight = shadowManager.enableSpotLightShadow(baseLight, SPOT_SHADOW_NEAR);
+                Light spotLight = lightEnv.enableSpotLightShadow(baseLight, SPOT_SHADOW_NEAR);
                 lightEnv.add(spotLight);
             }
 
@@ -260,7 +258,7 @@ public class TestLightBackend {
 
             if(renderDebug){
                 imGuiRenderer.beginFrame();
-                debugOverlay.render(scene, shadowManager, deltaTime, renderTimeMs,
+                debugOverlay.render(scene, deltaTime, renderTimeMs,
                         cameraPos, yaw, pitch, frame.getDrawCallCount());
                 imGuiRenderer.endFrame();
             }
@@ -279,7 +277,7 @@ public class TestLightBackend {
 
         shader.destroy();
         depthShader.destroy();
-        shadowManager.destroy();
+        lightEnv.destroy();
         imGuiContext.destroy();
         manager.destroyWindow(win, true);
     }

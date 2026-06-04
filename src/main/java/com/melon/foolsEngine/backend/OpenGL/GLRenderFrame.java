@@ -30,7 +30,6 @@ class GLRenderFrame implements RenderFrame{
     private boolean init = false;
     private RenderThreadPool renderThreadPool;
     private LightEnvironment lightEnv;
-    private ShadowManager shadowManager;
     private int drawCallCounter;
 
     @Override
@@ -104,10 +103,12 @@ class GLRenderFrame implements RenderFrame{
         List<RenderCommand> commands = new ArrayList<>(scene.getCommands());
         if (commands.isEmpty()) return;
 
+        LightEnvironment lighting = scene.getLighting();
+        ShadowManager shadowManager = lighting != null ? lighting.getShadowManager() : null;
+
         if (shadowManager != null) {
-            LightEnvironment lighting = scene.getLighting();
             Camera mainCamera = scene.getCamera();
-            if (lighting != null && mainCamera != null) {
+            if (mainCamera != null) {
                 for (Light light : lighting.getLights()) {
                     if (!light.castsShadow()) continue;
                     ShadowPassContext ctx = shadowManager.prepareShadow(light, mainCamera);
@@ -253,11 +254,6 @@ class GLRenderFrame implements RenderFrame{
     public void setBackGroundColor(float r, float g, float b,float a) {
         initTest();
         glClearColor(r, g, b, a);
-    }
-
-    @Override
-    public void setShadowManager(ShadowManager shadowManager) {
-        this.shadowManager = shadowManager;
     }
 
     @Override

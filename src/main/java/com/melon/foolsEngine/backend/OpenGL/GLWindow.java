@@ -2,7 +2,7 @@ package com.melon.foolsEngine.backend.OpenGL;
 
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.util.CursorMode;
-import imgui.ImGui;
+import com.melon.foolsEngine.util.ImGuiHelper;
 import org.lwjgl.glfw.GLFWVidMode;
 
 import java.util.ArrayList;
@@ -201,8 +201,7 @@ class GLWindow implements Window {
     @Override
     public void setCursorMode(CursorMode mode) {
         this.cursorMode = mode;
-        if(ImGui.getCurrentContext().ptr != 0)
-            ImGui.getIO().setWantCaptureMouse(mode != CursorMode.DISABLED);
+        ImGuiHelper.setWantCaptureMouse(mode != CursorMode.DISABLED);
         int glfwMode = switch (mode) {
             case NORMAL -> GLFW_CURSOR_NORMAL;
             case HIDDEN -> GLFW_CURSOR_HIDDEN;

@@ -1,5 +1,6 @@
 package com.melon.foolsEngine.api.rendering.resource;
 
+import com.melon.foolsEngine.api.rendering.render.RenderTarget;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -9,14 +10,19 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Manages a collection of up to 16 lights and an ambient color for a scene.
+ * Manages a collection of up to 16 lights, an ambient color, and an optional
+ * {@link ShadowManager} for shadow-casting lights.
  * Pushes light data to shader uniforms via {@link #apply(ShaderProgram)}.
  * <p>
- * Usage:
+ * Shadow usage:
  * <pre>{@code
  *   LightEnvironment env = new LightEnvironment();
  *   env.setAmbient(0.08f, 0.08f, 0.08f);
- *   env.add(Light.directional(color, direction));
+ *   env.enableShadows(shadowArray, depthMaterial, maxLayers);
+ *
+ *   Light dirLight = env.enableDirLightShadow(Light.directional(color, dir), camera);
+ *   env.add(dirLight);
+ *
  *   scene.setLighting(env);
  * }</pre>
  */
@@ -29,6 +35,7 @@ public class LightEnvironment {
     private final List<Light> lights = new ArrayList<>();
     private final Vector3f ambientColor = new Vector3f(0.06f, 0.06f, 0.06f);
     private int shadowMapSize = 1024;
+    private ShadowManager shadowManager;
 
     /** Adds a light to the environment */
     public void add(Light light) {
@@ -40,9 +47,79 @@ public class LightEnvironment {
         lights.remove(light);
     }
 
-    /** Removes all lights */
+    /**
+     * Enables shadow support by creating an internal {@link ShadowManager}.
+     * Must be called before {@link #enableDirLightShadow(Light, Camera)} or
+     * {@link #enableSpotLightShadow(Light, float)}.
+     *
+     * @param shadowArray the depth texture array render target
+     * @param depthMaterial the depth-only material used for shadow rendering
+     * @param maxLayers maximum number of shadow-casting lights
+     * @throws IllegalStateException if shadows are already enabled
+     */
+    public void enableShadows(RenderTarget shadowArray, Material depthMaterial, int maxLayers) {
+        if (shadowManager != null) {
+            throw new IllegalStateException("Shadows already enabled");
+        }
+        this.shadowManager = new ShadowManager(shadowArray, depthMaterial, maxLayers);
+        this.shadowMapSize = shadowArray.getWidth();
+    }
+
+    /**
+     * Allocates a shadow layer and returns a new directional light with shadow support.
+     * Requires {@link #enableShadows(RenderTarget, Material, int)} to be called first.
+     *
+     * @param light the base light (color, direction copied)
+     * @param mainCamera used to build the initial shadow camera frustum
+     * @return a new Light with shadow info
+     * @throws IllegalStateException if shadows are not enabled
+     */
+    public Light enableDirLightShadow(Light light, Camera mainCamera) {
+        checkShadowEnabled();
+        return shadowManager.enableDirLightShadow(light, mainCamera);
+    }
+
+    /**
+     * Allocates a shadow layer and returns a new spot light with shadow support.
+     * Requires {@link #enableShadows(RenderTarget, Material, int)} to be called first.
+     *
+     * @param light the base light (color, direction, position, cone angles copied)
+     * @param shadowNear near plane distance for the spot shadow camera
+     * @return a new Light with shadow info
+     * @throws IllegalStateException if shadows are not enabled
+     */
+    public Light enableSpotLightShadow(Light light, float shadowNear) {
+        checkShadowEnabled();
+        return shadowManager.enableSpotLightShadow(light, shadowNear);
+    }
+
+    /** @return the {@link ShadowManager}, or null if shadows are not enabled */
+    public ShadowManager getShadowManager() {
+        return shadowManager;
+    }
+
+    /** Removes all lights and resets shadow layers */
     public void clear() {
         lights.clear();
+        if (shadowManager != null) {
+            shadowManager.reset();
+        }
+    }
+
+    /**
+     * Destroys the underlying shadow map resources.
+     * Safe to call even if shadows are not enabled.
+     */
+    public void destroy() {
+        if (shadowManager != null) {
+            shadowManager.destroy();
+        }
+    }
+
+    private void checkShadowEnabled() {
+        if (shadowManager == null) {
+            throw new IllegalStateException("Shadows not enabled. Call enableShadows() first.");
+        }
     }
 
     /** Sets the ambient light color (per-component) */

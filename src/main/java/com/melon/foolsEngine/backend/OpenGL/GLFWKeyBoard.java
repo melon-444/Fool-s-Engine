@@ -3,7 +3,7 @@ package com.melon.foolsEngine.backend.OpenGL;
 import com.melon.foolsEngine.api.input.FoolsEngineKeyCode;
 import com.melon.foolsEngine.api.input.InputDevice;
 import com.melon.foolsEngine.api.windows.Window;
-import imgui.ImGui;
+import com.melon.foolsEngine.util.ImGuiHelper;
 import org.joml.Vector2f;
 import org.lwjgl.system.Callback;
 
@@ -65,20 +65,17 @@ class GLFWKeyBoard implements InputDevice<Window> {
                 case GLFW_REPEAT:
                     break;
             }
-            if (ImGui.getCurrentContext().ptr != 0) {
-
-                if (key == GLFW_KEY_LEFT_SHIFT || key == GLFW_KEY_RIGHT_SHIFT) {
-                    ImGui.getIO().setKeyShift(action != GLFW_RELEASE);
-                }
-                if (key == GLFW_KEY_LEFT_CONTROL || key == GLFW_KEY_RIGHT_CONTROL) {
-                    ImGui.getIO().setKeyCtrl(action != GLFW_RELEASE);
-                }
-                if (key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT) {
-                    ImGui.getIO().setKeyAlt(action != GLFW_RELEASE);
-                }
-                if (key == GLFW_KEY_LEFT_SUPER || key == GLFW_KEY_RIGHT_SUPER) {
-                    ImGui.getIO().setKeySuper(action != GLFW_RELEASE);
-                }
+            if (key == GLFW_KEY_LEFT_SHIFT || key == GLFW_KEY_RIGHT_SHIFT) {
+                ImGuiHelper.setKeyShift(action != GLFW_RELEASE);
+            }
+            if (key == GLFW_KEY_LEFT_CONTROL || key == GLFW_KEY_RIGHT_CONTROL) {
+                ImGuiHelper.setKeyCtrl(action != GLFW_RELEASE);
+            }
+            if (key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT) {
+                ImGuiHelper.setKeyAlt(action != GLFW_RELEASE);
+            }
+            if (key == GLFW_KEY_LEFT_SUPER || key == GLFW_KEY_RIGHT_SUPER) {
+                ImGuiHelper.setKeySuper(action != GLFW_RELEASE);
             }
         });
     }
