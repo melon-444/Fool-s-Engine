@@ -95,4 +95,20 @@ public interface RenderFrame {
     default int getDrawCallCount() {
         return -1;
     }
+
+    /**
+     * Writes the current default framebuffer pixels (RGBA) into a pre-allocated {@code dstBuf}.
+     * The buffer must have at least {@code width * height * 4} bytes of remaining capacity.
+     */
+    void screenShot(java.nio.ByteBuffer dstBuf);
+
+    /**
+     * Captures the current default framebuffer and saves it as a PNG file at the given path.
+     */
+    void screenShot(java.nio.file.Path path);
+
+    /**
+     * Captures the given render target and saves it as a PNG file at the given path.
+     */
+    void screenShot(java.nio.file.Path path, RenderTarget target);
 }

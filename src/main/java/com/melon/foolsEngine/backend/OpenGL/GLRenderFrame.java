@@ -20,6 +20,8 @@ import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
+import java.nio.ByteBuffer;
+import java.nio.file.Path;
 import java.util.*;
 
 import static org.lwjgl.opengl.GL45.*;
@@ -212,6 +214,63 @@ class GLRenderFrame implements RenderFrame{
         if (target != null) {
             target.unbind();
             glViewport(savedViewport[0], savedViewport[1], savedViewport[2], savedViewport[3]);
+        }
+    }
+
+    @Override
+    public void screenShot(ByteBuffer dstBuf) {
+        initTest();
+        int[] viewport = new int[4];
+        glGetIntegerv(GL_VIEWPORT, viewport);
+        glReadPixels(viewport[0], viewport[1], viewport[2], viewport[3], GL_RGBA, GL_UNSIGNED_BYTE, dstBuf);
+    }
+
+    @Override
+    public void screenShot(Path path) {
+        initTest();
+        int[] viewport = new int[4];
+        glGetIntegerv(GL_VIEWPORT, viewport);
+        int w = viewport[2], h = viewport[3];
+        ByteBuffer pixels = org.lwjgl.system.MemoryUtil.memAlloc(w * h * 4);
+        try {
+            glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+            writePng(path, pixels, w, h);
+        } finally {
+            org.lwjgl.system.MemoryUtil.memFree(pixels);
+        }
+    }
+
+    @Override
+    public void screenShot(Path path, RenderTarget target) {
+        initTest();
+        int w = target.getWidth(), h = target.getHeight();
+        target.bind();
+        ByteBuffer pixels = org.lwjgl.system.MemoryUtil.memAlloc(w * h * 4);
+        try {
+            glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+            writePng(path, pixels, w, h);
+        } finally {
+            org.lwjgl.system.MemoryUtil.memFree(pixels);
+            target.unbind();
+        }
+    }
+
+    private void writePng(Path path, ByteBuffer pixels, int w, int h) {
+        ByteBuffer flipped = org.lwjgl.system.MemoryUtil.memAlloc(w * h * 4);
+        try {
+            int rowSize = w * 4;
+            byte[] row = new byte[rowSize];
+            for (int y = 0; y < h; y++) {
+                int srcOffset = (h - 1 - y) * rowSize;
+                pixels.position(srcOffset);
+                pixels.get(row);
+                flipped.position(y * rowSize);
+                flipped.put(row);
+            }
+            flipped.flip();
+            org.lwjgl.stb.STBImageWrite.stbi_write_png(path.toString(), w, h, 4, flipped, rowSize);
+        } finally {
+            org.lwjgl.system.MemoryUtil.memFree(flipped);
         }
     }
 
