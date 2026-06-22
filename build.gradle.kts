@@ -5,6 +5,12 @@ plugins {
 group = "com.melon.foolsEngine"
 version = "0.0.8"
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
 val lwjglNatives = project.properties["lwjglNatives"] as? String ?: "windows"
 val lwjglUseMaven = project.properties["lwjglUseMaven"] == "true"
 val lwjglVersion = "3.4.1"
