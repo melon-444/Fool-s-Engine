@@ -80,6 +80,10 @@ public final class ImGuiHelper {
         if (AVAILABLE) ImGuiInternal.setWantCaptureMouse(want);
     }
 
+    public static void addInputCharacter(int codepoint) {
+        if (AVAILABLE) ImGuiInternal.addInputCharacter(codepoint);
+    }
+
     private static final class ImGuiInternal {
         static void setKeyShift(boolean down) {
             if (imgui.ImGui.getCurrentContext().ptr != 0)
@@ -136,6 +140,11 @@ public final class ImGuiHelper {
         static void setWantCaptureMouse(boolean want) {
             if (imgui.ImGui.getCurrentContext().ptr != 0)
                 imgui.ImGui.getIO().setWantCaptureMouse(want);
+        }
+
+        static void addInputCharacter(int codepoint) {
+            if (imgui.ImGui.getCurrentContext().ptr != 0)
+                imgui.ImGui.getIO().addInputCharacter(codepoint);
         }
     }
 }

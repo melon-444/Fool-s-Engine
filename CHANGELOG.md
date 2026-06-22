@@ -1,5 +1,15 @@
 ## foolsEngine 更新日志
 
+### 0.0.8 — 2026-06-22
+
+---
+
+#### ImGui 字符输入支持
+
+- **`glfwSetCharCallback` 回调** — `GLFWKeyBoard.attachEnvironment()` 安装字符回调，接收 Unicode 码点后转发至 ImGui
+- **`ImGuiHelper.addInputCharacter(int)`** — 新增字符转发方法，内部调用 `ImGui.getIO().addInputCharacter(codepoint)`
+- **修复 ImGui 文本框无法输入字符** — 此前仅转发修饰键（Shift/Ctrl/Alt/Super），缺失的 `glfwSetCharCallback` 导致 ImGui 文本控件收不到任何字符数据
+
 ### 0.0.7 — 2026-06-22
 
 ---
@@ -87,6 +97,16 @@
 - 初始预览版本
 
 ## foolsEngine Changelog
+
+### 0.0.8 — 2026-06-22
+
+---
+
+#### ImGui Character Input Support
+
+- **`glfwSetCharCallback` installed** — `GLFWKeyBoard.attachEnvironment()` installs a char callback, forwarding Unicode codepoints to ImGui
+- **`ImGuiHelper.addInputCharacter(int)`** — new character forwarding method, internally calls `ImGui.getIO().addInputCharacter(codepoint)`
+- **Fixed ImGui text fields not accepting typed characters** — previously only modifier keys (Shift/Ctrl/Alt/Super) were forwarded; the missing `glfwSetCharCallback` prevented ImGui text widgets from receiving any character data
 
 ### 0.0.7 — 2026-06-22
 

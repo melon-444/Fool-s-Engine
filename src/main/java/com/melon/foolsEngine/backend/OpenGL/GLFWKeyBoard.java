@@ -48,13 +48,14 @@ class GLFWKeyBoard implements InputDevice<Window> {
     public void endFrame() {
     }
 
-    private Callback cb;
+    private Callback cb_key;
+    private Callback cb_char;
 
     @Override
     public void attachEnvironment(Window env) {
         if (!(env instanceof GLWindow))
             throw new IllegalStateException("not a GLFW Window");
-        cb = glfwSetKeyCallback(env.getID(), (window, key, scancode, action, mods) -> {
+        cb_key = glfwSetKeyCallback(env.getID(), (window, key, scancode, action, mods) -> {
             switch (action) {
                 case GLFW_RELEASE:
                     keyboard.put(key, false);
@@ -78,12 +79,19 @@ class GLFWKeyBoard implements InputDevice<Window> {
                 ImGuiHelper.setKeySuper(action != GLFW_RELEASE);
             }
         });
+        cb_char = glfwSetCharCallback(env.getID(), (window, codepoint) -> {
+            ImGuiHelper.addInputCharacter(codepoint);
+        });
     }
 
     @Override
     public void detachEnvironment() {
-        cb.free();
-        cb = null;
+        cb_key.free();
+        cb_key = null;
+        if (cb_char != null) {
+            cb_char.free();
+            cb_char = null;
+        }
     }
 
 
