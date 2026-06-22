@@ -16,23 +16,45 @@
 
 package com.melon.foolsEngine.api.input;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ActionMapping {
-    private final Map<InputDevice<?>, Map<FoolsEngineKeyCode,Action>> map = new HashMap<>();
+    private final Map<InputDevice<?>, Map<FoolsEngineKeyCode, List<Action>>> forwardMap = new HashMap<>();
+    private final Map<InputDevice<?>, Map<Action, FoolsEngineKeyCode>> reverseMap = new HashMap<>();
+
     public void register(InputDevice<?> inputDevice) {
-        if(map.containsKey(inputDevice)) return;
-        map.put(inputDevice, new HashMap<>());
+        if (forwardMap.containsKey(inputDevice)) return;
+        forwardMap.put(inputDevice, new HashMap<>());
+        reverseMap.put(inputDevice, new HashMap<>());
     }
 
-    public void bind(InputDevice<?> inputDevice,FoolsEngineKeyCode id, Action action) {
-        if(!map.containsKey(inputDevice)) return;
-        map.get(inputDevice).put(id, action);
+    public void bind(InputDevice<?> inputDevice, FoolsEngineKeyCode id, Action action) {
+        if (!forwardMap.containsKey(inputDevice)) return;
+
+        Map<Action, FoolsEngineKeyCode> rev = reverseMap.get(inputDevice);
+        Map<FoolsEngineKeyCode, List<Action>> fwd = forwardMap.get(inputDevice);
+
+        // remove action from its previous key binding
+        FoolsEngineKeyCode oldKey = rev.get(action);
+        if (oldKey != null) {
+            List<Action> oldList = fwd.get(oldKey);
+            if (oldList != null) {
+                oldList.remove(action);
+                if (oldList.isEmpty()) {
+                    fwd.remove(oldKey);
+                }
+            }
+        }
+
+        // add action to the new key
+        fwd.computeIfAbsent(id, k -> new ArrayList<>()).add(action);
+        rev.put(action, id);
     }
 
-    public Map<FoolsEngineKeyCode,Action> get(InputDevice<?> inputDevice) {
-        if(!map.containsKey(inputDevice)) return null;
-        return map.get(inputDevice);
+    public Map<FoolsEngineKeyCode, List<Action>> get(InputDevice<?> inputDevice) {
+        return forwardMap.get(inputDevice);
     }
 }

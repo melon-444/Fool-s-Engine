@@ -65,27 +65,31 @@ public class InputManager {
         inputDevices.forEach(InputDevice::beginFrame);
         state.clearSignalCache();
         for(InputDevice<?> inputDevice : inputDevices) {
-            Map<FoolsEngineKeyCode,Action> currentMap = map.get(inputDevice);
-            for(FoolsEngineKeyCode id: currentMap.keySet()) {
-                Action action = currentMap.get(id);
-                switch (action.Type()){
-                    case BUTTON :
-                        state.setDown(action,inputDevice.getButton(id));
-                        state.setPressed(action,state.isDown(action)&&!state.isDownLast(action));
-                        break;
-                    case AXIS_1D :
-                        state.setAxis1D(action,inputDevice.getAxis1D(id));
-                        break;
-                    case AXIS_2D :
-                        state.setAxis2D(action,inputDevice.getAxis2D(id).x, inputDevice.getAxis2D(id).y);
-                        break;
-                    case AXIS_1DDel:
-                        state.setAxis1DDelta(action,inputDevice.getAxis1DDelta(id));
-                        break;
-                    case AXIS_2DDel:
-                        state.setAxis2DDelta(action,inputDevice.getAxis2DDelta(id).x, inputDevice.getAxis2DDelta(id).y);
-                        break;
-                    default :  throw new RuntimeException("Unsupported action type");
+            Map<FoolsEngineKeyCode, List<Action>> currentMap = map.get(inputDevice);
+            if (currentMap == null) continue;
+            for(Map.Entry<FoolsEngineKeyCode, List<Action>> entry : currentMap.entrySet()) {
+                FoolsEngineKeyCode id = entry.getKey();
+                if (id == FoolsEngineKeyCode.NULL) continue;
+                for(Action action : entry.getValue()) {
+                    switch (action.Type()){
+                        case BUTTON :
+                            state.setDown(action,inputDevice.getButton(id));
+                            state.setPressed(action,state.isDown(action)&&!state.isDownLast(action));
+                            break;
+                        case AXIS_1D :
+                            state.setAxis1D(action,inputDevice.getAxis1D(id));
+                            break;
+                        case AXIS_2D :
+                            state.setAxis2D(action,inputDevice.getAxis2D(id).x, inputDevice.getAxis2D(id).y);
+                            break;
+                        case AXIS_1DDel:
+                            state.setAxis1DDelta(action,inputDevice.getAxis1DDelta(id));
+                            break;
+                        case AXIS_2DDel:
+                            state.setAxis2DDelta(action,inputDevice.getAxis2DDelta(id).x, inputDevice.getAxis2DDelta(id).y);
+                            break;
+                        default :  throw new RuntimeException("Unsupported action type");
+                    }
                 }
             }
         }

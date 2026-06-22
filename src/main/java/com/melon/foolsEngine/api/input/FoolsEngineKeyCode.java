@@ -173,7 +173,8 @@ public enum FoolsEngineKeyCode {
     MOUSE_7(GLFW_MOUSE_BUTTON_7),
     MOUSE_8(GLFW_MOUSE_BUTTON_8),
 
-    CURSOR(GLFW_CURSOR);
+    CURSOR(GLFW_CURSOR),
+    NULL(-1);
 
     private final int id;
 
