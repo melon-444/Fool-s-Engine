@@ -78,6 +78,23 @@ class GLFWKeyBoard implements InputDevice<Window> {
             if (key == GLFW_KEY_LEFT_SUPER || key == GLFW_KEY_RIGHT_SUPER) {
                 ImGuiHelper.setKeySuper(action != GLFW_RELEASE);
             }
+            if (action == GLFW_PRESS || action == GLFW_RELEASE) {
+                boolean down = action == GLFW_PRESS;
+                switch (key) {
+                    case GLFW_KEY_BACKSPACE: ImGuiHelper.setKeyBackspace(down); break;
+                    case GLFW_KEY_DELETE:    ImGuiHelper.setKeyDelete(down);    break;
+                    case GLFW_KEY_ENTER:     ImGuiHelper.setKeyEnter(down);     break;
+                    case GLFW_KEY_ESCAPE:    ImGuiHelper.setKeyEscape(down);    break;
+                    case GLFW_KEY_TAB:       ImGuiHelper.setKeyTab(down);       break;
+                    case GLFW_KEY_LEFT:      ImGuiHelper.setKeyLeft(down);      break;
+                    case GLFW_KEY_RIGHT:     ImGuiHelper.setKeyRight(down);     break;
+                    case GLFW_KEY_UP:        ImGuiHelper.setKeyUp(down);        break;
+                    case GLFW_KEY_DOWN:      ImGuiHelper.setKeyDown(down);      break;
+                    case GLFW_KEY_HOME:      ImGuiHelper.setKeyHome(down);      break;
+                    case GLFW_KEY_END:       ImGuiHelper.setKeyEnd(down);       break;
+                    case GLFW_KEY_SPACE:     ImGuiHelper.setKeySpace(down);     break;
+                }
+            }
         });
         cb_char = glfwSetCharCallback(env.getID(), (window, codepoint) -> {
             ImGuiHelper.addInputCharacter(codepoint);

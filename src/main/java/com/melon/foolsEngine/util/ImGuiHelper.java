@@ -16,6 +16,8 @@
 
 package com.melon.foolsEngine.util;
 
+import imgui.flag.ImGuiKey;
+
 /**
  * Optional bridge that forwards input events to Dear ImGui when imgui-java is on the classpath.
  * All forwarding becomes a no-op when the imgui dependency is absent — no class-loading side effects.
@@ -84,7 +86,19 @@ public final class ImGuiHelper {
         if (AVAILABLE) ImGuiInternal.addInputCharacter(codepoint);
     }
 
-    private static final class ImGuiInternal {
+    public static void setKeyBackspace(boolean down) { if (AVAILABLE) ImGuiInternal.setKeyEvent(imgui.flag.ImGuiKey.Backspace, down); }
+    public static void setKeyDelete(boolean down)    { if (AVAILABLE) ImGuiInternal.setKeyEvent(imgui.flag.ImGuiKey.Delete, down); }
+    public static void setKeyEnter(boolean down)     { if (AVAILABLE) ImGuiInternal.setKeyEvent(imgui.flag.ImGuiKey.Enter, down); }
+    public static void setKeyTab(boolean down)       { if (AVAILABLE) ImGuiInternal.setKeyEvent(imgui.flag.ImGuiKey.Tab, down); }
+    public static void setKeyEscape(boolean down)    { if (AVAILABLE) ImGuiInternal.setKeyEvent(imgui.flag.ImGuiKey.Escape, down); }
+    public static void setKeyLeft(boolean down)      { if (AVAILABLE) ImGuiInternal.setKeyEvent(imgui.flag.ImGuiKey.LeftArrow, down); }
+    public static void setKeyRight(boolean down)     { if (AVAILABLE) ImGuiInternal.setKeyEvent(imgui.flag.ImGuiKey.RightArrow, down); }
+    public static void setKeyUp(boolean down)        { if (AVAILABLE) ImGuiInternal.setKeyEvent(imgui.flag.ImGuiKey.UpArrow, down); }
+    public static void setKeyDown(boolean down)      { if (AVAILABLE) ImGuiInternal.setKeyEvent(imgui.flag.ImGuiKey.DownArrow, down); }
+    public static void setKeyHome(boolean down)      { if (AVAILABLE) ImGuiInternal.setKeyEvent(imgui.flag.ImGuiKey.Home, down); }
+    public static void setKeyEnd(boolean down)       { if (AVAILABLE) ImGuiInternal.setKeyEvent(imgui.flag.ImGuiKey.End, down); }
+    public static void setKeySpace(boolean down)     { if (AVAILABLE) ImGuiInternal.setKeyEvent(ImGuiKey.Space, down);}
+        private static final class ImGuiInternal {
         static void setKeyShift(boolean down) {
             if (imgui.ImGui.getCurrentContext().ptr != 0)
                 imgui.ImGui.getIO().setKeyShift(down);
@@ -145,6 +159,11 @@ public final class ImGuiHelper {
         static void addInputCharacter(int codepoint) {
             if (imgui.ImGui.getCurrentContext().ptr != 0)
                 imgui.ImGui.getIO().addInputCharacter(codepoint);
+        }
+
+        static void setKeyEvent(int imKey, boolean down) {
+            if (imgui.ImGui.getCurrentContext().ptr != 0)
+                imgui.ImGui.getIO().addKeyEvent(imKey, down);
         }
     }
 }
