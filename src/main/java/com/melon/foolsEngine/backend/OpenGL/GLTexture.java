@@ -41,6 +41,7 @@ class GLTexture implements Texture {
             buffer.flip();
 
             image = STBImage.stbi_load_from_memory(buffer, w, h, channels, 4);
+            MemoryUtil.memFree(buffer);
             if (image == null) {
                 STBImage.stbi_failure_reason();
                 throw new RuntimeException("Failed to load texture: " + STBImage.stbi_failure_reason());

@@ -46,7 +46,7 @@ public class Camera {
      */
     public Matrix4f vp() {
         if(lastV != null&&lastP!=null) {
-            if(projection.equals(lastP)&&view.equals(lastV)) {
+            if(projection.equals(lastP,1e-6f)&&view.equals(lastV,1e-6f)) {
                 return vp;
             }
         }

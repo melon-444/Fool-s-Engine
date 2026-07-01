@@ -82,7 +82,7 @@ void main() {
                         }
                     }
                 }
-                shadow /= 9.0;
+                shadow /= 25.0;
             }
         }
 

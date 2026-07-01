@@ -60,7 +60,7 @@ public abstract class InternalFactoryStub implements APIFactory {
     public static APIFactory VulkanINSTANCE() {
         if (VulkanINSTANCE == null)
             throw new IllegalStateException("Factory not initialized");
-        return OpenGLINSTANCE;
+        return VulkanINSTANCE;
     }
 
     protected static void InjectVulkan(InternalFactoryStub instance) {
