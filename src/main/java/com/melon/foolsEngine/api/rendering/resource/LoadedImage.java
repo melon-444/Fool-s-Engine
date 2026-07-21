@@ -5,7 +5,7 @@ import java.nio.ByteBuffer;
 /**
  * Holds pixel data loaded from an image file, along with dimensions and a cleanup callback.
  * <p>
- * Created internally by {@link com.melon.foolsEngine.backend.OpenGL.GLTextureManager}
+ * Created internally by {@link com.melon.foolsEngine.backend}
  * during upload and returned via {@link Texture#getImage()}. The {@link #free()} method
  * must be called to release the underlying native memory when the image is no longer needed;
  * this is handled automatically when the owning {@link Texture} is destroyed.

@@ -52,7 +52,7 @@ class GLTexture implements Texture {
             width = w.get();
             height = h.get();
 
-            this.image = new LoadedImage(image,width,height,()->{MemoryUtil.memFree(image);});
+            this.image = new LoadedImage(image,width,height,()->MemoryUtil.memFree(image));
             //System.out.println(width + "x" + height);
         } catch (IOException e) {
             throw new RuntimeException("Failed to load texture: "+e);
