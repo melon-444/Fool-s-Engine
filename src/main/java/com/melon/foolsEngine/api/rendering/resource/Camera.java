@@ -27,9 +27,10 @@ public class Camera {
     public Matrix4f projection;
     /** The view (look-at) matrix */
     public Matrix4f view;
-    private Matrix4f lastV;
-    private Matrix4f lastP;
-    private Matrix4f vp;
+    private final Matrix4f lastV = new Matrix4f();
+    private final Matrix4f lastP = new Matrix4f();
+    private final Matrix4f vp = new Matrix4f();
+    private boolean cacheValid;
 
     /**
      * @param view the view (look-at) matrix
@@ -45,14 +46,13 @@ public class Camera {
      * @return view-projection matrix (projection * view)
      */
     public Matrix4f vp() {
-        if(lastV != null&&lastP!=null) {
-            if(projection.equals(lastP,1e-6f)&&view.equals(lastV,1e-6f)) {
-                return vp;
-            }
+        if (cacheValid && projection.equals(lastP, 1E-6f) && view.equals(lastV, 1E-6f)) {
+            return vp;
         }
-        lastV = new Matrix4f(view);
-        lastP = new Matrix4f(projection);
-        vp = new Matrix4f(projection).mul(view);
+        lastV.set(view);
+        lastP.set(projection);
+        vp.set(projection).mul(view);
+        cacheValid = true;
         return vp;
     }
 

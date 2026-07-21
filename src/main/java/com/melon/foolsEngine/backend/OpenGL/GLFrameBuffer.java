@@ -59,7 +59,7 @@ class GLFrameBuffer implements RenderTarget {
 
         int status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
         if (status != GL_FRAMEBUFFER_COMPLETE) {
-            throw new RuntimeException("Framebuffer incomplete: 0x" + Integer.toHexString(status));
+            throw new IllegalStateException("Framebuffer incomplete: 0x" + Integer.toHexString(status));
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);

@@ -32,6 +32,7 @@ public class CameraCollector extends System {
     private final Matrix4f view = new Matrix4f();
     private final Matrix4f proj = new Matrix4f();
     private final PerspectiveProjection persp = new PerspectiveProjection(0,0,0);
+    private final Quaternionf conjugateTmp = new Quaternionf();
 
     {
         requiredComponents.add(CameraComponent.class);
@@ -58,7 +59,7 @@ public class CameraCollector extends System {
 
             Transform t = transforms.getComponent(e);
             Matrix4f view = this.view.identity()
-                    .rotate(t.rotation.conjugate(new Quaternionf()))
+                    .rotate(t.rotation.conjugate(conjugateTmp))
                     .translate(
                             -t.position.x,
                             -t.position.y,
