@@ -1,5 +1,6 @@
 package com.melon.foolsEngine.backend.OpenGL;
 
+import com.melon.foolsEngine.api.rendering.resource.LoadedImage;
 import com.melon.foolsEngine.api.rendering.resource.Texture;
 import com.melon.foolsEngine.api.rendering.resource.TextureManager;
 
@@ -9,10 +10,16 @@ class GLArrayTexture implements Texture {
 
     private final GLTextureManager manager;
     private final int layer;
+    private final LoadedImage image;
 
     GLArrayTexture(GLTextureManager manager, int layer) {
+        this(manager, layer, null);
+    }
+
+    GLArrayTexture(GLTextureManager manager, int layer, LoadedImage image) {
         this.manager = manager;
         this.layer = layer;
+        this.image = image;
     }
 
     @Override
@@ -35,12 +42,18 @@ class GLArrayTexture implements Texture {
     }
 
     @Override
+    public LoadedImage getImage() {
+        return image;
+    }
+
+    @Override
     public void upload(Path texture) {
         throw new UnsupportedOperationException("Use TextureManager.upload() for array textures");
     }
 
     @Override
     public void destroy() {
-        manager.releaseLayer(layer);
+        if (image != null) image.free();
+        manager.freeLayer(layer);
     }
 }

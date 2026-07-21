@@ -1,5 +1,6 @@
 package com.melon.foolsEngine.backend.OpenGL;
 
+import com.melon.foolsEngine.api.rendering.resource.LoadedImage;
 import com.melon.foolsEngine.api.rendering.resource.Texture;
 import org.lwjgl.stb.STBImage;
 import org.lwjgl.system.MemoryStack;
@@ -18,6 +19,7 @@ class GLTexture implements Texture {
 
     private int textureId;
     private boolean uploaded = false;
+    private LoadedImage image;
 
     @Override
     public void upload(Path texture) {
@@ -49,6 +51,8 @@ class GLTexture implements Texture {
 
             width = w.get();
             height = h.get();
+
+            this.image = new LoadedImage(image,width,height,()->{MemoryUtil.memFree(image);});
             //System.out.println(width + "x" + height);
         } catch (IOException e) {
             throw new RuntimeException("Failed to load texture: "+e);
@@ -91,5 +95,10 @@ class GLTexture implements Texture {
     @Override
     public void unbind() {
         glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    @Override
+    public LoadedImage getImage() {
+        return image;
     }
 }

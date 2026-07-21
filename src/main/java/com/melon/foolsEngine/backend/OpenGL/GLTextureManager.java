@@ -1,6 +1,7 @@
 package com.melon.foolsEngine.backend.OpenGL;
 
 import com.melon.foolsEngine.util.LoadMode;
+import com.melon.foolsEngine.api.rendering.resource.LoadedImage;
 import com.melon.foolsEngine.api.rendering.resource.Texture;
 import com.melon.foolsEngine.api.rendering.resource.TextureManager;
 import com.melon.foolsEngine.util.WrapMode;
@@ -13,7 +14,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.lwjgl.opengl.GL43.*;
@@ -25,7 +29,8 @@ class GLTextureManager implements TextureManager {
     private final int height;
     private final int maxLayers;
     private final Set<Integer> freeLayers = new HashSet<>();
-    private int nextLayer;
+    private final Map<Integer, GLArrayTexture> textureMap = new HashMap<>();
+    private final ByteBuffer blankLayer;
     private boolean mipmapDirty;
 
     private static final int PLACEHOLDER_LAYER = 0;
@@ -49,10 +54,20 @@ class GLTextureManager implements TextureManager {
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
+        int layerBytes = width * height * RGBA_BYTES;
+        blankLayer = MemoryUtil.memAlloc(layerBytes);
+        try {
+            for (int i = 0; i < layerBytes; i++) blankLayer.put(i, (byte) 0);
+        } catch (Exception e) {
+            MemoryUtil.memFree(blankLayer);
+            throw e;
+        }
+
+        for (int i = 1; i < maxLayers; i++) freeLayers.add(i);
+
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
 
         uploadPlaceholder();
-        nextLayer = 1;
         placeholder = new GLArrayTexture(this, PLACEHOLDER_LAYER);
     }
 
@@ -84,25 +99,23 @@ class GLTextureManager implements TextureManager {
     @Override
     public Texture upload(Path path, LoadMode mode, WrapMode wrap) {
         int layer = allocateLayer();
-        uploadInternal(path, layer, mode, wrap);
-        return new GLArrayTexture(this, layer);
+        return createTrackedTexture(layer, uploadInternal(path, layer, mode, wrap));
     }
 
     @Override
     public Texture upload(Path path, int layer) {
-        uploadInternal(path, layer, LoadMode.STRETCH, WrapMode.CLAMP_TO_BORDER);
-        return new GLArrayTexture(this, layer);
+        return upload(path, layer, LoadMode.STRETCH, WrapMode.CLAMP_TO_BORDER);
     }
 
     @Override
     public Texture upload(Path path, int layer, LoadMode mode, WrapMode wrap) {
-        uploadInternal(path, layer, mode, wrap);
-        return new GLArrayTexture(this, layer);
+        releaseCache(layer);
+        return createTrackedTexture(layer, uploadInternal(path, layer, mode, wrap));
     }
 
     // ---- core upload ----
 
-    private void uploadInternal(Path path, int layer, LoadMode mode, WrapMode wrap) {
+    private ByteBuffer uploadInternal(Path path, int layer, LoadMode mode, WrapMode wrap) {
         ByteBuffer rawImage;
         int srcW, srcH;
         try (MemoryStack stack = MemoryStack.stackPush();
@@ -132,21 +145,16 @@ class GLTextureManager implements TextureManager {
             throw new RuntimeException("Failed to load texture: " + e);
         }
 
-        ByteBuffer finalImage = rawImage;
-        try {
-            if (srcW != width || srcH != height) {
-                finalImage = processSize(rawImage, srcW, srcH, mode, wrap);
-            }
-            glBindTexture(GL_TEXTURE_2D_ARRAY, arrayTexId);
-            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layer, width, height, 1,
-                    GL_RGBA, GL_UNSIGNED_BYTE, finalImage);
-            mipmapDirty = true;
-        } finally {
-            if (finalImage != rawImage) {
-                MemoryUtil.memFree(finalImage);
-            }
+        ByteBuffer liveImage = rawImage;
+        if (srcW != width || srcH != height) {
+            liveImage = processSize(rawImage, srcW, srcH, mode, wrap);
             MemoryUtil.memFree(rawImage);
         }
+        glBindTexture(GL_TEXTURE_2D_ARRAY, arrayTexId);
+        glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layer, width, height, 1,
+                GL_RGBA, GL_UNSIGNED_BYTE, liveImage);
+        mipmapDirty = true;
+        return liveImage;
     }
 
     // ---- CPU size processing ----
@@ -272,6 +280,20 @@ class GLTextureManager implements TextureManager {
         return pixel;
     }
 
+    private GLArrayTexture createTrackedTexture(int layer, ByteBuffer pixels) {
+        GLArrayTexture tex = new GLArrayTexture(this, layer,
+                new LoadedImage(pixels, width, height, () -> MemoryUtil.memFree(pixels)));
+        textureMap.put(layer, tex);
+        return tex;
+    }
+
+    private void releaseCache(int layer) {
+        GLArrayTexture old = textureMap.remove(layer);
+        if (old != null && old.getImage() != null) {
+            old.getImage().free();
+        }
+    }
+
     // ---- rest ----
 
     @Override
@@ -281,9 +303,16 @@ class GLTextureManager implements TextureManager {
 
     @Override
     public void releaseLayer(int layer) {
-        if (layer > 0 && layer < nextLayer) {
-            freeLayers.add(layer);
-        }
+        freeLayer(layer);
+    }
+
+    void freeLayer(int layer) {
+        if (layer <= 0) return;
+        releaseCache(layer);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, arrayTexId);
+        glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layer, width, height, 1,
+                GL_RGBA, GL_UNSIGNED_BYTE, blankLayer);
+        freeLayers.add(layer);
     }
 
     @Override
@@ -312,24 +341,42 @@ class GLTextureManager implements TextureManager {
 
     @Override
     public int getActiveLayerCount() {
-        return nextLayer - freeLayers.size();
+        return textureMap.size();
+    }
+
+    @Override
+    public Texture getTexture(int layer) {
+        return textureMap.get(layer);
+    }
+
+    @Override
+    public List<Texture> getTextures() {
+        return List.copyOf(textureMap.values());
+    }
+
+    @Override
+    public void free(Texture texture) {
+        freeLayer(texture.getLayer());
     }
 
     @Override
     public void destroy() {
-        glDeleteTextures(arrayTexId);
+        releaseCache(PLACEHOLDER_LAYER);
+        for (GLArrayTexture tex : textureMap.values()) {
+            tex.destroy();
+        }
+        textureMap.clear();
         freeLayers.clear();
+        glDeleteTextures(arrayTexId);
+        MemoryUtil.memFree(blankLayer);
     }
 
     private int allocateLayer() {
-        if (!freeLayers.isEmpty()) {
-            int layer = freeLayers.iterator().next();
-            freeLayers.remove(layer);
-            return layer;
-        }
-        if (nextLayer >= maxLayers) {
+        if (freeLayers.isEmpty()) {
             throw new IllegalStateException("Texture layer limit exceeded: " + maxLayers);
         }
-        return nextLayer++;
+        int layer = freeLayers.iterator().next();
+        freeLayers.remove(layer);
+        return layer;
     }
 }

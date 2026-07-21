@@ -19,29 +19,59 @@ package com.melon.foolsEngine.api.rendering.resource;
 import java.nio.file.Path;
 
 /**
- * A GPU-resident 2D texture.
- * Obtain an instance via {@link com.melon.foolsEngine.core.world.ServiceFactory#getTexture()}
- * or {@link TextureManager#upload(Path)}.
+ * A GPU-resident texture resource.
+ * <p>
+ * There are two sources of {@code Texture} instances:
+ * <ul>
+ *   <li>{@link com.melon.foolsEngine.core.world.ServiceFactory#getTexture()} — a standalone
+ *       {@code GL_TEXTURE_2D} that binds to a unique texture unit slot.</li>
+ *   <li>{@link TextureManager#upload(Path)} — a slice of a {@code GL_TEXTURE_2D_ARRAY}
+ *       owned by a manager. The renderer detects array textures via
+ *       {@link #belongsTo()} and routes sampling through {@code sampler2DArray} +
+ *       {@code textureLayer} uniform.</li>
+ * </ul>
+ * Lifecycle:
+ * <pre>{@code
+ *   Texture tex = factory.getTexture();
+ *   tex.upload(Path.of("image.png"));
+ *   // ... use in render loop ...
+ *   tex.destroy();
+ * }</pre>
  */
 public interface Texture {
-    /** Loads a texture from a file and uploads it to the GPU */
+
+    /** Uploads pixel data from a file to the GPU. Safe to call only once per instance. */
     void upload(Path texture);
-    /** Releases GPU resources */
+
+    /**
+     * Releases GPU resources associated with this texture.
+     * For array textures ({@link #belongsTo()} != null), this returns the layer
+     * to the owning {@link TextureManager}'s free pool.
+     */
     void destroy();
-    /** Binds the texture to a specific texture unit slot */
+
+    /** Binds the texture to the specified texture unit slot ({@code GL_TEXTURE0 + slot}). */
     void bind(int slot);
-    /** Unbinds the texture */
+
+    /** Unbinds the texture from its current slot. */
     void unbind();
 
     /**
-     * Returns the {@link TextureManager} that owns this texture, or null if this is a
-     * standalone texture created via {@code factory.getTexture()}.
+     * Returns the raw pixel data uploaded to this texture.
+     * For array textures, this is valid until {@link #destroy()} is called.
+     * For standalone textures, returns {@code null} after upload (data is freed).
+     */
+    LoadedImage getImage();
+
+    /**
+     * Returns the {@link TextureManager} that owns this texture, or {@code null} if
+     * this is a standalone texture created via {@code factory.getTexture()}.
      */
     default TextureManager belongsTo() { return null; }
 
     /**
-     * Returns the layer index within the owning TextureManager's texture array,
-     * or -1 if this is a standalone texture.
+     * Returns the layer index within the owning {@link TextureManager}'s texture array,
+     * or {@code -1} if this is a standalone texture.
      */
     default int getLayer() { return -1; }
 }
