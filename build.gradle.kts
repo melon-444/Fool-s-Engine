@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "com.melon.foolsEngine"
-version = "0.0.8"
+version = "0.0.9"
 
 java {
     toolchain {
