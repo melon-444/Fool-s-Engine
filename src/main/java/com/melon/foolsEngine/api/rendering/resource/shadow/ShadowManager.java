@@ -14,9 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package com.melon.foolsEngine.api.rendering.resource;
+package com.melon.foolsEngine.api.rendering.resource.shadow;
 
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
+import com.melon.foolsEngine.api.rendering.resource.Camera;
+import com.melon.foolsEngine.api.rendering.resource.Light;
+import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
+import com.melon.foolsEngine.api.rendering.resource.Material;
 import com.melon.foolsEngine.util.OrthogonalProjection;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -24,7 +28,6 @@ import org.joml.Vector4f;
 
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import static java.lang.Math.*;

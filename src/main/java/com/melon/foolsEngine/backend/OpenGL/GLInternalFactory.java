@@ -5,8 +5,8 @@ import com.melon.foolsEngine.api.input.InputManager;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
-import com.melon.foolsEngine.api.rendering.resource.Texture;
-import com.melon.foolsEngine.api.rendering.resource.TextureManager;
+import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
+import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.WindowsManager;
 

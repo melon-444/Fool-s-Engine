@@ -1,7 +1,7 @@
 package com.melon.foolsEngine.backend.OpenGL;
 
-import com.melon.foolsEngine.api.rendering.resource.LoadedImage;
-import com.melon.foolsEngine.api.rendering.resource.Texture;
+import com.melon.foolsEngine.api.rendering.resource.texture.LoadedImage;
+import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
 import org.lwjgl.stb.STBImage;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;

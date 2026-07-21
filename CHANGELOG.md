@@ -1,5 +1,47 @@
 ## foolsEngine 更新日志
 
+### 0.0.9 — 2026-07-21
+
+---
+
+#### Bug 修复
+
+- **`InternalFactoryStub.VulkanINSTANCE()` 返回错误实例** — 复制粘贴错误导致返回 `OpenGLINSTANCE` 而非 `VulkanINSTANCE`，影响 `ServiceFactory` 中 10 处 Vulkan 后端分发
+- **Shader PCF 阴影除数错误** — `main_fsh.glsl` 5×5=25 采样点除以 `9.0` 而非 `25.0`，阴影亮度过高
+- **`GLTexture.upload()` 内存泄漏** — `MemoryUtil.memAlloc()` 分配的中间缓冲区未释放，每次纹理上传泄漏 off-heap 内存
+- **`GLArrayTexture.getImage()` 编译错误** — `return manager.get` 引用不存在的字段，此前构建走缓存未暴露
+- **`Camera.vp()` 缓存永不命中** — JOML `Matrix4f.equals()` 按引用比较，改为 `equals(Matrix4fc, float)` 按值比较
+
+#### ShadowManager 方向光阴影算法重写
+
+- **多层视锥深度采样** — `FRUSTUM_DEPTH_SAMPLES=4`，对 NDC 深度 4 层 × 4 角 = 16 个采样点（原 8 个仅近+远平面），解决高空俯瞰时视锥内部几何体被阴影裁切的问题
+- **自适应 Padding** — XY padding 与 Z padding 按视锥实际跨度动态缩放（基准 10%/20%），替代写死的 ±15/±30 常量
+- **消除中间世界空间 AABB** — NDC→世界→光空间一步完成，不再存储 `worldCorners[8]`
+
+#### JOML 零分配热路径
+
+- **`ShadowManager`** — 15+ 个缓冲区（ndcCorners, frustumCenter, invVP, lightView, tmpVec4 等）提升为类字段，每帧用 `.set()` 复用替代 `new`
+- **`Camera.vp()`** — 3 个 `Matrix4f` 字段预先初始化，`set()` 替代 `new Matrix4f(...)`
+- **`CameraCollector`** — `conjugate(new Quaternionf())` 改为复用字段
+
+#### TextureManager 重设计
+
+- **Free-list 池** — 构造时预填充所有可用层（1..maxLayers-1），移除 `nextLayer` 水位线
+- **GPU 层清零** — `freeLayer()` 调用 `glTexSubImage3D` 上传零缓冲区，释放层在 GPU 上被透明黑色覆盖
+- **纹理追踪** — `HashMap<Integer, GLArrayTexture>` 记录所有活跃纹理，`getTexture(int)` / `getTextures()` 实际可用
+- **`GLArrayTexture` 存储 `LoadedImage`** — 上传时保留像素数据，`getImage()` 返回有效数据，`destroy()` 自动释放
+- **覆盖安全** — 向占用层重新上传时自动关闭旧 `LoadedImage`
+- **`LoadedImage`** — `close()` 重命名为 `free()`，完善 Javadoc
+
+#### API 文档
+
+- **`TextureManager` / `Texture` / `LoadedImage`** — 完整 Javadoc（类级说明、全部 @param/@return/@see）
+
+#### 项目维护
+
+- **SKILL.md 精简** — 移除项目文件树与可变状态（移至 `PROJECT_STATE.md`），保留架构知识
+- **OpenGL 上下文** — `GLFWWindowsManager` 请求 4.3 Core Profile，移除 `GLFW_OPENGL_FORWARD_COMPAT`（曾在 Windows 上导致 `GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT`）
+
 ### 0.0.8 — 2026-06-22
 
 ---
@@ -97,6 +139,48 @@
 - 初始预览版本
 
 ## foolsEngine Changelog
+
+### 0.0.9 — 2026-07-21
+
+---
+
+#### Bug Fixes
+
+- **`InternalFactoryStub.VulkanINSTANCE()` returned wrong instance** — copy-paste bug caused OpenGL instance to be returned for Vulkan path, affecting 10 dispatch points in `ServiceFactory`
+- **Shader PCF shadow divisor was wrong** — `main_fsh.glsl` divided 5×5=25 sample sum by `9.0` instead of `25.0`, making shadows too bright
+- **`GLTexture.upload()` memory leak** — `MemoryUtil.memAlloc()` intermediate ByteBuffer was never freed, leaking off-heap memory on every upload
+- **`GLArrayTexture.getImage()` compile error** — `return manager.get` referenced non-existent field; previously hidden by Gradle build cache
+- **`Camera.vp()` cache never hit** — JOML `Matrix4f.equals()` uses reference equality; switched to `equals(Matrix4fc, float)` with epsilon
+
+#### ShadowManager Directional Shadow Algorithm Rewrite
+
+- **Multi-layer frustum depth sampling** — `FRUSTUM_DEPTH_SAMPLES=4`, sampling 4 depth layers × 4 corners = 16 points (was 8: near+far only). Fixes shadow cutoff artifacts on interior frustum geometry (e.g. high-altitude cameras looking down)
+- **Adaptive padding** — XY and Z padding now scale with actual frustum extent (10%/20% base), replacing hardcoded ±15/±30 constants
+- **Eliminated intermediate world-space AABB** — NDC→world→light in a single pass; `worldCorners[8]` storage removed
+
+#### JOML Zero-Allocation Hot Paths
+
+- **`ShadowManager`** — 15+ reusable buffers (ndcCorners, frustumCenter, invVP, lightView, tmpVec4, etc.) promoted to instance fields, `.set()` replaces per-frame `new`
+- **`Camera.vp()`** — 3 `Matrix4f` fields pre-allocated; `set()` replaces `new Matrix4f(...)`
+- **`CameraCollector`** — `conjugate(new Quaternionf())` replaced with reusable field
+
+#### TextureManager Redesign
+
+- **Free-list pool** — all available layers pre-populated at construction (1..maxLayers-1); `nextLayer` watermark removed
+- **GPU layer zeroing** — `freeLayer()` calls `glTexSubImage3D` with zero-buffer before returning the slot to the pool
+- **Texture tracking** — `HashMap<Integer, GLArrayTexture>` records all active textures; `getTexture(int)` / `getTextures()` actually functional
+- **`GLArrayTexture` stores `LoadedImage`** — pixel data preserved at upload time; `getImage()` returns valid data; `destroy()` auto-frees
+- **Overwrite-safe** — re-uploading to an occupied layer frees the old `LoadedImage` first
+- **`LoadedImage`** — `close()` renamed to `free()`; full Javadoc
+
+#### API Documentation
+
+- **`TextureManager` / `Texture` / `LoadedImage`** — complete Javadoc (class-level descriptions, all @param/@return/@see)
+
+#### Project Maintenance
+
+- **SKILL.md slimmed** — file tree and mutable state moved to `PROJECT_STATE.md`; kept architectural knowledge only
+- **OpenGL context** — `GLFWWindowsManager` requests 4.3 Core Profile; `GLFW_OPENGL_FORWARD_COMPAT` removed (caused `GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT` on Windows)
 
 ### 0.0.8 — 2026-06-22
 

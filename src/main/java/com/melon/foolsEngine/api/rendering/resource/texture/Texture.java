@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package com.melon.foolsEngine.api.rendering.resource;
+package com.melon.foolsEngine.api.rendering.resource.texture;
 
 import java.nio.file.Path;
 

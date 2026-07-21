@@ -1,8 +1,8 @@
 package com.melon.foolsEngine.backend.OpenGL;
 
-import com.melon.foolsEngine.api.rendering.resource.LoadedImage;
-import com.melon.foolsEngine.api.rendering.resource.Texture;
-import com.melon.foolsEngine.api.rendering.resource.TextureManager;
+import com.melon.foolsEngine.api.rendering.resource.texture.LoadedImage;
+import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
+import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
 
 import java.nio.file.Path;
 

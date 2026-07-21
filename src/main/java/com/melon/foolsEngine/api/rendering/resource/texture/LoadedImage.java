@@ -1,4 +1,4 @@
-package com.melon.foolsEngine.api.rendering.resource;
+package com.melon.foolsEngine.api.rendering.resource.texture;
 
 import java.nio.ByteBuffer;
 

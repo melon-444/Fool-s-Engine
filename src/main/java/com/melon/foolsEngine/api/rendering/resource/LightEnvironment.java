@@ -17,6 +17,7 @@
 package com.melon.foolsEngine.api.rendering.resource;
 
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
+import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowManager;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;

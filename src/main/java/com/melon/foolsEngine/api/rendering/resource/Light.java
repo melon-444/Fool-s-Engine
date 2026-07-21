@@ -17,6 +17,8 @@
 package com.melon.foolsEngine.api.rendering.resource;
 
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
+import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowInfo;
+import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowManager;
 import com.melon.foolsEngine.util.LightType;
 import com.melon.foolsEngine.util.OrthogonalProjection;
 import com.melon.foolsEngine.util.PerspectiveProjection;

@@ -16,6 +16,8 @@
 
 package com.melon.foolsEngine.api.rendering.resource;
 
+import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

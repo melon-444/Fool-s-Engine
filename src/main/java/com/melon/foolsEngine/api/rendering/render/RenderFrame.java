@@ -21,7 +21,7 @@ import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.api.rendering.resource.Material;
 import com.melon.foolsEngine.api.rendering.resource.RenderCommand;
 import com.melon.foolsEngine.api.rendering.resource.RenderScene;
-import com.melon.foolsEngine.api.rendering.resource.ShadowManager;
+import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowManager;
 
 /**
  * Main rendering orchestrator. Manages a frame lifecycle and executes draw calls.

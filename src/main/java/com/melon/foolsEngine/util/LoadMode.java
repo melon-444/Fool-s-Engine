@@ -16,7 +16,7 @@
 
 package com.melon.foolsEngine.util;
 
-import com.melon.foolsEngine.api.rendering.resource.TextureManager;
+import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
 
 /**
  * Controls how {@link TextureManager} handles images whose dimensions

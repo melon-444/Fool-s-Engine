@@ -16,6 +16,7 @@
 
 package com.melon.foolsEngine.api.rendering.resource;
 
+import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
