@@ -30,6 +30,7 @@ public final class LoadedImage {
     private final int width;
     private final int height;
     private final Runnable closer;
+    private boolean closed;
 
     /**
      * @param pixels raw RGBA pixel data (native memory, ownership transferred to this object)
@@ -56,6 +57,9 @@ public final class LoadedImage {
 
     /** Releases the underlying pixel buffer. Safe to call multiple times. */
     public void free() {
-        if (closer != null) closer.run();
+        if (!closed) {
+            closer.run();
+            closed = true;
+        } else throw new IllegalStateException("Already closed.");
     }
 }

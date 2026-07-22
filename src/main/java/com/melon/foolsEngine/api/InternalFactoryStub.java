@@ -31,7 +31,7 @@ public abstract class InternalFactoryStub implements APIFactory {
             try {
                 Class.forName("com.melon.foolsEngine.backend.OpenGL.GLInternalFactory");
             } catch (ClassNotFoundException e) {
-                throw new RuntimeException(e);
+                throw new InternalError(e);
             }
     }
 

@@ -44,7 +44,7 @@ import static java.lang.Math.*;
  */
 public class Light {
 
-    /** Parallel light (aka directional / sun light) */
+    /** Parallel light (aka directional / sunlight) */
     public static final LightType DIRECTIONAL = LightType.PARALLEL;
     /** Omnidirectional point light with attenuation */
     public static final LightType POINT = LightType.POINT;
@@ -58,15 +58,15 @@ public class Light {
     public final LightType type;
     /** RGB color of the light */
     public final Vector3f color;
-    /** Normalized direction vector (primarily for directional and spot lights) */
+    /** Normalized direction vector (primarily for directional and spotlights) */
     public final Vector3f direction;
-    /** Position in world space (primarily for point and spot lights) */
+    /** Position in world space (primarily for point and spotlights) */
     public final Vector3f position;
     /** Intensity multiplier */
     public final float intensity;
-    /** Inner cone angle in degrees (spot lights only) */
+    /** Inner cone angle in degrees (spotlights only) */
     public final float innerTheta;
-    /** Outer cone angle in degrees (spot lights only) */
+    /** Outer cone angle in degrees (spotlights only) */
     public final float outerTheta;
     /** Shadow data; null if this light does not cast shadows */
     public final ShadowInfo shadowInfo;

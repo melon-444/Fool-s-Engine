@@ -1,5 +1,6 @@
 package com.melon.foolsEngine.backend.OpenGL;
 
+import com.melon.foolsEngine.util.ImageFormatDetector;
 import com.melon.foolsEngine.util.LoadMode;
 import com.melon.foolsEngine.api.rendering.resource.texture.LoadedImage;
 import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
@@ -9,10 +10,10 @@ import org.lwjgl.stb.STBImage;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -116,33 +117,55 @@ class GLTextureManager implements TextureManager {
     // ---- core upload ----
 
     private ByteBuffer uploadInternal(Path path, int layer, LoadMode mode, WrapMode wrap) {
-        ByteBuffer rawImage;
-        int srcW, srcH;
-        try (MemoryStack stack = MemoryStack.stackPush();
-             FileInputStream fis = new FileInputStream(path.toFile())) {
-
-            IntBuffer w = stack.mallocInt(1);
-            IntBuffer h = stack.mallocInt(1);
-            IntBuffer channels = stack.mallocInt(1);
-
-            STBImage.stbi_set_flip_vertically_on_load(true);
-            byte[] data = fis.readAllBytes();
-            ByteBuffer buffer = MemoryUtil.memAlloc(data.length);
-            try {
-                buffer.put(data).flip();
-                rawImage = STBImage.stbi_load_from_memory(buffer, w, h, channels, RGBA_BYTES);
-            } finally {
-                MemoryUtil.memFree(buffer);
-            }
-
-            if (rawImage == null) {
-                throw new RuntimeException("Failed to load texture: " + STBImage.stbi_failure_reason());
-            }
-
-            srcW = w.get();
-            srcH = h.get();
+        byte[] data;
+        try {
+            data = Files.readAllBytes(path);
         } catch (IOException e) {
             throw new RuntimeException("Failed to load texture: " + e);
+        }
+
+        var format = ImageFormatDetector.detect(data);
+        ByteBuffer rawImage;
+        int srcW, srcH;
+
+        if (!ImageFormatDetector.isStbSupported(format)) {
+            var result = GLImageIOLoader.load(data);
+            if (result == null) {
+                throw new RuntimeException(
+                        "Failed to load texture: unsupported format " + format + " — " + path);
+            }
+            rawImage = result.pixels();
+            srcW = result.width();
+            srcH = result.height();
+        } else {
+            try (MemoryStack stack = MemoryStack.stackPush()) {
+                IntBuffer w = stack.mallocInt(1);
+                IntBuffer h = stack.mallocInt(1);
+                IntBuffer channels = stack.mallocInt(1);
+
+                STBImage.stbi_set_flip_vertically_on_load(true);
+                ByteBuffer buffer = MemoryUtil.memAlloc(data.length);
+                try {
+                    buffer.put(data).flip();
+                    rawImage = STBImage.stbi_load_from_memory(buffer, w, h, channels, RGBA_BYTES);
+                } finally {
+                    MemoryUtil.memFree(buffer);
+                }
+
+                if (rawImage == null) {
+                    var result = GLImageIOLoader.load(data);
+                    if (result == null) {
+                        throw new RuntimeException(
+                                "Failed to load texture: " + STBImage.stbi_failure_reason());
+                    }
+                    rawImage = result.pixels();
+                    srcW = result.width();
+                    srcH = result.height();
+                } else {
+                    srcW = w.get();
+                    srcH = h.get();
+                }
+            }
         }
 
         ByteBuffer liveImage = rawImage;

@@ -12,6 +12,8 @@ import com.melon.foolsEngine.api.windows.WindowsManager;
 
 public class GLInternalFactory extends InternalFactoryStub {
 
+    private GLInternalFactory(){}
+
     static {
         InternalFactoryStub.InjectOpenGL(new GLInternalFactory());
     }
