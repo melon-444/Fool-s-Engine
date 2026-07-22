@@ -39,7 +39,6 @@
 
 #### 项目维护
 
-- **SKILL.md 精简** — 移除项目文件树与可变状态（移至 `PROJECT_STATE.md`），保留架构知识
 - **OpenGL 上下文** — `GLFWWindowsManager` 请求 4.3 Core Profile，移除 `GLFW_OPENGL_FORWARD_COMPAT`（曾在 Windows 上导致 `GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT`）
 
 ### 0.0.8 — 2026-06-22
@@ -179,7 +178,6 @@
 
 #### Project Maintenance
 
-- **SKILL.md slimmed** — file tree and mutable state moved to `PROJECT_STATE.md`; kept architectural knowledge only
 - **OpenGL context** — `GLFWWindowsManager` requests 4.3 Core Profile; `GLFW_OPENGL_FORWARD_COMPAT` removed (caused `GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT` on Windows)
 
 ### 0.0.8 — 2026-06-22
