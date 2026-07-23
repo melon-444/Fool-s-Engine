@@ -8,6 +8,7 @@ import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.api.windows.WindowsManager;
 import com.melon.foolsEngine.core.ECS.basicComponents.Transform;
+import com.melon.foolsEngine.core.EngineBoot;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.CursorMode;
 import com.melon.foolsEngine.util.ObjLoader;
@@ -21,7 +22,7 @@ import java.nio.file.Path;
 
 public class TestInputBackend {
     private static final int SHADOW_MAP_SIZE = 4096;
-    static FoolsEngine foolsEngine = FoolsEngine.create(1000, 100, 800, 600);
+    static FoolsEngine foolsEngine = EngineBoot.create(1000, 100, 800, 600, false);
 
     public static void main(String[] args) {
         WindowsManager manager = foolsEngine.serviceFactory.getWindowsManager();

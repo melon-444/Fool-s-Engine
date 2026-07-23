@@ -74,8 +74,6 @@ public class SystemManager {
                 }
             }
 
-            if(Instance.scheduler!=null)Instance.scheduler.checkRegisteredSystem();
-
             return system;
 
         } catch (Exception e) {

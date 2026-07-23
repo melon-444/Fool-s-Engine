@@ -20,59 +20,60 @@ import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.resource.RenderScene;
 import com.melon.foolsEngine.core.ECS.system.ClientSystem;
 import com.melon.foolsEngine.core.ECS.system.ServerSystem;
-import com.melon.foolsEngine.core.ECS.system.System;
-import com.melon.foolsEngine.core.FoolsEngine;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class SystemScheduler {
 
-    private final List<ServerSystem<?>> serverSystems = new ArrayList<>();
+    private static final long FIXED_DT_NS = 16_666_667L;
+    private static final float FIXED_DT_S = FIXED_DT_NS * 1e-9f;
+
+    private static final int MAX_FRAME_CATCHUP = 5;
+
+    private record ServerEntry(ServerSystem<?> system, Object ctx) {
+    }
+
+    private final List<ServerEntry> serverEntries = new ArrayList<>();
     private final List<ClientSystem<?>> clientSystems = new ArrayList<>();
     private final RenderFrame frame;
     private final RenderScene scene = new RenderScene();
-    private final FoolsEngine instance;
 
+    private long accumulatorNs;
     private long lastFrameNs = java.lang.System.nanoTime();
 
-    public SystemScheduler(FoolsEngine engine) {
-        this.instance = engine;
-        this.frame = engine.frame;
+    public SystemScheduler(RenderFrame frame) {
+        this.frame = frame;
         scene.setBackGroundColor(0.1f, 0.1f, 0.12f, 1.0f);
-        syncSystems();
     }
 
-    private void syncSystems() {
-        clientSystems.clear();
-        serverSystems.clear();
-        for (System<?> system : instance.systemManager.getRegisteredSystems().values()) {
-            if (system instanceof ClientSystem<?> cs) {
-                clientSystems.add(cs);
-            } else if (system instanceof ServerSystem<?> ss) {
-                serverSystems.add(ss);
-            }
-        }
+    public <C> void registerServer(ServerSystem<C> system, C ctx) {
+        serverEntries.add(new ServerEntry(system, ctx));
     }
 
-    public void checkRegisteredSystem() {
-        syncSystems();
+    public void registerClient(ClientSystem<?> system) {
+        clientSystems.add(system);
     }
 
-    //TODO:find a way to deliver context to server systems
     @SuppressWarnings({"unchecked", "rawtypes"})
     public void update() {
         long now = java.lang.System.nanoTime();
-        float dt = (now - lastFrameNs) * 1e-9f;
+        long elapsed = now - lastFrameNs;
         lastFrameNs = now;
 
-        for (ServerSystem ss : serverSystems) {
-            ss.update(dt, null);
+        accumulatorNs += Math.min(elapsed, FIXED_DT_NS * MAX_FRAME_CATCHUP);
+
+        while (accumulatorNs >= FIXED_DT_NS) {
+            for (ServerEntry entry : serverEntries) {
+                ((ServerSystem) entry.system).update(FIXED_DT_S, entry.ctx);
+            }
+            accumulatorNs -= FIXED_DT_NS;
         }
 
+        float frameDt = elapsed * 1e-9f;
         scene.clear();
         for (ClientSystem cs : clientSystems) {
-            cs.update(dt, scene);
+            cs.update(frameDt, scene);
         }
 
         frame.render(scene);

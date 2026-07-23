@@ -12,6 +12,7 @@ import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.api.windows.WindowsManager;
 import com.melon.foolsEngine.core.ECS.basicComponents.Transform;
+import com.melon.foolsEngine.core.EngineBoot;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.*;
 import com.melon.foolsEngine.util.imgui.ImGuiContext;
@@ -23,7 +24,7 @@ import org.joml.Math;
 import java.nio.file.Path;
 
 public class TestLightBackend {
-    static FoolsEngine foolsEngine = FoolsEngine.create(1000, 100, 800, 600);
+    static FoolsEngine foolsEngine = EngineBoot.create(1000, 100, 800, 600, false);
     private static final int SHADOW_MAP_SIZE = 8192;
     private static final int MAX_SHADOW_LAYERS = 16;
     private static final float SPOT_SHADOW_NEAR = 0.1f;
