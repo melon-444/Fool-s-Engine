@@ -16,16 +16,15 @@
 
 package com.melon.foolsEngine.core;
 
+import com.melon.foolsEngine.api.rendering.render.GraphicsContext;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
+import com.melon.foolsEngine.api.rendering.render.RenderThreadPool;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.core.ECS.entity.EntityFactory;
 import com.melon.foolsEngine.core.ECS.system.CameraCollector;
 import com.melon.foolsEngine.core.ECS.system.LightCollector;
 import com.melon.foolsEngine.core.ECS.system.RenderableCollector;
-import com.melon.foolsEngine.core.world.ComponentManager;
-import com.melon.foolsEngine.core.world.EntityManager;
-import com.melon.foolsEngine.core.world.ServiceFactory;
-import com.melon.foolsEngine.core.world.SystemManager;
+import com.melon.foolsEngine.core.world.*;
 import com.melon.foolsEngine.util.logger.Logger;
 
 public class FoolsEngine {
@@ -36,7 +35,9 @@ public class FoolsEngine {
     public final EntityFactory factory;
     public final RenderFrame frame;
     public final ServiceFactory serviceFactory;
+    public final SystemScheduler systemScheduler;
     public final boolean isServer;
+
 
     public final Logger LOGGER = new Logger("SYSTEM");
 
@@ -69,12 +70,17 @@ public class FoolsEngine {
         this.width = windowWidth;
         this.height = windowHeight;
 
+
         if (!isServer) {
             mainWindow = serviceFactory.getWindowsManager().createWindow();
             mainWindow.setSize(windowWidth, windowHeight);
             systemManager.registerSystem(CameraCollector.class);
             systemManager.registerSystem(LightCollector.class);
             systemManager.registerSystem(RenderableCollector.class);
+            frame.init();
+            this.systemScheduler = new SystemScheduler(frame, new RenderThreadPool(), (GraphicsContext) mainWindow);
+        } else {
+            this.systemScheduler = new SystemScheduler();
         }
     }
 

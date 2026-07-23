@@ -40,9 +40,10 @@ public class SystemScheduler {
     private final RenderFrame frame;
     private final RenderThreadPool threadPool;
     private final GraphicsContext ctx;
+    private final boolean headless;
 
-    private RenderScene sceneFront = new RenderScene();
-    private RenderScene sceneBack = new RenderScene();
+    private RenderScene sceneFront;
+    private RenderScene sceneBack;
 
     private final Object swapLock = new Object();
     private boolean renderReady;
@@ -54,43 +55,56 @@ public class SystemScheduler {
         this.frame = frame;
         this.threadPool = threadPool;
         this.ctx = ctx;
+        this.headless = (frame == null || threadPool == null || ctx == null);
 
-        sceneFront.setBackGroundColor(0.1f, 0.1f, 0.12f, 1.0f);
-        sceneBack.setBackGroundColor(0.1f, 0.1f, 0.12f, 1.0f);
+        if (!headless) {
+            sceneFront = new RenderScene();
+            sceneBack = new RenderScene();
+            sceneFront.setBackGroundColor(0.1f, 0.1f, 0.12f, 1.0f);
+            sceneBack.setBackGroundColor(0.1f, 0.1f, 0.12f, 1.0f);
 
-        Thread.UncaughtExceptionHandler handler = (t, e) -> {
-            java.lang.System.err.println("[FATAL] Render thread crashed: " + e.getMessage());
-            e.printStackTrace();
-        };
+            Thread.UncaughtExceptionHandler handler = (t, e) -> {
+                java.lang.System.err.println("[FATAL] Render thread crashed: " + e.getMessage());
+                e.printStackTrace();
+            };
 
-        threadPool.executeOnMain(() -> {
-            Thread.currentThread().setUncaughtExceptionHandler(handler);
-            ctx.makeCurrent();
-            try {
-                while (!ctx.shouldClose()) {
-                    synchronized (swapLock) {
-                        while (!renderReady && !ctx.shouldClose()) {
-                            try {
-                                swapLock.wait();
-                            } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt();
-                                return;
+            threadPool.executeOnMain(() -> {
+                Thread.currentThread().setUncaughtExceptionHandler(handler);
+                ctx.makeCurrent();
+                try {
+                    while (!ctx.shouldClose()) {
+                        synchronized (swapLock) {
+                            while (!renderReady && !ctx.shouldClose()) {
+                                try {
+                                    swapLock.wait();
+                                } catch (InterruptedException e) {
+                                    Thread.currentThread().interrupt();
+                                    return;
+                                }
                             }
+                            if (ctx.shouldClose()) return;
+
+                            frame.render(sceneFront);
+                            ctx.swapBuffers();
+                            ctx.pollEvents();
+
+                            renderReady = false;
+                            swapLock.notifyAll();
                         }
-                        if (ctx.shouldClose()) return;
-
-                        frame.render(sceneFront);
-                        ctx.swapBuffers();
-                        ctx.pollEvents();
-
-                        renderReady = false;
-                        swapLock.notifyAll();
                     }
+                } finally {
+                    ctx.releaseCurrent();
                 }
-            } finally {
-                ctx.releaseCurrent();
-            }
-        });
+            });
+        }
+    }
+
+    public SystemScheduler() {
+        this(null, null, null);
+    }
+
+    public boolean isHeadless() {
+        return headless;
     }
 
     public <C> void registerServer(ServerSystem<C> system, C ctx) {
@@ -115,6 +129,8 @@ public class SystemScheduler {
             }
             accumulatorNs -= FIXED_DT_NS;
         }
+
+        if (headless) return;
 
         float frameDt = elapsed * 1e-9f;
         sceneBack.clear();
@@ -155,6 +171,8 @@ public class SystemScheduler {
         synchronized (swapLock) {
             swapLock.notifyAll();
         }
-        threadPool.shutdown();
+        if (threadPool != null) {
+            threadPool.shutdown();
+        }
     }
 }
