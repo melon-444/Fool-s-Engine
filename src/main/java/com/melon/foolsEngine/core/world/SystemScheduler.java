@@ -16,7 +16,9 @@
 
 package com.melon.foolsEngine.core.world;
 
+import com.melon.foolsEngine.api.rendering.render.GraphicsContext;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
+import com.melon.foolsEngine.api.rendering.render.RenderThreadPool;
 import com.melon.foolsEngine.api.rendering.resource.RenderScene;
 import com.melon.foolsEngine.core.ECS.system.ClientSystem;
 import com.melon.foolsEngine.core.ECS.system.ServerSystem;
@@ -28,7 +30,6 @@ public class SystemScheduler {
 
     private static final long FIXED_DT_NS = 16_666_667L;
     private static final float FIXED_DT_S = FIXED_DT_NS * 1e-9f;
-
     private static final int MAX_FRAME_CATCHUP = 5;
 
     private record ServerEntry(ServerSystem<?> system, Object ctx) {
@@ -37,14 +38,59 @@ public class SystemScheduler {
     private final List<ServerEntry> serverEntries = new ArrayList<>();
     private final List<ClientSystem<?>> clientSystems = new ArrayList<>();
     private final RenderFrame frame;
-    private final RenderScene scene = new RenderScene();
+    private final RenderThreadPool threadPool;
+    private final GraphicsContext ctx;
+
+    private RenderScene sceneFront = new RenderScene();
+    private RenderScene sceneBack = new RenderScene();
+
+    private final Object swapLock = new Object();
+    private boolean renderReady;
 
     private long accumulatorNs;
     private long lastFrameNs = java.lang.System.nanoTime();
 
-    public SystemScheduler(RenderFrame frame) {
+    public SystemScheduler(RenderFrame frame, RenderThreadPool threadPool, GraphicsContext ctx) {
         this.frame = frame;
-        scene.setBackGroundColor(0.1f, 0.1f, 0.12f, 1.0f);
+        this.threadPool = threadPool;
+        this.ctx = ctx;
+
+        sceneFront.setBackGroundColor(0.1f, 0.1f, 0.12f, 1.0f);
+        sceneBack.setBackGroundColor(0.1f, 0.1f, 0.12f, 1.0f);
+
+        Thread.UncaughtExceptionHandler handler = (t, e) -> {
+            java.lang.System.err.println("[FATAL] Render thread crashed: " + e.getMessage());
+            e.printStackTrace();
+        };
+
+        threadPool.executeOnMain(() -> {
+            Thread.currentThread().setUncaughtExceptionHandler(handler);
+            ctx.makeCurrent();
+            try {
+                while (!ctx.shouldClose()) {
+                    synchronized (swapLock) {
+                        while (!renderReady && !ctx.shouldClose()) {
+                            try {
+                                swapLock.wait();
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                                return;
+                            }
+                        }
+                        if (ctx.shouldClose()) return;
+
+                        frame.render(sceneFront);
+                        ctx.swapBuffers();
+                        ctx.pollEvents();
+
+                        renderReady = false;
+                        swapLock.notifyAll();
+                    }
+                }
+            } finally {
+                ctx.releaseCurrent();
+            }
+        });
     }
 
     public <C> void registerServer(ServerSystem<C> system, C ctx) {
@@ -71,15 +117,44 @@ public class SystemScheduler {
         }
 
         float frameDt = elapsed * 1e-9f;
-        scene.clear();
+        sceneBack.clear();
         for (ClientSystem cs : clientSystems) {
-            cs.update(frameDt, scene);
+            cs.update(frameDt, sceneBack);
         }
 
-        frame.render(scene);
+        synchronized (swapLock) {
+            while (renderReady) {
+                try {
+                    swapLock.wait();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+
+            RenderScene tmp = sceneFront;
+            sceneFront = sceneBack;
+            sceneBack = tmp;
+
+            sceneBack.setLighting(sceneFront.getLighting());
+            sceneBack.setTextureManager(sceneFront.getTextureManager());
+            sceneBack.setBackGroundColor(
+                    sceneFront.getBgR(), sceneFront.getBgG(),
+                    sceneFront.getBgB(), sceneFront.getBgA());
+
+            renderReady = true;
+            swapLock.notifyAll();
+        }
     }
 
     public RenderScene getScene() {
-        return scene;
+        return sceneBack;
+    }
+
+    public void shutdown() {
+        synchronized (swapLock) {
+            swapLock.notifyAll();
+        }
+        threadPool.shutdown();
     }
 }

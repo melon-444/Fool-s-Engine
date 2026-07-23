@@ -17,7 +17,10 @@
 package com.melon.foolsEngine.core.ECS.system;
 
 import com.melon.foolsEngine.core.FoolsEngine;
+import com.melon.foolsEngine.core.annotation.Distribution;
+import com.melon.foolsEngine.core.annotation.OnlyIn;
 
+@OnlyIn(Distribution.Dedicated_Server)
 public abstract class ServerSystem<Context> extends System<Context> {
     public ServerSystem(FoolsEngine engine) {
         super(engine);

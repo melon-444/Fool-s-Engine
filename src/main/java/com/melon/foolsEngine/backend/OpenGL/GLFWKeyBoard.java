@@ -2,6 +2,7 @@ package com.melon.foolsEngine.backend.OpenGL;
 
 import com.melon.foolsEngine.api.input.FoolsEngineKeyCode;
 import com.melon.foolsEngine.api.input.InputDevice;
+import com.melon.foolsEngine.api.rendering.render.GraphicsContext;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.util.ImGuiHelper;
 import org.joml.Vector2f;
@@ -53,18 +54,15 @@ class GLFWKeyBoard implements InputDevice<Window> {
 
     @Override
     public void attachEnvironment(Window env) {
-        if (!(env instanceof GLWindow))
-            throw new IllegalStateException("not a GLFW Window");
-        cb_key = glfwSetKeyCallback(env.getID(), (window, key, scancode, action, mods) -> {
+        if (!(env instanceof GraphicsContext ctx)) {
+            throw new IllegalArgumentException("OpenGL Environment must implement GraphicsContext");
+        }
+        long window = ctx.nativeHandle();
+        cb_key = glfwSetKeyCallback(window, (win, key, scancode, action, mods) -> {
             switch (action) {
-                case GLFW_RELEASE:
-                    keyboard.put(key, false);
-                    break;
-                case GLFW_PRESS:
-                    keyboard.put(key, true);
-                    break;
-                case GLFW_REPEAT:
-                    break;
+                case GLFW_RELEASE -> keyboard.put(key, false);
+                case GLFW_PRESS -> keyboard.put(key, true);
+                case GLFW_REPEAT -> {}
             }
             if (key == GLFW_KEY_LEFT_SHIFT || key == GLFW_KEY_RIGHT_SHIFT) {
                 ImGuiHelper.setKeyShift(action != GLFW_RELEASE);
@@ -96,7 +94,7 @@ class GLFWKeyBoard implements InputDevice<Window> {
                 }
             }
         });
-        cb_char = glfwSetCharCallback(env.getID(), (window, codepoint) -> {
+        cb_char = glfwSetCharCallback(window, (win, codepoint) -> {
             ImGuiHelper.addInputCharacter(codepoint);
         });
     }
@@ -110,6 +108,4 @@ class GLFWKeyBoard implements InputDevice<Window> {
             cb_char = null;
         }
     }
-
-
 }

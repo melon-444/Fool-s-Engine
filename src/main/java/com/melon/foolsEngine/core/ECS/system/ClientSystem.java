@@ -17,7 +17,10 @@
 package com.melon.foolsEngine.core.ECS.system;
 
 import com.melon.foolsEngine.core.FoolsEngine;
+import com.melon.foolsEngine.core.annotation.Distribution;
+import com.melon.foolsEngine.core.annotation.OnlyIn;
 
+@OnlyIn(Distribution.Client)
 public abstract class ClientSystem<Context> extends System<Context> {
     public ClientSystem(FoolsEngine engine) {
         super(engine);

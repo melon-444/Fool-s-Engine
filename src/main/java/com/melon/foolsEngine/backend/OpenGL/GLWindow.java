@@ -1,5 +1,6 @@
 package com.melon.foolsEngine.backend.OpenGL;
 
+import com.melon.foolsEngine.api.rendering.render.GraphicsContext;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.util.CursorMode;
 import com.melon.foolsEngine.util.ImGuiHelper;
@@ -12,7 +13,7 @@ import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.glViewport;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
-class GLWindow implements Window {
+class GLWindow implements Window, GraphicsContext {
 
     private final long id;
     private final List<Window> children = new ArrayList<>();
@@ -151,6 +152,26 @@ class GLWindow implements Window {
     }
 
     @Override
+    public void makeCurrent() {
+        glfwMakeContextCurrent(id);
+    }
+
+    @Override
+    public void releaseCurrent() {
+        glfwMakeContextCurrent(0);
+    }
+
+    @Override
+    public void swapBuffers() {
+        glfwSwapBuffers(id);
+    }
+
+    @Override
+    public void pollEvents() {
+        glfwPollEvents();
+    }
+
+    @Override
     public void update() {
         glfwMakeContextCurrent(id);
         glfwSwapInterval(intervalMode);
@@ -196,6 +217,11 @@ class GLWindow implements Window {
     @Override
     public boolean shouldClose() {
         return glfwWindowShouldClose(id);
+    }
+
+    @Override
+    public long nativeHandle() {
+        return id;
     }
 
     @Override

@@ -16,104 +16,147 @@
 
 package com.melon.foolsEngine.util;
 
-import com.melon.foolsEngine.core.ECS.basicComponents.Component;
-
 import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 
 public class SparseSet<Component extends com.melon.foolsEngine.core.ECS.basicComponents.Component> implements Iterable<Component> {
-    private final int[] sparseArray,
-          dense_entity;
+
+    private final int[] sparseArray;
+    private final int[] dense_entity;
     private final Component[] dense_component;
-    private int size = 0;
+    private int size;
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
     @SuppressWarnings("unchecked")
-    public SparseSet(int size,Class<Component> componentType) {
-        if(size <= 0) throw new IllegalArgumentException("Size must be positive");
+    public SparseSet(int size, Class<Component> componentType) {
+        if (size <= 0) throw new IllegalArgumentException("Size must be positive");
         sparseArray = new int[size];
         dense_entity = new int[size];
-        Object tmp =  Array.newInstance(componentType, size);
+        Object tmp = Array.newInstance(componentType, size);
+        dense_component = (Component[]) tmp;
 
-        dense_component = (Component[])tmp;
-
-        //init -1 refers to null
-        Arrays.fill(sparseArray,-1);
-        Arrays.fill(dense_entity,-1);
-        Arrays.fill(dense_component,null);
+        Arrays.fill(sparseArray, -1);
+        Arrays.fill(dense_entity, -1);
+        Arrays.fill(dense_component, null);
     }
 
-    public int getSize(){
-        return size;
+    public int getSize() {
+        lock.readLock().lock();
+        try {
+            return size;
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
-    private void setComponentUnchecked(int entityID, Component component) {
-        dense_component[sparseArray[entityID]] =  component;
-    }
-
-    public void setComponent(int entityID, Component component) {
-        if(exists(entityID))
-            setComponentUnchecked(entityID,component);
-        else
-            throw new IllegalArgumentException("Entity "+entityID+" does not exist");
+    public Component get(int entityID) {
+        lock.readLock().lock();
+        try {
+            if (!existsUnsafe(entityID)) return null;
+            return dense_component[sparseArray[entityID]];
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     public Component getComponent(int entityID) {
-        if(!exists(entityID)) return null;
-        return dense_component[sparseArray[entityID]];
+        return get(entityID);
     }
 
     public int getEntity(int componentIndex) {
-        return dense_entity[componentIndex];
+        lock.readLock().lock();
+        try {
+            return dense_entity[componentIndex];
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    public boolean exists(int entityID) {
+        lock.readLock().lock();
+        try {
+            return existsUnsafe(entityID);
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    private boolean existsUnsafe(int entityID) {
+        int index = sparseArray[entityID];
+        return index != -1 && dense_entity[index] == entityID;
+    }
+
+    public List<Component> snapshot() {
+        lock.readLock().lock();
+        try {
+            List<Component> list = new ArrayList<>(size);
+            for (int i = 0; i < size; i++) {
+                list.add(dense_component[i]);
+            }
+            return list;
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    public void setComponent(int entityID, Component component) {
+        lock.writeLock().lock();
+        try {
+            if (existsUnsafe(entityID))
+                dense_component[sparseArray[entityID]] = component;
+            else
+                throw new IllegalArgumentException("Entity " + entityID + " does not exist");
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
     public void createComponent(int entityID, Component component) {
-        sparseArray[entityID] = size;
-        dense_entity[size] = entityID;
-        dense_component[size] = component;
-        size++;
+        lock.writeLock().lock();
+        try {
+            sparseArray[entityID] = size;
+            dense_entity[size] = entityID;
+            dense_component[size] = component;
+            size++;
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
-
 
     public void deleteComponent(int entityID) {
-        if(!exists(entityID)) return;
+        lock.writeLock().lock();
+        try {
+            if (!existsUnsafe(entityID)) return;
 
-        int compIndex = sparseArray[entityID];
-        int lastIndex = size - 1;
+            int compIndex = sparseArray[entityID];
+            int lastIndex = size - 1;
+            int lastEntity = dense_entity[lastIndex];
 
-        int lastEntity = dense_entity[lastIndex];
+            dense_component[compIndex] = dense_component[lastIndex];
+            dense_entity[compIndex] = lastEntity;
+            sparseArray[lastEntity] = compIndex;
 
-        dense_component[compIndex] = dense_component[lastIndex];
-        dense_entity[compIndex] = lastEntity;
-
-        sparseArray[lastEntity] = compIndex;
-
-        dense_component[lastIndex] = null;
-        dense_entity[lastIndex] = -1;
-        sparseArray[entityID] = -1;
-
-        size--;
-    }
-
-    private boolean componentExists(int entityID) {
-        return dense_entity[sparseArray[entityID]] != -1;
+            dense_component[lastIndex] = null;
+            dense_entity[lastIndex] = -1;
+            sparseArray[entityID] = -1;
+            size--;
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
     public Component[] getComponentArray() {
         return dense_component;
     }
 
-    private boolean exists(int entityID) {
-        int index = sparseArray[entityID];
-        return index != -1 && dense_entity[index] == entityID;
-    }
-
-
     @Override
     public Iterator<Component> iterator() {
-        return new Iterator<Component>() {
-
+        return new Iterator<>() {
             int index = 0;
 
             @Override
@@ -123,7 +166,7 @@ public class SparseSet<Component extends com.melon.foolsEngine.core.ECS.basicCom
 
             @Override
             public Component next() {
-                return dense_component[sparseArray[index++]];
+                return dense_component[index++];
             }
 
             @Override
@@ -135,8 +178,6 @@ public class SparseSet<Component extends com.melon.foolsEngine.core.ECS.basicCom
             public void forEachRemaining(Consumer<? super Component> action) {
                 Iterator.super.forEachRemaining(action);
             }
-
-
         };
     }
 }

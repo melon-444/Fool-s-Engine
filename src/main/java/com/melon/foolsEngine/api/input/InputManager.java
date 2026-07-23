@@ -16,7 +16,6 @@
 
 package com.melon.foolsEngine.api.input;
 
-import com.melon.foolsEngine.api.windows.Window;
 import org.joml.Vector2f;
 
 import java.util.ArrayList;
@@ -28,30 +27,38 @@ public class InputManager {
     private final InputState state = new InputState();
     private final ActionMapping map = new ActionMapping();
 
-    private InputDevice<Window> keyboard;
-    private InputDevice<Window> mouse;
+    private InputDevice<?> keyboard;
+    private InputDevice<?> mouse;
 
     public void register(InputDevice<?> inputDevice) {
         inputDevices.add(inputDevice);
         map.register(inputDevice);
     }
 
-    public void registerKeyboard(InputDevice<Window> kb) {
+    public void registerKeyboard(InputDevice<?> kb) {
         keyboard = kb;
         register(kb);
     }
 
-    public void registerMouse(InputDevice<Window> m) {
+    public void registerMouse(InputDevice<?> m) {
         mouse = m;
         register(m);
     }
 
-    public InputDevice<Window> getKeyboard() {
+    public InputDevice<?> getKeyboard() {
         return keyboard;
     }
 
-    public InputDevice<Window> getMouse() {
+    public InputDevice<?> getMouse() {
         return mouse;
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T extends InputDevice<?>> T getDevice(Class<T> type) {
+        for (InputDevice<?> d : inputDevices) {
+            if (type.isInstance(d)) return (T) d;
+        }
+        return null;
     }
 
     public void bind(InputDevice<?> inputDevice, FoolsEngineKeyCode id, Action action) {
@@ -64,31 +71,32 @@ public class InputManager {
     public void beginFrame() {
         inputDevices.forEach(InputDevice::beginFrame);
         state.clearSignalCache();
-        for(InputDevice<?> inputDevice : inputDevices) {
+        for (InputDevice<?> inputDevice : inputDevices) {
             Map<FoolsEngineKeyCode, List<Action>> currentMap = map.get(inputDevice);
             if (currentMap == null) continue;
-            for(Map.Entry<FoolsEngineKeyCode, List<Action>> entry : currentMap.entrySet()) {
+            for (Map.Entry<FoolsEngineKeyCode, List<Action>> entry : currentMap.entrySet()) {
                 FoolsEngineKeyCode id = entry.getKey();
                 if (id == FoolsEngineKeyCode.NULL) continue;
-                for(Action action : entry.getValue()) {
-                    switch (action.Type()){
-                        case BUTTON :
-                            state.setDown(action,inputDevice.getButton(id));
-                            state.setPressed(action,state.isDown(action)&&!state.isDownLast(action));
+                for (Action action : entry.getValue()) {
+                    switch (action.Type()) {
+                        case BUTTON:
+                            state.setDown(action, inputDevice.getButton(id));
+                            state.setPressed(action, state.isDown(action) && !state.isDownLast(action));
                             break;
-                        case AXIS_1D :
-                            state.setAxis1D(action,inputDevice.getAxis1D(id));
+                        case AXIS_1D:
+                            state.setAxis1D(action, inputDevice.getAxis1D(id));
                             break;
-                        case AXIS_2D :
-                            state.setAxis2D(action,inputDevice.getAxis2D(id).x, inputDevice.getAxis2D(id).y);
+                        case AXIS_2D:
+                            state.setAxis2D(action, inputDevice.getAxis2D(id).x, inputDevice.getAxis2D(id).y);
                             break;
                         case AXIS_1DDel:
-                            state.setAxis1DDelta(action,inputDevice.getAxis1DDelta(id));
+                            state.setAxis1DDelta(action, inputDevice.getAxis1DDelta(id));
                             break;
                         case AXIS_2DDel:
-                            state.setAxis2DDelta(action,inputDevice.getAxis2DDelta(id).x, inputDevice.getAxis2DDelta(id).y);
+                            state.setAxis2DDelta(action, inputDevice.getAxis2DDelta(id).x, inputDevice.getAxis2DDelta(id).y);
                             break;
-                        default :  throw new RuntimeException("Unsupported action type");
+                        default:
+                            throw new RuntimeException("Unsupported action type");
                     }
                 }
             }
@@ -107,7 +115,7 @@ public class InputManager {
      * @param action the action want to detect
      * @return whether the action is activated
      */
-    public boolean isActionDown(Action action){
+    public boolean isActionDown(Action action) {
         return state.isDown(action);
     }
 
@@ -116,7 +124,7 @@ public class InputManager {
      * @param action the action want to detect
      * @return whether the action is triggered once
      */
-    public boolean isActionPressed(Action action){
+    public boolean isActionPressed(Action action) {
         return state.isPressed(action);
     }
 
@@ -125,7 +133,7 @@ public class InputManager {
      * @param action the action want to detect
      * @return the value of sliding in current frame
      */
-    public float getActionAxis1D(Action action){
+    public float getActionAxis1D(Action action) {
         return state.getAxis1D(action);
     }
 
@@ -134,7 +142,7 @@ public class InputManager {
      * @param action the action want to detect
      * @return the value of sliding in current frame
      */
-    public Vector2f getActionAxis2D(Action action){
+    public Vector2f getActionAxis2D(Action action) {
         return state.getAxis2D(action);
     }
 
@@ -143,7 +151,7 @@ public class InputManager {
      * @param action the action want to detect
      * @return the value of sliding in current frame
      */
-    public float getActionAxis1DDelta(Action action){
+    public float getActionAxis1DDelta(Action action) {
         return state.getAxis1DDelta(action);
     }
 
@@ -152,8 +160,7 @@ public class InputManager {
      * @param action the action want to detect
      * @return the value of sliding in current frame
      */
-    public Vector2f getActionAxis2DDelta(Action action){
+    public Vector2f getActionAxis2DDelta(Action action) {
         return state.getAxis2DDelta(action);
     }
-
 }

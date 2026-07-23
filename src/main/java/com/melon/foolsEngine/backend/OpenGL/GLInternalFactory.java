@@ -59,7 +59,7 @@ public class GLInternalFactory extends InternalFactoryStub {
 
     @Override
     protected <E> InputManager inputManager(E env) {
-        if (env instanceof GLWindow window) {
+        if (env instanceof com.melon.foolsEngine.api.windows.Window window) {
             InputManager im = new InputManager();
             GLFWKeyBoard kb = new GLFWKeyBoard();
             GLFWMouse mouse = new GLFWMouse();
@@ -69,7 +69,7 @@ public class GLInternalFactory extends InternalFactoryStub {
             im.registerMouse(mouse);
             return im;
         }
-        throw new IllegalArgumentException("OpenGL implementation needs GL window instance instead of " + env.getClass().getName());
+        throw new IllegalArgumentException("OpenGL implementation needs Window instance instead of " + env.getClass().getName());
     }
 
     @Override

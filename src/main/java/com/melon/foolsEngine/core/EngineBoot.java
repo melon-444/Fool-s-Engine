@@ -30,6 +30,7 @@ public final class EngineBoot {
 
     public static FoolsEngine create(int maxEntities, int maxComponents, int width, int height, boolean isServer) {
         ValidatingLoader loader = new ValidatingLoader(Thread.currentThread().getContextClassLoader(),isServer);
+        Thread.currentThread().setContextClassLoader(loader);
         try {
             loader.loadClass("com.melon.foolsEngine.core.FoolsEngine", true);
         }catch(ClassNotFoundException e) {
@@ -51,10 +52,11 @@ public final class EngineBoot {
         if (ann == null) {
             return;
         }
-        if (isServer && ann.env() == Distribution.Client) {
+        if (isServer && ann.value() == Distribution.Client) {
             throw new IllegalStateException(
                     "Client-only class registered on server: " + clazz.getName());
         }
+        //Client has Built-In server while dedicated server has no Built-In client.
     }
 
     static final class ValidatingLoader extends ClassLoader {
