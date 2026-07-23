@@ -16,25 +16,72 @@
 
 package com.melon.foolsEngine.core.ECS.system;
 
-import com.melon.foolsEngine.core.ECS.basicComponents.Light;
+import com.melon.foolsEngine.api.rendering.resource.Light;
+import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
+import com.melon.foolsEngine.api.rendering.resource.RenderScene;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.SparseSet;
 
-public class LightCollector extends System {
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
-    private final SparseSet<Light> Lights;
+public class LightCollector extends ClientSystem<RenderScene> {
+
+    private final SparseSet<com.melon.foolsEngine.core.ECS.basicComponents.Light> ecsLights;
+    private final Map<Integer, Light> activeLights = new HashMap<>();
+
     {
-        requiredComponents.add(Light.class);
+        requiredComponents.add(com.melon.foolsEngine.core.ECS.basicComponents.Light.class);
     }
 
     public LightCollector(FoolsEngine engine) {
         super(engine);
-        Lights = getSparseSet(Light.class);
+        ecsLights = getSparseSet(com.melon.foolsEngine.core.ECS.basicComponents.Light.class);
     }
 
     @Override
-    public void update(long dt) {
-        //TODO complete
+    public void update(float dt, RenderScene scene) {
+        LightEnvironment env = scene.getLighting();
+        if (env == null) {
+            return;
+        }
 
+        Set<Integer> currentEntities = new HashSet<>(entities);
+        Set<Integer> toRemove = new HashSet<>(activeLights.keySet());
+        toRemove.removeAll(currentEntities);
+
+        for (int eid : toRemove) {
+            Light removed = activeLights.remove(eid);
+            if (removed != null) {
+                env.remove(removed);
+            }
+        }
+
+        for (int eid : currentEntities) {
+            if (activeLights.containsKey(eid)) {
+                continue;
+            }
+
+            com.melon.foolsEngine.core.ECS.basicComponents.Light ecsLight = ecsLights.getComponent(eid);
+            if (ecsLight == null) {
+                continue;
+            }
+
+            Light apiLight;
+            switch (ecsLight.lightType) {
+                case PARALLEL -> apiLight = Light.directional(ecsLight.color, ecsLight.direction);
+                case POINT -> apiLight = Light.point(ecsLight.color, ecsLight.position);
+                case SPOT -> apiLight = Light.spot(ecsLight.color, ecsLight.direction, ecsLight.position,
+                        ecsLight.innerTheta, ecsLight.outerTheta);
+                default -> {
+                    continue;
+                }
+            }
+
+            env.add(apiLight);
+            activeLights.put(eid, apiLight);
+        }
     }
 }

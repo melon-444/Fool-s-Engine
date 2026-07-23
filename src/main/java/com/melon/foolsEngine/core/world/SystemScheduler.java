@@ -16,32 +16,70 @@
 
 package com.melon.foolsEngine.core.world;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import com.melon.foolsEngine.api.rendering.render.RenderFrame;
+import com.melon.foolsEngine.api.rendering.resource.RenderScene;
+import com.melon.foolsEngine.core.ECS.system.ClientSystem;
+import com.melon.foolsEngine.core.ECS.system.ServerSystem;
 import com.melon.foolsEngine.core.ECS.system.System;
 import com.melon.foolsEngine.core.FoolsEngine;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class SystemScheduler {
-    private final List<System> systems = new ArrayList<>();
-    private final FoolsEngine Instance;
-    private long dt = 1;
+
+    private final List<ServerSystem<?>> serverSystems = new ArrayList<>();
+    private final List<ClientSystem<?>> clientSystems = new ArrayList<>();
+    private final RenderFrame frame;
+    private final RenderScene scene = new RenderScene();
+    private final FoolsEngine instance;
+
+    private long lastFrameNs = java.lang.System.nanoTime();
 
     public SystemScheduler(FoolsEngine engine) {
-        this.Instance = engine;
-        systems.addAll(Instance.systemManager.getRegisteredSystems().values());
+        this.instance = engine;
+        this.frame = engine.frame;
+        scene.setBackGroundColor(0.1f, 0.1f, 0.12f, 1.0f);
+        syncSystems();
+    }
+
+    @SuppressWarnings("unchecked")
+    private void syncSystems() {
+        clientSystems.clear();
+        serverSystems.clear();
+        for (System system : instance.systemManager.getRegisteredSystems().values()) {
+            if (system instanceof ClientSystem<?> cs) {
+                clientSystems.add(cs);
+            } else if (system instanceof ServerSystem<?> ss) {
+                serverSystems.add(ss);
+            }
+        }
     }
 
     public void checkRegisteredSystem() {
-        for (System system : Instance.systemManager.getRegisteredSystems().values()) {
-            if(!systems.contains(system))
-                systems.add(system);
-        }
+        syncSystems();
     }
 
-    public void update(){
-        for(System s : systems){
-            s.update(dt);
+    //TODO:find a way to deliver context to server systems
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public void update() {
+        long now = java.lang.System.nanoTime();
+        float dt = (now - lastFrameNs) * 1e-9f;
+        lastFrameNs = now;
+
+        for (ServerSystem ss : serverSystems) {
+            ss.update(dt, null);
         }
+
+        scene.clear();
+        for (ClientSystem cs : clientSystems) {
+            cs.update(dt, scene);
+        }
+
+        frame.render(scene);
+    }
+
+    public RenderScene getScene() {
+        return scene;
     }
 }

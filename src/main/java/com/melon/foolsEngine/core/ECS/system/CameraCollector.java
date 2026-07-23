@@ -16,22 +16,23 @@
 
 package com.melon.foolsEngine.core.ECS.system;
 
+import com.melon.foolsEngine.api.rendering.resource.Camera;
+import com.melon.foolsEngine.api.rendering.resource.RenderScene;
 import com.melon.foolsEngine.core.ECS.basicComponents.CameraComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.Transform;
 import com.melon.foolsEngine.core.FoolsEngine;
-import com.melon.foolsEngine.api.rendering.resource.Camera;
 import com.melon.foolsEngine.util.PerspectiveProjection;
 import com.melon.foolsEngine.util.SparseSet;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 
-public class CameraCollector extends System {
+public class CameraCollector extends ClientSystem<RenderScene> {
 
     private final SparseSet<CameraComponent> cameras;
     private final SparseSet<Transform> transforms;
     private final Matrix4f view = new Matrix4f();
     private final Matrix4f proj = new Matrix4f();
-    private final PerspectiveProjection persp = new PerspectiveProjection(0,0,0);
+    private final PerspectiveProjection persp = new PerspectiveProjection(0, 0, 0);
     private final Quaternionf conjugateTmp = new Quaternionf();
 
     {
@@ -45,13 +46,11 @@ public class CameraCollector extends System {
         transforms = getSparseSet(Transform.class);
     }
 
-    //TODO:complete perspective projection and orthogonal projection
     @Override
-    public void update(long dt) {
+    public void update(float dt, RenderScene scene) {
 
         for (int e : entities) {
             CameraComponent cam = cameras.getComponent(e);
-            //Only select the first activated camera.
             if (!cam.active)
                 continue;
             else
@@ -65,19 +64,19 @@ public class CameraCollector extends System {
                             -t.position.y,
                             -t.position.z
                     );
-            persp.aspect= INSTANCE.aspect;
-            persp.fov=cam.FOVy;
-            persp.near=cam.near;
+            persp.aspect = INSTANCE.aspect;
+            persp.fov = cam.FOVy;
+            persp.near = cam.near;
             Matrix4f proj = persp.get(this.proj.identity());
-            INSTANCE.frame.setCamera(new Camera(view, proj));
+            scene.setCamera(new Camera(view, proj));
             break;
         }
     }
 
-    private void deactivateOtherCam(int excludeEntityID){
+    private void deactivateOtherCam(int excludeEntityID) {
         for (int e : entities) {
             CameraComponent cam = cameras.getComponent(e);
-            if(e!=excludeEntityID)
+            if (e != excludeEntityID)
                 cam.active = false;
         }
     }

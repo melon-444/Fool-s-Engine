@@ -47,6 +47,7 @@ public class SystemManager {
         Instance = engineInstance;
     }
 
+    @SuppressWarnings("unchecked")
     public <T extends System> T registerSystem(Class<T> systemClass) {
 
         try {
@@ -54,7 +55,8 @@ public class SystemManager {
             T system = systemClass.getDeclaredConstructor(FoolsEngine.class).newInstance(Instance);
 
             systems.put(systemClass, system);
-            for (var klass : system.getRequiredComponents()) {
+            Set<Class<? extends Component>> reqComps = system.getRequiredComponents();
+            for (Class<? extends Component> klass : reqComps) {
                 if (!receiveComponent.containsKey(klass)) {
                     Set<Class<? extends System>> components = new HashSet<>();
                     components.add(systemClass);

@@ -25,7 +25,7 @@ import com.melon.foolsEngine.util.SparseSet;
 import java.util.HashSet;
 import java.util.Set;
 
-public abstract class System {
+public abstract class System<Context> {
 
     public Set<Integer> entities = new HashSet<>();
     protected Set<Class<? extends Component>> requiredComponents = new HashSet<>();
@@ -38,20 +38,19 @@ public abstract class System {
     @SuppressWarnings("unchecked")
     protected <T extends Component> SparseSet<T> getSparseSet(Class<T> clazz) {
         return (SparseSet<T>) INSTANCE.componentManager.getComponentMap().get(clazz);
-    };
+    }
 
     public Signature genSignatureFromRequired(ComponentManager componentManager, int maxComponents) {
         Signature sig = new Signature(maxComponents);
-        for (Class<? extends Component> componentType : requiredComponents){
+        for (Class<? extends Component> componentType : requiredComponents) {
             sig.mix(componentManager.getComponentSignature(componentType));
         }
         return sig;
     }
 
     public Set<Class<? extends Component>> getRequiredComponents() {
-        return  requiredComponents;
+        return requiredComponents;
     }
 
-    public abstract void update(long dt);
-
+    public abstract void update(float dt, Context ctx);
 }
