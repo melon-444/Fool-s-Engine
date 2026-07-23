@@ -31,17 +31,15 @@ class GLRenderFrame implements RenderFrame{
     private final Queue<RenderCommand> commandQueue = new LinkedList<RenderCommand>();
     private Camera camera;
     private boolean init = false;
-    private RenderThreadPool renderThreadPool;
     private LightEnvironment lightEnv;
     private int drawCallCounter;
 
     @Override
     public void init(){
-        if(init){throw new IllegalStateException("Already init");}
+        if(init){return;}
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_GREATER);
         glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
-        renderThreadPool = new RenderThreadPool();
         init = true;
     }
 

@@ -18,7 +18,6 @@ package com.melon.foolsEngine.core;
 
 import com.melon.foolsEngine.api.rendering.render.GraphicsContext;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
-import com.melon.foolsEngine.api.rendering.render.RenderThreadPool;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.core.ECS.entity.EntityFactory;
 import com.melon.foolsEngine.core.ECS.system.CameraCollector;
@@ -78,7 +77,7 @@ public class FoolsEngine {
             systemManager.registerSystem(LightCollector.class);
             systemManager.registerSystem(RenderableCollector.class);
             frame.init();
-            this.systemScheduler = new SystemScheduler(frame, new RenderThreadPool(), (GraphicsContext) mainWindow);
+            this.systemScheduler = new SystemScheduler(frame, (GraphicsContext) mainWindow);
         } else {
             this.systemScheduler = new SystemScheduler();
         }

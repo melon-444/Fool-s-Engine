@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "com.melon.foolsEngine"
-version = "0.0.9"
+version = "0.1.0"
 
 java {
     toolchain {
@@ -108,8 +108,17 @@ tasks.register<JavaExec>("runTestLightBackend") {
     jvmArgs(nmtJvmArgs)
 }
 
+tasks.register<JavaExec>("runTesECSRenderFlow") {
+    dependsOn(tasks.compileTestJava)
+    group = "test with nmt"
+    description = "Runs TesECSRenderFlow (ECS + SystemScheduler) with NativeMemoryTracking=detail"
+    mainClass.set("com.melon.foolsEngineTest.TesECSRenderFlow")
+    classpath = sourceSets["test"].runtimeClasspath
+    jvmArgs(nmtJvmArgs)
+}
+
 tasks.register("runAllTests") {
-    dependsOn("runTestBackend", "runTestInputBackend", "runTestLightBackend")
+    dependsOn("runTestBackend", "runTestInputBackend", "runTestLightBackend", "runTesECSRenderFlow")
     group = "test with nmt"
     description = "Runs all test classes with NativeMemoryTracking=detail"
 }
