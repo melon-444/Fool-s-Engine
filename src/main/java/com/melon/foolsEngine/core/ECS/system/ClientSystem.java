@@ -16,13 +16,15 @@
 
 package com.melon.foolsEngine.core.ECS.system;
 
+import com.melon.foolsEngine.api.rendering.render.GraphicsContext;
+import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.core.annotation.Distribution;
 import com.melon.foolsEngine.core.annotation.OnlyIn;
 
 @OnlyIn(Distribution.Client)
-public abstract class ClientSystem<Context> extends System<Context> {
+public abstract class ClientSystem extends System<RenderScene> {
     public ClientSystem(FoolsEngine engine) {
-        super(engine);
+        super(engine,engine.systemScheduler.getScene());
     }
 }

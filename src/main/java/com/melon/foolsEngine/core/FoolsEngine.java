@@ -77,9 +77,9 @@ public class FoolsEngine {
             systemManager.registerSystem(LightCollector.class);
             systemManager.registerSystem(RenderableCollector.class);
             frame.init();
-            this.systemScheduler = new SystemScheduler(frame, (GraphicsContext) mainWindow);
+            this.systemScheduler = new SystemScheduler(frame, (GraphicsContext) mainWindow,systemManager);
         } else {
-            this.systemScheduler = new SystemScheduler();
+            this.systemScheduler = new SystemScheduler(systemManager);
         }
     }
 

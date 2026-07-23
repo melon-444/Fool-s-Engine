@@ -30,10 +30,24 @@ public abstract class System<Context> {
     public Set<Integer> entities = new HashSet<>();
     protected Set<Class<? extends Component>> requiredComponents = new HashSet<>();
     protected final FoolsEngine INSTANCE;
+    protected Context context;
 
     public System(FoolsEngine engine) {
-        this.INSTANCE = engine;
+        this(engine,null);
     }
+    public System(FoolsEngine engine,Context context) {
+        this.INSTANCE = engine;
+        this.context = context;
+    }
+
+    public Context getContext() {
+        return context;
+    }
+
+    public void setContext(Context context) {
+        this.context = context;
+    }
+
 
     @SuppressWarnings("unchecked")
     protected <T extends Component> SparseSet<T> getSparseSet(Class<T> clazz) {

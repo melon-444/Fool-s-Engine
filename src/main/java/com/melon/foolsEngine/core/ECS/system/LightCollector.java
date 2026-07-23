@@ -27,7 +27,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public class LightCollector extends ClientSystem<RenderScene> {
+public class LightCollector extends ClientSystem {
 
     private final SparseSet<com.melon.foolsEngine.core.ECS.basicComponents.Light> ecsLights;
     private final Map<Integer, Light> activeLights = new HashMap<>();

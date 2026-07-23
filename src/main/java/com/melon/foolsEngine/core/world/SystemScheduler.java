@@ -46,7 +46,7 @@ public class SystemScheduler {
     private long accumulatorNs;
     private long lastFrameNs = java.lang.System.nanoTime();
 
-    public SystemScheduler(RenderFrame frame, GraphicsContext ctx) {
+    public SystemScheduler(RenderFrame frame, GraphicsContext ctx,SystemManager systemManager) {
         this.frame = frame;
         this.ctx = ctx;
         this.headless = (frame == null || ctx == null);
@@ -57,17 +57,25 @@ public class SystemScheduler {
             sceneFront.setBackGroundColor(0.1f, 0.1f, 0.12f, 1.0f);
             sceneBack.setBackGroundColor(0.1f, 0.1f, 0.12f, 1.0f);
         }
+
+        for(var system: systemManager.getRegisteredSystems().values()) {
+            if (system instanceof ClientSystem<?> clientSystem)
+                registerClient(clientSystem);
+            if (system instanceof ServerSystem<?> serverSystem)
+                registerServer(serverSystem,serverSystem.getContext());
+        }
+
     }
 
-    public SystemScheduler() {
-        this(null, null);
+    public SystemScheduler(SystemManager systemManager) {
+        this(null, null,systemManager);
     }
 
     public boolean isHeadless() {
         return headless;
     }
 
-    public <C> void registerServer(ServerSystem<C> system, C ctx) {
+    public <Context> void registerServer(ServerSystem<?> system, Context ctx) {
         serverEntries.add(new ServerEntry(system, ctx));
     }
 

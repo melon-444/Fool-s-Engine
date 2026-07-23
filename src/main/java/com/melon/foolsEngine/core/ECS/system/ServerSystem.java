@@ -22,7 +22,7 @@ import com.melon.foolsEngine.core.annotation.OnlyIn;
 
 @OnlyIn(Distribution.Dedicated_Server)
 public abstract class ServerSystem<Context> extends System<Context> {
-    public ServerSystem(FoolsEngine engine) {
-        super(engine);
+    public ServerSystem(FoolsEngine engine,Context context) {
+        super(engine,context);
     }
 }
