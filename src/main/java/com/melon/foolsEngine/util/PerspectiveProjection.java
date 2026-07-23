@@ -18,7 +18,7 @@ package com.melon.foolsEngine.util;
 
 import org.joml.Matrix4f;
 
-public class PerspectiveProjection implements Projection {
+public final class PerspectiveProjection implements Projection {
 
     public float fov;
     public float aspect;

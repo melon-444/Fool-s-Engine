@@ -18,7 +18,7 @@ package com.melon.foolsEngine.core.ECS.system;
 
 import com.melon.foolsEngine.api.rendering.resource.Light;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
-import com.melon.foolsEngine.api.rendering.resource.RenderScene;
+import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.SparseSet;
 

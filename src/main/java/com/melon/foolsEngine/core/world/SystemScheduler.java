@@ -18,7 +18,7 @@ package com.melon.foolsEngine.core.world;
 
 import com.melon.foolsEngine.api.rendering.render.GraphicsContext;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
-import com.melon.foolsEngine.api.rendering.resource.RenderScene;
+import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.core.ECS.system.ClientSystem;
 import com.melon.foolsEngine.core.ECS.system.ServerSystem;
 

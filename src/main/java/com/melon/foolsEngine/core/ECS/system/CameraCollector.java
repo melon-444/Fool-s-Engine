@@ -17,7 +17,7 @@
 package com.melon.foolsEngine.core.ECS.system;
 
 import com.melon.foolsEngine.api.rendering.resource.Camera;
-import com.melon.foolsEngine.api.rendering.resource.RenderScene;
+import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.core.ECS.basicComponents.CameraComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.Transform;
 import com.melon.foolsEngine.core.FoolsEngine;

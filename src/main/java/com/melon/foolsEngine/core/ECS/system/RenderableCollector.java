@@ -18,8 +18,8 @@ package com.melon.foolsEngine.core.ECS.system;
 
 import com.melon.foolsEngine.api.rendering.resource.Material;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
-import com.melon.foolsEngine.api.rendering.resource.RenderCommand;
-import com.melon.foolsEngine.api.rendering.resource.RenderScene;
+import com.melon.foolsEngine.api.rendering.render.RenderCommand;
+import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.core.ECS.basicComponents.Renderable;
 import com.melon.foolsEngine.core.ECS.basicComponents.Transform;
 import com.melon.foolsEngine.core.FoolsEngine;

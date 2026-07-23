@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package com.melon.foolsEngine.api.rendering.resource;
+package com.melon.foolsEngine.api.rendering.render;
 
+import com.melon.foolsEngine.api.rendering.resource.Material;
+import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import org.joml.Matrix4f;
 
 /**

@@ -19,8 +19,6 @@ package com.melon.foolsEngine.api.rendering.render;
 import com.melon.foolsEngine.api.rendering.resource.Camera;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.api.rendering.resource.Material;
-import com.melon.foolsEngine.api.rendering.resource.RenderCommand;
-import com.melon.foolsEngine.api.rendering.resource.RenderScene;
 import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowManager;
 
 /**

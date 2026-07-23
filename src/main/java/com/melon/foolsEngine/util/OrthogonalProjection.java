@@ -18,7 +18,7 @@ package com.melon.foolsEngine.util;
 
 import org.joml.Matrix4f;
 
-public class OrthogonalProjection implements Projection {
+public final class OrthogonalProjection implements Projection {
 
     public float right;
     public float top;
