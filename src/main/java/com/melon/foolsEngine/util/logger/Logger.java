@@ -22,17 +22,26 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public final class Logger {
+/**
+ * Instance-based logger with per-module naming.
+ * <pre>{@code
+ *   Logger log = new Logger("Renderer");   // explicit name
+ *   Logger log = new Logger();             // caller-derived name (abbreviated)
+ * }</pre>
+ */
+public record Logger(String name) {
 
+    private static final DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
     private static volatile LogLevel currentLevel = LogLevel.DEBUG;
     private static final List<Appender> appenders = new CopyOnWriteArrayList<>();
-    private static final DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
     static {
         appenders.add(new ConsoleAppender());
     }
 
-    private Logger() {}
+    public Logger() {
+        this(deriveCallerName());
+    }
 
     public static void setLevel(LogLevel level) {
         currentLevel = level;
@@ -50,63 +59,91 @@ public final class Logger {
         appenders.remove(appender);
     }
 
-    public static void trace(String msg) {
+    public void trace(String msg) {
         log(LogLevel.TRACE, msg);
     }
 
-    public static void trace(String fmt, Object... args) {
+    public void trace(String fmt, Object... args) {
         log(LogLevel.TRACE, fmt, args);
     }
 
-    public static void debug(String msg) {
+    public void debug(String msg) {
         log(LogLevel.DEBUG, msg);
     }
 
-    public static void debug(String fmt, Object... args) {
+    public void debug(String fmt, Object... args) {
         log(LogLevel.DEBUG, fmt, args);
     }
 
-    public static void info(String msg) {
+    public void info(String msg) {
         log(LogLevel.INFO, msg);
     }
 
-    public static void info(String fmt, Object... args) {
+    public void info(String fmt, Object... args) {
         log(LogLevel.INFO, fmt, args);
     }
 
-    public static void warn(String msg) {
+    public void warn(String msg) {
         log(LogLevel.WARN, msg);
     }
 
-    public static void warn(String fmt, Object... args) {
+    public void warn(String fmt, Object... args) {
         log(LogLevel.WARN, fmt, args);
     }
 
-    public static void error(String msg) {
+    public void error(String msg) {
         log(LogLevel.ERROR, msg);
     }
 
-    public static void error(String fmt, Object... args) {
+    public void error(String fmt, Object... args) {
         log(LogLevel.ERROR, fmt, args);
     }
 
-    private static void log(LogLevel level, String msg) {
+    private void log(LogLevel level, String msg) {
         if (level.severity < currentLevel.severity) {
             return;
         }
+        String timestamp = LocalTime.now().format(timeFmt);
+        String formatted = "[" + timestamp + "][" + level.name() + "][" + name + "]" + msg;
         for (Appender a : appenders) {
-            a.append(level, msg);
+            a.append(level, formatted);
         }
     }
 
-    private static void log(LogLevel level, String fmt, Object... args) {
+    private void log(LogLevel level, String fmt, Object... args) {
         if (level.severity < currentLevel.severity) {
             return;
         }
-        String msg = String.format(fmt, args);
-        for (Appender a : appenders) {
-            a.append(level, msg);
+        log(level, String.format(fmt, args));
+    }
+
+    private static String deriveCallerName() {
+        return StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
+                .walk(frames -> frames
+                        .dropWhile(f -> f.getDeclaringClass() == Logger.class)
+                        .findFirst()
+                        .map(f -> abbreviate(f.getDeclaringClass().getName())))
+                .orElse("Unknown");
+    }
+
+    private static String abbreviate(String fullName) {
+        int lastDot = fullName.lastIndexOf('.');
+        if (lastDot < 0) {
+            return fullName;
         }
+        String pkg = fullName.substring(0, lastDot);
+        String cls = fullName.substring(lastDot + 1);
+        String[] parts = pkg.split("\\.");
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < parts.length; i++) {
+            if (i > 0) {
+                sb.append('.');
+            }
+            String p = parts[i];
+            sb.append(p.length() <= 2 ? p : p.substring(0, 2));
+        }
+        sb.append('.').append(cls);
+        return sb.toString();
     }
 
     @FunctionalInterface
@@ -118,8 +155,7 @@ public final class Logger {
         @Override
         public void append(LogLevel level, String message) {
             PrintStream out = (level.severity >= LogLevel.WARN.severity) ? System.err : System.out;
-            String timestamp = LocalTime.now().format(timeFmt);
-            out.printf("[%s] [%-5s] %s%n", timestamp, level.name(), message);
+            out.println(message);
         }
     }
 }

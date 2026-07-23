@@ -20,6 +20,7 @@ import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.core.ECS.entity.EntityFactory;
 import com.melon.foolsEngine.core.world.*;
+import com.melon.foolsEngine.util.logger.Logger;
 
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -34,6 +35,8 @@ public class FoolsEngine {
     public final SystemScheduler scheduler;
     public final RenderFrame frame;
     public final ServiceFactory serviceFactory;
+
+    public final Logger LOGGER = new Logger("SYSTEM");
 
     public final int MAX_ENTITIES;
     public final int MAX_COMPONENTS;

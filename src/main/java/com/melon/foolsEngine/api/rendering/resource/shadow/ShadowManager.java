@@ -55,7 +55,8 @@ public class ShadowManager {
     private static final int FRUSTUM_DEPTH_SAMPLES = 4;
     private static final float DIR_SHADOW_BACK_OFFSET = 30f;
     private static final float DIR_SHADOW_XY_PADDING = 15f;
-    private static final float DIR_SHADOW_Z_PADDING = 30f;
+    private static final float DIR_SHADOW_Z_NEAR_PAD = 30f;
+    private static final float DIR_SHADOW_Z_FAR_PAD = 30f;
 
     private final RenderTarget shadowArray;
     private final Material depthMaterial;
@@ -210,14 +211,15 @@ public class ShadowManager {
         float spanX = maxX - minX;
         float spanY = maxY - minY;
         float spanZ = maxZ - minZ;
-        float adaptivePadXY = max(spanX, spanY) * 0.1f;
+        float adaptivePadXY = max(spanX, spanY) * 0.15f;
         float xyPad = max(DIR_SHADOW_XY_PADDING, adaptivePadXY);
-        float zPad = max(spanZ * 0.2f, adaptivePadXY * 0.5f);
+        float zFarPad = max(spanZ * 0.4f, max(adaptivePadXY, DIR_SHADOW_Z_FAR_PAD));
+        float zNearPad = max(zFarPad, DIR_SHADOW_Z_NEAR_PAD);
 
         reusableOrtho.right = spanX * 0.5f + xyPad;
         reusableOrtho.top = spanY * 0.5f + xyPad;
-        reusableOrtho.near = max(minZ - zPad, 0.01f);
-        reusableOrtho.far = maxZ + zPad;
+        reusableOrtho.near = max(minZ - zNearPad, 0.01f);
+        reusableOrtho.far = maxZ + zFarPad;
 
         Camera shadowCam = light.shadowInfo.shadowCamera();
         shadowCam.view.set(lightView);

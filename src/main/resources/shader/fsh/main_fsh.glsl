@@ -68,21 +68,25 @@ void main() {
             vec4 lsPos = lightSpaceMatrices[i] * vec4(fragWorldPos, 1.0);
             vec3 proj = lsPos.xyz / lsPos.w;
             vec2 shadowUV = proj.xy * 0.5 + 0.5;
-            if (shadowUV.x >= 0.0 && shadowUV.x <= 1.0 && shadowUV.y >= 0.0 && shadowUV.y <= 1.0) {
-                float layer = lightParams[i].w;
-                float texelSize = 1.0 / shadowMapSize;
-                float bias = 0.002;
-                shadow = 0.0;
-                //PCF sampling
-                for (int x = -2; x <= 2; ++x) {
-                    for (int y = -2; y <= 2; ++y) {
-                        float pcfClosest = texture(shadowMapArray, vec3(shadowUV + vec2(x, y) * texelSize, layer)).r;
-                        if (proj.z >= pcfClosest - bias) {
-                            shadow += 1.0;
+            if (shadowUV.x >= 0.0 && shadowUV.x <= 1.0
+             && shadowUV.y >= 0.0 && shadowUV.y <= 1.0) {
+                bool outOfFarPlane = (lightType == LIGHT_DIRECTIONAL && proj.z < 0.0);
+                if (!outOfFarPlane) {
+                    float layer = lightParams[i].w;
+                    float texelSize = 1.0 / shadowMapSize;
+                    float bias = 0.002;
+                    shadow = 0.0;
+                    //PCF sampling
+                    for (int x = -2; x <= 2; ++x) {
+                        for (int y = -2; y <= 2; ++y) {
+                            float pcfClosest = texture(shadowMapArray, vec3(shadowUV + vec2(x, y) * texelSize, layer)).r;
+                            if (proj.z >= pcfClosest - bias) {
+                                shadow += 1.0;
+                            }
                         }
                     }
+                    shadow /= 25.0;
                 }
-                shadow /= 25.0;
             }
         }
 
