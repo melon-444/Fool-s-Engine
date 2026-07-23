@@ -43,11 +43,10 @@ public class SystemScheduler {
         syncSystems();
     }
 
-    @SuppressWarnings("unchecked")
     private void syncSystems() {
         clientSystems.clear();
         serverSystems.clear();
-        for (System system : instance.systemManager.getRegisteredSystems().values()) {
+        for (System<?> system : instance.systemManager.getRegisteredSystems().values()) {
             if (system instanceof ClientSystem<?> cs) {
                 clientSystems.add(cs);
             } else if (system instanceof ServerSystem<?> ss) {

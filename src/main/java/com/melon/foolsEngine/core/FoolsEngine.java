@@ -92,6 +92,7 @@ public class FoolsEngine {
         //TODO:完善设置更新系统
         aspect = (float) width / (float) height;
         FOV = 40.0f;
+        LOGGER.debug("update settings");
     }
 
 }
