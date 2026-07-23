@@ -35,7 +35,7 @@ public class SystemScheduler {
     }
 
     private final List<ServerEntry> serverEntries = new ArrayList<>();
-    private final List<ClientSystem<?>> clientSystems = new ArrayList<>();
+    private final List<ClientSystem> clientSystems = new ArrayList<>();
     private final RenderFrame frame;
     private final GraphicsContext ctx;
     private final boolean headless;
@@ -59,7 +59,7 @@ public class SystemScheduler {
         }
 
         for(var system: systemManager.getRegisteredSystems().values()) {
-            if (system instanceof ClientSystem<?> clientSystem)
+            if (system instanceof ClientSystem clientSystem)
                 registerClient(clientSystem);
             if (system instanceof ServerSystem<?> serverSystem)
                 registerServer(serverSystem,serverSystem.getContext());
@@ -79,7 +79,7 @@ public class SystemScheduler {
         serverEntries.add(new ServerEntry(system, ctx));
     }
 
-    public void registerClient(ClientSystem<?> system) {
+    public void registerClient(ClientSystem system) {
         clientSystems.add(system);
     }
 
