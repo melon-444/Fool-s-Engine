@@ -19,6 +19,7 @@ package com.melon.foolsEngine.core.ECS.entity;
 import com.melon.foolsEngine.api.rendering.resource.Material;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.core.ECS.basicComponents.CameraComponent;
+import com.melon.foolsEngine.core.ECS.basicComponents.Light;
 import com.melon.foolsEngine.core.ECS.basicComponents.Transform;
 import com.melon.foolsEngine.core.ECS.basicComponents.Renderable;
 import com.melon.foolsEngine.core.FoolsEngine;
@@ -79,6 +80,12 @@ public class EntityFactory {
             Instance.entityManager.bindComponent(entityID, new Renderable(mesh, material));
         }
 
+        return entityID;
+    }
+
+    public int createLightEntity(Light light){
+        final int entityID = Instance.entityManager.createEntity();
+        Instance.entityManager.bindComponent(entityID,light);
         return entityID;
     }
 

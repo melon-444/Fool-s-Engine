@@ -32,7 +32,7 @@ class GLFrameBuffer implements RenderTarget {
         if (type == TARGET_DEPTH) {
             depthAttachment = glGenTextures();
             glBindTexture(GL_TEXTURE_2D_ARRAY, depthAttachment);
-            glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT24, width, height, layers, 0,
+            glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT32F, width, height, layers, 0,
                     GL_DEPTH_COMPONENT, GL_FLOAT, 0L);
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);

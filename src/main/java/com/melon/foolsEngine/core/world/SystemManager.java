@@ -17,6 +17,8 @@
 package com.melon.foolsEngine.core.world;
 
 import com.melon.foolsEngine.core.ECS.basicComponents.Component;
+import com.melon.foolsEngine.core.ECS.system.ClientSystem;
+import com.melon.foolsEngine.core.ECS.system.ServerSystem;
 import com.melon.foolsEngine.core.ECS.system.System;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.Signature;
@@ -51,8 +53,11 @@ public class SystemManager {
     public <T extends System> T registerSystem(Class<T> systemClass) {
 
         try {
-
-            T system = systemClass.getDeclaredConstructor(FoolsEngine.class).newInstance(Instance);
+            T system = null;
+            if (ClientSystem.class.isAssignableFrom(systemClass))
+                system = systemClass.getDeclaredConstructor(FoolsEngine.class).newInstance(Instance);
+            else if (ServerSystem.class.isAssignableFrom(systemClass))
+                system = systemClass.getDeclaredConstructor(FoolsEngine.class, Object.class).newInstance(Instance, null);
 
             systems.put(systemClass, system);
             Set<Class<? extends Component>> reqComps = system.getRequiredComponents();
@@ -70,7 +75,7 @@ public class SystemManager {
             Signature[] entities = Instance.entityManager.getEntitySignatures();
             for (int i = 0; i < entities.length; i++) {
                 if (entities[i] != null) {
-                        entitySignatureChanged(i, entities[i]);
+                    entitySignatureChanged(i, entities[i]);
                 }
             }
 

@@ -64,21 +64,22 @@ public class FoolsEngine {
         this.componentManager = new ComponentManager(this);
         this.systemManager = new SystemManager(this);
         this.factory = new EntityFactory(this);
-        this.frame = isServer ? null : serviceFactory.getRenderFrame();
         this.entityFactory = new EntityFactory(this);
         this.width = windowWidth;
         this.height = windowHeight;
 
 
         if (!isServer) {
+            this.frame = serviceFactory.getRenderFrame();
             mainWindow = serviceFactory.getWindowsManager().createWindow();
             mainWindow.setSize(windowWidth, windowHeight);
+            this.systemScheduler = new SystemScheduler(frame, (GraphicsContext) mainWindow,systemManager);
             systemManager.registerSystem(CameraCollector.class);
             systemManager.registerSystem(LightCollector.class);
             systemManager.registerSystem(RenderableCollector.class);
             frame.init();
-            this.systemScheduler = new SystemScheduler(frame, (GraphicsContext) mainWindow,systemManager);
         } else {
+            this.frame = null;
             this.systemScheduler = new SystemScheduler(systemManager);
         }
     }
