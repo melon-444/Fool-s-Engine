@@ -32,6 +32,8 @@ class GLRenderFrame implements RenderFrame{
     private boolean init = false;
     private LightEnvironment lightEnv;
     private int drawCallCounter;
+    private float[] instanceBuffer = new float[0];
+    private final float[] vpBuffer = new float[16];
 
     @Override
     public void init(){
@@ -39,6 +41,8 @@ class GLRenderFrame implements RenderFrame{
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_GREATER);
         glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
         init = true;
     }
 
@@ -148,27 +152,29 @@ class GLRenderFrame implements RenderFrame{
             glClearDepth(0.0f);
         }
 
-        Map<BatchKey, List<RenderCommand>> batches = groupCommands(commands);
+        Map<Long, List<RenderCommand>> batches = groupCommands(commands);
 
         drawCallCounter += batches.size();
 
-        for (Map.Entry<BatchKey, List<RenderCommand>> entry : batches.entrySet()) {
-            Mesh mesh = entry.getKey().mesh;
-            Material material = overrideMaterial != null ? overrideMaterial : entry.getKey().material;
+        for (List<RenderCommand> cmds : batches.values()) {
+            RenderCommand first = cmds.get(0);
+            Mesh mesh = first.mesh();
+            Material material = overrideMaterial != null ? overrideMaterial : first.material();
             ShaderProgram shader = material.shader();
-            List<RenderCommand> cmds = entry.getValue();
 
             GLMesh glMesh = (GLMesh) mesh;
             glMesh.configureInstancedModelMatrix();
 
             int instanceCount = cmds.size();
-            float[] transforms = new float[instanceCount * 16];
+            int floatCount = instanceCount * 16;
+            if (instanceBuffer.length < floatCount)
+                instanceBuffer = new float[floatCount];
             for (int i = 0; i < instanceCount; i++) {
-                cmds.get(i).transform().get(transforms, i * 16);
+                cmds.get(i).transform().get(instanceBuffer, i * 16);
             }
 
             glMesh.bind();
-            glMesh.uploadInstanceData(transforms);
+            glMesh.uploadInstanceData(instanceBuffer);
 
             shader.bind();
             shader.setInt("textureLayer", -1);
@@ -203,7 +209,8 @@ class GLRenderFrame implements RenderFrame{
                     }
                 }
             }
-            shader.setMat4("vp", camera.vp().get(new float[16]));
+            camera.vp().get(vpBuffer);
+            shader.setMat4("vp", vpBuffer);
 
             glDrawElementsInstanced(GL_TRIANGLES, mesh.indexCount(), GL_UNSIGNED_INT, 0, instanceCount);
         }
@@ -287,16 +294,14 @@ class GLRenderFrame implements RenderFrame{
         }
     }
 
-    private Map<BatchKey, List<RenderCommand>> groupCommands(List<RenderCommand> commands) {
-        Map<BatchKey, List<RenderCommand>> batches = new LinkedHashMap<>();
+    private Map<Long, List<RenderCommand>> groupCommands(List<RenderCommand> commands) {
+        Map<Long, List<RenderCommand>> batches = new LinkedHashMap<>();
         for (RenderCommand c : commands) {
-            BatchKey key = new BatchKey(c.mesh(), c.material());
+            long key = ((long) c.mesh().hashCode() << 32) ^ (c.material().hashCode() & 0xFFFFFFFFL);
             batches.computeIfAbsent(key, k -> new ArrayList<>()).add(c);
         }
         return batches;
     }
-
-    private record BatchKey(Mesh mesh, Material material) {}
 
     @Override
     @Deprecated

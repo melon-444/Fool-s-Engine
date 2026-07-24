@@ -55,6 +55,8 @@ public class FoolsEngine {
 
     FoolsEngine(int maxEntities, int maxComponents, int windowWidth, int windowHeight, boolean isServer) {
         this.isServer = isServer;
+        LOGGER.info("Booting FoolsEngine | entities=%d components=%d mode=%s", maxEntities, maxComponents,
+                isServer ? "SERVER" : "CLIENT");
         this.serviceFactory = new ServiceFactory();
         this.MAX_ENTITIES = maxEntities;
         this.MAX_COMPONENTS = maxComponents;
@@ -65,19 +67,26 @@ public class FoolsEngine {
         this.entityFactory = new EntityFactory(this);
         this.width = windowWidth;
         this.height = windowHeight;
-
+        LOGGER.debug("Managers initialized");
 
         if (!isServer) {
+            LOGGER.info("Initializing client subsystems");
             this.frame = serviceFactory.getRenderFrame();
             mainWindow = serviceFactory.getWindowsManager().createWindow();
             mainWindow.setSize(windowWidth, windowHeight);
+            LOGGER.debug("Window created | %dx%d", windowWidth, windowHeight);
             systemManager.registerSystem(SceneCollector.class);
+            LOGGER.debug("Systems registered");
             frame.init();
+            LOGGER.debug("RenderFrame initialized");
             this.systemScheduler = new SystemScheduler(frame, (GraphicsContext) mainWindow,systemManager);
+            LOGGER.debug("SystemScheduler created");
         } else {
             this.frame = null;
             this.systemScheduler = new SystemScheduler(systemManager);
+            LOGGER.debug("Headless SystemScheduler created");
         }
+        LOGGER.info("Boot complete");
     }
 
     public void updateSettings() {

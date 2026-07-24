@@ -18,6 +18,7 @@ class GLMesh implements Mesh {
 
     private int instanceVBO = 0;
     private boolean instanceConfigured = false;
+    private int instanceDataCapacity = 0;
     private static final int INSTANCE_MODEL_BASE = 3;
 
     @Override
@@ -104,7 +105,13 @@ class GLMesh implements Mesh {
 
     void uploadInstanceData(float[] data) {
         glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
-        glBufferData(GL_ARRAY_BUFFER, data, GL_DYNAMIC_DRAW);
+        int byteSize = data.length * Float.BYTES;
+        if (byteSize > instanceDataCapacity) {
+            glBufferData(GL_ARRAY_BUFFER, data, GL_DYNAMIC_DRAW);
+            instanceDataCapacity = byteSize;
+        } else {
+            glBufferSubData(GL_ARRAY_BUFFER, 0, data);
+        }
     }
 
     private int createVAO(){

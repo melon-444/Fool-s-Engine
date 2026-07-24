@@ -18,6 +18,7 @@ package com.melon.foolsEngine.core;
 
 import com.melon.foolsEngine.core.annotation.Distribution;
 import com.melon.foolsEngine.core.annotation.OnlyIn;
+import com.melon.foolsEngine.util.logger.Logger;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -25,19 +26,24 @@ import java.io.InputStream;
 
 public final class EngineBoot {
 
+    private static final Logger LOG = new Logger("Boot");
+
     private EngineBoot() {
     }
 
     public static FoolsEngine create(int maxEntities, int maxComponents, int width, int height, boolean isServer) {
+        LOG.info("Engine starting | mode=%s maxEntities=%d", isServer ? "SERVER" : "CLIENT", maxEntities);
         ValidatingLoader loader = new ValidatingLoader(Thread.currentThread().getContextClassLoader(),isServer);
         Thread.currentThread().setContextClassLoader(loader);
         try {
             loader.loadClass("com.melon.foolsEngine.core.FoolsEngine", true);
         }catch(ClassNotFoundException e) {
+            LOG.error("FoolsEngine class not found: %s", e.getMessage());
             throw new InternalError("FoolsEngine class not found");
         }
         FoolsEngine engine = new FoolsEngine(maxEntities, maxComponents, width, height, isServer);
         engine.updateSettings();
+        LOG.info("Engine ready | FOV=%.1f aspect=%.2f zNear=%.4f", engine.FOV, engine.aspect, engine.Z_NEAR);
         return engine;
     }
 

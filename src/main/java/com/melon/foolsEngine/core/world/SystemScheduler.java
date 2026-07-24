@@ -40,6 +40,8 @@ public class SystemScheduler {
     private final GraphicsContext ctx;
     private final boolean headless;
 
+    private Runnable additionalRenderTask;
+
     private RenderScene sceneFront;
     private RenderScene sceneBack;
 
@@ -83,6 +85,10 @@ public class SystemScheduler {
         clientSystems.add(system);
     }
 
+    public void additionalRenderTask(Runnable task) {
+        this.additionalRenderTask = task;
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     public void update() {
         long now = java.lang.System.nanoTime();
@@ -118,6 +124,8 @@ public class SystemScheduler {
 
         ctx.makeCurrent();
         frame.render(sceneFront);
+        if (additionalRenderTask != null)
+            additionalRenderTask.run();
         ctx.swapBuffers();
         ctx.pollEvents();
     }

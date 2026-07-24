@@ -24,7 +24,7 @@ import org.joml.Math;
 import java.nio.file.Path;
 
 public class TesECSRenderFlow {
-    static FoolsEngine foolsEngine = EngineBoot.create(1000, 100, 800, 600, false);
+    static FoolsEngine foolsEngine = EngineBoot.create(20000000, 100, 800, 600, false);
     private static final int SHADOW_MAP_SIZE = 8192;
     private static final int MAX_SHADOW_LAYERS = 16;
     private static final float SPOT_SHADOW_NEAR = 0.1f;
@@ -57,10 +57,12 @@ public class TesECSRenderFlow {
         Vector3f origin = new Vector3f(0, 0, 5);
         for (int i = 0; i < 10; i++) {
             for (int j = 0; j < 10; j++) {
-                Material mat = (i % 2 == 0) ? arrayMaterial : material;
-                Vector3f pos = new Vector3f(origin).add(3 * i, 0, 2 * j);
-                foolsEngine.entityFactory.createModelEntity(
-                        dragonMesh, mat, pos, new Quaternionf(), new Vector3f(0.1f, 0.1f, 0.1f));
+                for(int k=0;k<1;k++){
+                    Material mat = (i % 2 == 0) ? arrayMaterial : material;
+                    Vector3f pos = new Vector3f(origin).add(3 * i, 5*k, 2 * j);
+                    foolsEngine.entityFactory.createModelEntity(
+                            dragonMesh, mat, pos, new Quaternionf(), new Vector3f(0.1f, 0.1f, 0.1f));
+                }
             }
         }
 
@@ -159,11 +161,17 @@ public class TesECSRenderFlow {
             float renderStart = System.nanoTime();
             scheduler.update();
             float renderTimeMs = (System.nanoTime() - renderStart) / 1e6f;
-            if(renderDebug){
-                imGuiRenderer.beginFrame();
-                debugOverlay.render(scene, deltaTime, renderTimeMs,
-                        cameraPos, yaw, pitch, frame.getDrawCallCount());
-                imGuiRenderer.endFrame();
+
+            if (renderDebug) {
+                float finalYaw = yaw;
+                float finalPitch = pitch;
+                scheduler.additionalRenderTask(() -> {
+                        imGuiRenderer.beginFrame();
+                        debugOverlay.render(scene, deltaTime, renderTimeMs,
+                                cameraPos, finalYaw, finalPitch, frame.getDrawCallCount());
+                        imGuiRenderer.endFrame();
+
+                });
             }
             input.beginFrame();
 

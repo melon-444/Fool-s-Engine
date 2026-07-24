@@ -22,12 +22,15 @@ import com.melon.foolsEngine.core.ECS.system.ServerSystem;
 import com.melon.foolsEngine.core.ECS.system.System;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.Signature;
+import com.melon.foolsEngine.util.logger.Logger;
 
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
 public class SystemManager {
+
+    private final Logger LOG = new Logger("SysMgr");
 
     public HashMap<Class<? extends System>, System> getRegisteredSystems() {
         return systems;
@@ -60,6 +63,7 @@ public class SystemManager {
                 system = systemClass.getDeclaredConstructor(FoolsEngine.class, Object.class).newInstance(Instance, null);
 
             systems.put(systemClass, system);
+            LOG.debug("Registered system: %s", systemClass.getSimpleName());
             Set<Class<? extends Component>> reqComps = system.getRequiredComponents();
             for (Class<? extends Component> klass : reqComps) {
                 if (!receiveComponent.containsKey(klass)) {
@@ -82,6 +86,7 @@ public class SystemManager {
             return system;
 
         } catch (Exception e) {
+            LOG.error("Failed to register system %s: %s", systemClass.getSimpleName(), e.toString());
             throw new RuntimeException(e);
         }
     }
