@@ -28,6 +28,8 @@ public class Light extends Component{
     public float outerTheta;
     public final LightType lightType;
     public boolean castsShadow = false;
+    public float shadowNear = 0.1f;
+    public float intensity = 1.0f;
 
     public Light(Vector3f color, Vector3f direction, Vector3f position, float innerTheta, float outerTheta) {
         this.color = color;

@@ -95,7 +95,7 @@ public class SystemManager {
         for (var systemClasses : systems.keySet()) {
             System system = systems.get(systemClasses);
             Signature systemSig = signatures.get(systemClasses);
-            if (systemSig.includes(entitySignature))
+            if (entitySignature.matches(systemSig))
                 system.entities.add(entity);
             else
                 system.entities.remove(entity);

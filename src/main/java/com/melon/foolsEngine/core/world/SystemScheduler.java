@@ -109,6 +109,7 @@ public class SystemScheduler {
         sceneFront = sceneBack;
         sceneBack = tmp;
 
+        sceneBack.clear();
         sceneBack.setLighting(sceneFront.getLighting());
         sceneBack.setTextureManager(sceneFront.getTextureManager());
         sceneBack.setBackGroundColor(

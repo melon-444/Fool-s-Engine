@@ -69,8 +69,6 @@ public class TesECSRenderFlow {
 
         Vector3f cameraPos = new Vector3f(0, 0, -12);
         Transform cameraTransform = foolsEngine.entityFactory.createCamera(cameraPos);
-        PerspectiveProjection proj = new PerspectiveProjection(foolsEngine.FOV, foolsEngine.aspect, foolsEngine.Z_NEAR);
-        Camera camera = new Camera(new Matrix4f(), proj.get(new Matrix4f()));
 
         win.show();
         RenderFrame frame = foolsEngine.frame;
@@ -239,18 +237,20 @@ public class TesECSRenderFlow {
             }
             if (input.isActionPressed(spawnShadowDirLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
-                Vector3f lightDir = new Vector3f(lookDir);
-                Light baseLight = Light.directional(color, lightDir, 1.0f);
-                Light dirLight = lightEnv.enableDirLightShadow(baseLight, camera);
-                lightEnv.add(dirLight);
+                com.melon.foolsEngine.core.ECS.basicComponents.Light ecsLight =
+                        new com.melon.foolsEngine.core.ECS.basicComponents.Light(color, new Vector3f(lookDir));
+                ecsLight.castsShadow = true;
+                lightEntities.add(foolsEngine.entityFactory.createLightEntity(ecsLight));
             }
             if (input.isActionPressed(spawnShadowSpotLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
-                Vector3f lightPos = new Vector3f(cameraPos);
-                Vector3f lightDir = new Vector3f(lookDir);
-                Light baseLight = Light.spot(color, lightDir, lightPos, 10f, 10f, 2.0f);
-                Light spotLight = lightEnv.enableSpotLightShadow(baseLight, SPOT_SHADOW_NEAR);
-                lightEnv.add(spotLight);
+                com.melon.foolsEngine.core.ECS.basicComponents.Light ecsLight =
+                        new com.melon.foolsEngine.core.ECS.basicComponents.Light(color, new Vector3f(lookDir),
+                                new Vector3f(cameraPos), 10f, 10f);
+                ecsLight.castsShadow = true;
+                ecsLight.shadowNear = SPOT_SHADOW_NEAR;
+                ecsLight.intensity = 2.0f;
+                lightEntities.add(foolsEngine.entityFactory.createLightEntity(ecsLight));
             }
             if (input.isActionPressed(switchMouseMode)) {
                 if (win.getCursorMode() == CursorMode.DISABLED)

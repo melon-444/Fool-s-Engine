@@ -63,6 +63,7 @@ public class EntityFactory {
     /** Create a light entity with the given ECS Light component. */
     public int createLightEntity(Light light) {
         final int entityID = Instance.entityManager.createEntity();
+        Instance.entityManager.bindComponent(entityID, new Transform(light.position != null ? light.position : new Vector3f()));
         Instance.entityManager.bindComponent(entityID, light);
         return entityID;
     }
