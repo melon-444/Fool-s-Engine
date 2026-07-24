@@ -10,7 +10,9 @@ import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.api.windows.WindowsManager;
-import com.melon.foolsEngine.core.ECS.basicComponents.Transform;
+import com.melon.foolsEngine.core.ECS.basicComponents.LightComp;
+import com.melon.foolsEngine.core.ECS.basicComponents.TextureManagerComponent;
+import com.melon.foolsEngine.core.ECS.basicComponents.TransformComp;
 import com.melon.foolsEngine.core.EngineBoot;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.core.world.SystemScheduler;
@@ -38,8 +40,11 @@ public class TesECSRenderFlow {
         Mesh dragonMesh = foolsEngine.serviceFactory.getMesh();
         dragonMesh.upload(ObjLoader.loadMesh(Path.of("src/test/resources/shaders/model/dragon.obj")));
 
-        ShaderProgram shader = foolsEngine.serviceFactory.getShaderProgram();
-        shader.load(Path.of("src/main/resources/shader/vsh/main_vsh.glsl"), Path.of("src/main/resources/shader/fsh/main_fsh.glsl"));
+        ShaderProgram[] builtinShaders = foolsEngine.loadBuiltinShaders();
+        ShaderProgram shader = builtinShaders[0];
+        ShaderProgram depthShader = builtinShaders[1];
+        Material depthMaterial = new Material(depthShader);
+
         Material material = new Material(shader);
         Texture texture = foolsEngine.serviceFactory.getTexture();
         texture.upload(Path.of("src/test/resources/textures/test2.png"));
@@ -49,10 +54,6 @@ public class TesECSRenderFlow {
         Texture arrayTexture = textureManager.upload(Path.of("src/test/resources/textures/test2.png"));
         Material arrayMaterial = new Material(shader);
         arrayMaterial.set("textureSampler", arrayTexture);
-
-        ShaderProgram depthShader = foolsEngine.serviceFactory.getShaderProgram();
-        depthShader.load(Path.of("src/main/resources/shader/vsh/depth_vsh.glsl"), Path.of("src/main/resources/shader/fsh/depth_fsh.glsl"));
-        Material depthMaterial = new Material(depthShader);
 
         Vector3f origin = new Vector3f(0, 0, 5);
         for (int i = 0; i < 10; i++) {
@@ -69,7 +70,7 @@ public class TesECSRenderFlow {
         java.util.List<Integer> lightEntities = new java.util.ArrayList<>();
 
         Vector3f cameraPos = new Vector3f(0, 0, 12);
-        Transform cameraTransform = foolsEngine.entityFactory.createCamera(cameraPos);
+        TransformComp cameraTransform = foolsEngine.entityFactory.createCamera(cameraPos);
 
         win.show();
         RenderFrame frame = foolsEngine.frame;
@@ -88,10 +89,15 @@ public class TesECSRenderFlow {
                 SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, RenderTarget.TARGET_DEPTH, MAX_SHADOW_LAYERS);
         lightEnv.enableShadows(shadowArray, depthMaterial, MAX_SHADOW_LAYERS);
 
+        int lightEnvEntity = foolsEngine.entityFactory.createLightEnvironment(lightEnv);
+
+        int textureMgrEntity = foolsEngine.entityManager.createEntity();
+        foolsEngine.entityManager.bindComponent(textureMgrEntity,
+                new TextureManagerComponent(textureManager));
+        foolsEngine.entityManager.bindComponent(textureMgrEntity, new TransformComp());
+
         SystemScheduler scheduler = foolsEngine.systemScheduler;
         RenderScene scene = scheduler.getScene();
-        scene.setLighting(lightEnv);
-        scene.setTextureManager(textureManager);
         scene.setBackGroundColor(lightEnv.getAmbient().x, lightEnv.getAmbient().y, lightEnv.getAmbient().z, 1.0f);
 
         InputManager input = foolsEngine.serviceFactory.createInputManager(win);
@@ -170,8 +176,9 @@ public class TesECSRenderFlow {
                         debugOverlay.render(scene, deltaTime, renderTimeMs,
                                 cameraPos, finalYaw, finalPitch, frame.getDrawCallCount());
                         imGuiRenderer.endFrame();
-
                 });
+            }else{
+                scheduler.additionalRenderTask(() -> {});
             }
             input.beginFrame();
 
@@ -218,17 +225,17 @@ public class TesECSRenderFlow {
             if (input.isActionPressed(spawnDirLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 lightEntities.add(foolsEngine.entityFactory.createLightEntity(
-                        new com.melon.foolsEngine.core.ECS.basicComponents.Light(color, new Vector3f(lookDir))));
+                        new LightComp(color, new Vector3f(lookDir))));
             }
             if (input.isActionPressed(spawnPointLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 lightEntities.add(foolsEngine.entityFactory.createLightEntity(
-                        new com.melon.foolsEngine.core.ECS.basicComponents.Light(color, new Vector3f(lookDir), new Vector3f(cameraPos))));
+                        new LightComp(color, new Vector3f(lookDir), new Vector3f(cameraPos))));
             }
             if (input.isActionPressed(spawnSpotLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 lightEntities.add(foolsEngine.entityFactory.createLightEntity(
-                        new com.melon.foolsEngine.core.ECS.basicComponents.Light(color, new Vector3f(lookDir), new Vector3f(cameraPos), 10f, 10f)));
+                        new LightComp(color, new Vector3f(lookDir), new Vector3f(cameraPos), 10f, 10f)));
             }
             if (input.isActionPressed(clearLights)) {
                 for (int eid : lightEntities) {
@@ -247,20 +254,20 @@ public class TesECSRenderFlow {
             }
             if (input.isActionPressed(spawnShadowDirLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
-                com.melon.foolsEngine.core.ECS.basicComponents.Light ecsLight =
-                        new com.melon.foolsEngine.core.ECS.basicComponents.Light(color, new Vector3f(lookDir));
-                ecsLight.castsShadow = true;
-                lightEntities.add(foolsEngine.entityFactory.createLightEntity(ecsLight));
+                LightComp LightComp =
+                        new LightComp(color, new Vector3f(lookDir));
+                LightComp.castsShadow = true;
+                lightEntities.add(foolsEngine.entityFactory.createLightEntity(LightComp));
             }
             if (input.isActionPressed(spawnShadowSpotLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
-                com.melon.foolsEngine.core.ECS.basicComponents.Light ecsLight =
-                        new com.melon.foolsEngine.core.ECS.basicComponents.Light(color, new Vector3f(lookDir),
+                LightComp LightComp =
+                        new LightComp(color, new Vector3f(lookDir),
                                 new Vector3f(cameraPos), 10f, 10f);
-                ecsLight.castsShadow = true;
-                ecsLight.shadowNear = SPOT_SHADOW_NEAR;
-                ecsLight.intensity = 2.0f;
-                lightEntities.add(foolsEngine.entityFactory.createLightEntity(ecsLight));
+                LightComp.castsShadow = true;
+                LightComp.shadowNear = SPOT_SHADOW_NEAR;
+                LightComp.intensity = 2.0f;
+                lightEntities.add(foolsEngine.entityFactory.createLightEntity(LightComp));
             }
             if (input.isActionPressed(switchMouseMode)) {
                 if (win.getCursorMode() == CursorMode.DISABLED)

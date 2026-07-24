@@ -19,6 +19,7 @@ package com.melon.foolsEngine.core.ECS.system;
 import com.melon.foolsEngine.api.rendering.resource.Light;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
+import com.melon.foolsEngine.core.ECS.basicComponents.LightComp;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.SparseSet;
 
@@ -30,16 +31,16 @@ import java.util.Set;
 @Deprecated
 public class LightCollector extends ClientSystem {
 
-    private final SparseSet<com.melon.foolsEngine.core.ECS.basicComponents.Light> ecsLights;
+    private final SparseSet<LightComp> ecsLights;
     private final Map<Integer, Light> activeLights = new HashMap<>();
 
     {
-        requiredComponents.add(com.melon.foolsEngine.core.ECS.basicComponents.Light.class);
+        requiredComponents.add(LightComp.class);
     }
 
     public LightCollector(FoolsEngine engine) {
         super(engine);
-        ecsLights = getSparseSet(com.melon.foolsEngine.core.ECS.basicComponents.Light.class);
+        ecsLights = getSparseSet(LightComp.class);
     }
 
     @Override
@@ -66,17 +67,17 @@ public class LightCollector extends ClientSystem {
                 continue;
             }
 
-            com.melon.foolsEngine.core.ECS.basicComponents.Light ecsLight = ecsLights.getComponent(eid);
-            if (ecsLight == null) {
+            LightComp LightComp = ecsLights.getComponent(eid);
+            if (LightComp == null) {
                 continue;
             }
 
             Light apiLight;
-            switch (ecsLight.lightType) {
-                case PARALLEL -> apiLight = Light.directional(ecsLight.color, ecsLight.direction);
-                case POINT -> apiLight = Light.point(ecsLight.color, ecsLight.position);
-                case SPOT -> apiLight = Light.spot(ecsLight.color, ecsLight.direction, ecsLight.position,
-                        ecsLight.innerTheta, ecsLight.outerTheta);
+            switch (LightComp.lightType) {
+                case PARALLEL -> apiLight = Light.directional(LightComp.color, LightComp.direction);
+                case POINT -> apiLight = Light.point(LightComp.color, LightComp.position);
+                case SPOT -> apiLight = Light.spot(LightComp.color, LightComp.direction, LightComp.position,
+                        LightComp.innerTheta, LightComp.outerTheta);
                 default -> {
                     continue;
                 }

@@ -20,32 +20,32 @@ import com.melon.foolsEngine.api.rendering.resource.Material;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.render.RenderCommand;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
-import com.melon.foolsEngine.core.ECS.basicComponents.Renderable;
-import com.melon.foolsEngine.core.ECS.basicComponents.Transform;
+import com.melon.foolsEngine.core.ECS.basicComponents.RenderableComp;
+import com.melon.foolsEngine.core.ECS.basicComponents.TransformComp;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.SparseSet;
 
 @Deprecated
 public class RenderableCollector extends ClientSystem {
-    private final SparseSet<Transform> transforms;
-    private final SparseSet<Renderable> renderables;
+    private final SparseSet<TransformComp> transforms;
+    private final SparseSet<RenderableComp> renderables;
 
     {
-        requiredComponents.add(Transform.class);
-        requiredComponents.add(Renderable.class);
+        requiredComponents.add(TransformComp.class);
+        requiredComponents.add(RenderableComp.class);
     }
 
     public RenderableCollector(FoolsEngine engine) {
         super(engine);
-        transforms = getSparseSet(Transform.class);
-        renderables = getSparseSet(Renderable.class);
+        transforms = getSparseSet(TransformComp.class);
+        renderables = getSparseSet(RenderableComp.class);
     }
 
     @Override
     public void update(float dt, RenderScene scene) {
         super.update(dt, scene);
         for (int e : entities) {
-            Transform t = transforms.getComponent(e);
+            TransformComp t = transforms.getComponent(e);
             Mesh meshComp = renderables.getComponent(e).mesh;
             Material material = renderables.getComponent(e).material;
             scene.submit(new RenderCommand(meshComp, material, t.getMatrix()));

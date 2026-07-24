@@ -36,10 +36,15 @@ public class ComponentManager {
 
         this.Instance = engineInstance;
         //register basic components
-        registerComponent(Transform.class);
+        registerComponent(TransformComp.class);
         registerComponent(CameraComponent.class);
-        registerComponent(Light.class);
-        registerComponent(Renderable.class);
+        registerComponent(LightComp.class);
+        registerComponent(RenderableComp.class);
+        registerComponent(LightEnvComponent.class);
+        registerComponent(TextureManagerComponent.class);
+        registerComponent(MaterialComponent.class);
+        registerComponent(RenderContextComponent.class);
+        registerComponent(RenderPassComponent.class);
     }
 
     public void registerComponent(Class<? extends Component> componentClass) {

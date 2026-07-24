@@ -1,3 +1,5 @@
+## foolsEngine 更新日志
+
 ### 0.1.1 — 2026-07-24
 
 #### ECS 系统层
@@ -81,6 +83,8 @@
 - `SystemScheduler` 不再持有 `FoolsEngine` 引用
 - `InputManager` 移除 `registerKeyboard/registerMouse` 的 `InputDevice<Window>` 平台耦合
 - `FoolsEngineKeyCode` 枚举命名保持（独立于引擎实例）
+
+## foolsEngine 更新日志
 
 ### 0.1.0 — 2026-07-24
 

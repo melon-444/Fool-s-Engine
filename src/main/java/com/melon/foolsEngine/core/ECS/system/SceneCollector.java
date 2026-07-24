@@ -21,9 +21,8 @@ import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.api.rendering.resource.Camera;
 import com.melon.foolsEngine.api.rendering.resource.Light;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
-import com.melon.foolsEngine.core.ECS.basicComponents.CameraComponent;
-import com.melon.foolsEngine.core.ECS.basicComponents.Renderable;
-import com.melon.foolsEngine.core.ECS.basicComponents.Transform;
+import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
+import com.melon.foolsEngine.core.ECS.basicComponents.*;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.PerspectiveProjection;
 import com.melon.foolsEngine.util.SparseSet;
@@ -38,9 +37,11 @@ import java.util.Set;
 public class SceneCollector extends ClientSystem {
 
     private final SparseSet<CameraComponent> cameras;
-    private final SparseSet<Transform> transforms;
-    private final SparseSet<com.melon.foolsEngine.core.ECS.basicComponents.Light> ecsLights;
-    private final SparseSet<Renderable> renderables;
+    private final SparseSet<TransformComp> transforms;
+    private final SparseSet<LightComp> ecsLights;
+    private final SparseSet<RenderableComp> renderables;
+    private final SparseSet<LightEnvComponent> lightEnvs;
+    private final SparseSet<TextureManagerComponent> textureMnrs;
     private final Map<Integer, Light> activeLights = new HashMap<>();
 
     private final Matrix4f view = new Matrix4f();
@@ -49,22 +50,38 @@ public class SceneCollector extends ClientSystem {
     private final Quaternionf conjugateTmp = new Quaternionf();
 
     {
-        requiredComponents.add(Transform.class);
+        requiredComponents.add(TransformComp.class);
     }
 
     public SceneCollector(FoolsEngine engine) {
         super(engine);
         cameras = getSparseSet(CameraComponent.class);
-        transforms = getSparseSet(Transform.class);
-        ecsLights = getSparseSet(com.melon.foolsEngine.core.ECS.basicComponents.Light.class);
-        renderables = getSparseSet(Renderable.class);
+        transforms = getSparseSet(TransformComp.class);
+        ecsLights = getSparseSet(LightComp.class);
+        renderables = getSparseSet(RenderableComp.class);
+        lightEnvs = getSparseSet(LightEnvComponent.class);
+        textureMnrs = getSparseSet(TextureManagerComponent.class);
     }
 
     @Override
     public void update(float dt, RenderScene scene) {
+        collectInfrastructure(scene);
         collectCamera(scene);
         collectLights(scene);
         collectRenderables(scene);
+    }
+
+    private void collectInfrastructure(RenderScene scene) {
+        for (int e : entities) {
+            LightEnvComponent le = lightEnvs.getComponent(e);
+            if (le != null) {
+                scene.setLighting(le.env);
+            }
+            TextureManagerComponent tm = textureMnrs.getComponent(e);
+            if (tm != null) {
+                scene.setTextureManager(tm.manager);
+            }
+        }
     }
 
     private void collectCamera(RenderScene scene) {
@@ -74,7 +91,7 @@ public class SceneCollector extends ClientSystem {
 
             deactivateOtherCam(e);
 
-            Transform t = transforms.getComponent(e);
+            TransformComp t = transforms.getComponent(e);
             if (t == null) continue;
 
             view.identity().set(t.getMatrix().invert());
@@ -113,15 +130,15 @@ public class SceneCollector extends ClientSystem {
         for (int eid : current) {
             if (activeLights.containsKey(eid)) continue;
 
-            com.melon.foolsEngine.core.ECS.basicComponents.Light ecsLight = ecsLights.getComponent(eid);
-            if (ecsLight == null) continue;
+            LightComp LightComp = ecsLights.getComponent(eid);
+            if (LightComp == null) continue;
 
-            Light apiLight = convertToApiLight(ecsLight);
+            Light apiLight = convertToApiLight(LightComp);
 
-            if (ecsLight.castsShadow && mainCamera != null) {
-                switch (ecsLight.lightType) {
+            if (LightComp.castsShadow && mainCamera != null) {
+                switch (LightComp.lightType) {
                     case PARALLEL -> apiLight = env.enableDirLightShadow(apiLight, mainCamera);
-                    case SPOT -> apiLight = env.enableSpotLightShadow(apiLight, ecsLight.shadowNear);
+                    case SPOT -> apiLight = env.enableSpotLightShadow(apiLight, LightComp.shadowNear);
                 }
             }
 
@@ -130,21 +147,21 @@ public class SceneCollector extends ClientSystem {
         }
     }
 
-    private Light convertToApiLight(com.melon.foolsEngine.core.ECS.basicComponents.Light ecsLight) {
-        return switch (ecsLight.lightType) {
-            case PARALLEL -> Light.directional(ecsLight.color, ecsLight.direction, ecsLight.intensity);
-            case POINT -> Light.point(ecsLight.color, ecsLight.position, ecsLight.intensity);
-            case SPOT -> Light.spot(ecsLight.color, ecsLight.direction, ecsLight.position,
-                    ecsLight.innerTheta, ecsLight.outerTheta, ecsLight.intensity);
+    private Light convertToApiLight(LightComp lightComp) {
+        return switch (lightComp.lightType) {
+            case PARALLEL -> Light.directional(lightComp.color, lightComp.direction, lightComp.intensity);
+            case POINT -> Light.point(lightComp.color, lightComp.position, lightComp.intensity);
+            case SPOT -> Light.spot(lightComp.color, lightComp.direction, lightComp.position,
+                    lightComp.innerTheta, lightComp.outerTheta, lightComp.intensity);
         };
     }
 
     private void collectRenderables(RenderScene scene) {
         for (int e : entities) {
-            Renderable r = renderables.getComponent(e);
+            RenderableComp r = renderables.getComponent(e);
             if (r == null) continue;
 
-            Transform t = transforms.getComponent(e);
+            TransformComp t = transforms.getComponent(e);
             if (t == null) continue;
 
             scene.submit(new RenderCommand(r.mesh, r.material, t.getMatrix()));

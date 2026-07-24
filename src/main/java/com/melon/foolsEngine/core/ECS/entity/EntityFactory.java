@@ -18,10 +18,12 @@ package com.melon.foolsEngine.core.ECS.entity;
 
 import com.melon.foolsEngine.api.rendering.resource.Material;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
+import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.core.ECS.basicComponents.CameraComponent;
-import com.melon.foolsEngine.core.ECS.basicComponents.Light;
-import com.melon.foolsEngine.core.ECS.basicComponents.Renderable;
-import com.melon.foolsEngine.core.ECS.basicComponents.Transform;
+import com.melon.foolsEngine.core.ECS.basicComponents.LightComp;
+import com.melon.foolsEngine.core.ECS.basicComponents.LightEnvComponent;
+import com.melon.foolsEngine.core.ECS.basicComponents.RenderableComp;
+import com.melon.foolsEngine.core.ECS.basicComponents.TransformComp;
 import com.melon.foolsEngine.core.FoolsEngine;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -51,20 +53,20 @@ public class EntityFactory {
         if (rotation == null) rotation = new Quaternionf();
         if (position == null) position = new Vector3f();
 
-        Instance.entityManager.bindComponent(entityID, new Transform(position, rotation, scale));
+        Instance.entityManager.bindComponent(entityID, new TransformComp(position, rotation, scale));
 
         if (mesh != null || material != null) {
-            Instance.entityManager.bindComponent(entityID, new Renderable(mesh, material));
+            Instance.entityManager.bindComponent(entityID, new RenderableComp(mesh, material));
         }
 
         return entityID;
     }
 
     /** Create a light entity with the given ECS Light component. */
-    public int createLightEntity(Light light) {
+    public int createLightEntity(LightComp lightComp) {
         final int entityID = Instance.entityManager.createEntity();
-        Instance.entityManager.bindComponent(entityID, new Transform(light.position != null ? light.position : new Vector3f()));
-        Instance.entityManager.bindComponent(entityID, light);
+        Instance.entityManager.bindComponent(entityID, new TransformComp(lightComp.position != null ? lightComp.position : new Vector3f()));
+        Instance.entityManager.bindComponent(entityID, lightComp);
         return entityID;
     }
 
@@ -73,12 +75,20 @@ public class EntityFactory {
      * Consider it as a dot with a vector in the world(Input the normal transform to the return instead of its invert)
      * The Transform is bound to the entity — mutate it directly, then call markDirty().
      */
-    public Transform createCamera(Vector3f position) {
+    public TransformComp createCamera(Vector3f position) {
         final int entityID = Instance.entityManager.createEntity();
-        Transform transform = new Transform(position);
+        TransformComp transform = new TransformComp(position);
         Instance.entityManager.bindComponent(entityID, transform);
         Instance.entityManager.bindComponent(entityID, new CameraComponent(Instance.FOV, Instance.Z_NEAR));
         return transform;
+    }
+
+    /** Create a singleton entity with a pre-configured {@link LightEnvironment}. */
+    public int createLightEnvironment(LightEnvironment env) {
+        final int entityID = Instance.entityManager.createEntity();
+        Instance.entityManager.bindComponent(entityID, new LightEnvComponent(env));
+        Instance.entityManager.bindComponent(entityID, new TransformComp());
+        return entityID;
     }
 
     /**
@@ -94,7 +104,7 @@ public class EntityFactory {
         final int entityID = Instance.entityManager.createEntity();
         Quaternionf orientation = orientationFromYawPitch(yawDeg, pitchDeg);
         Instance.entityManager.bindComponent(entityID, new CameraComponent(Instance.FOV, Instance.Z_NEAR));
-        Instance.entityManager.bindComponent(entityID, new Transform(position, orientation));
+        Instance.entityManager.bindComponent(entityID, new TransformComp(position, orientation));
         return entityID;
     }
 

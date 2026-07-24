@@ -18,9 +18,13 @@ package com.melon.foolsEngine.core;
 
 import com.melon.foolsEngine.api.rendering.render.GraphicsContext;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
+import com.melon.foolsEngine.api.rendering.resource.Material;
+import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
+import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.Window;
+import com.melon.foolsEngine.core.ECS.basicComponents.*;
 import com.melon.foolsEngine.core.ECS.entity.EntityFactory;
-import com.melon.foolsEngine.core.ECS.system.SceneCollector;
+import com.melon.foolsEngine.core.ECS.system.*;
 import com.melon.foolsEngine.core.world.*;
 import com.melon.foolsEngine.util.logger.Logger;
 
@@ -76,6 +80,8 @@ public class FoolsEngine {
             mainWindow.setSize(windowWidth, windowHeight);
             LOGGER.debug("Window created | %dx%d", windowWidth, windowHeight);
             systemManager.registerSystem(SceneCollector.class);
+            systemManager.registerSystem(MaterialCollector.class);
+            systemManager.registerSystem(RenderPassCollector.class);
             LOGGER.debug("Systems registered");
             frame.init();
             LOGGER.debug("RenderFrame initialized");
@@ -92,5 +98,23 @@ public class FoolsEngine {
     public void updateSettings() {
         aspect = (float) width / (float) height;
         FOV = 40.0f;
+    }
+
+    /**
+     * Loads the built-in Phong + shadow mapping shaders from classpath resources.
+     * Works in both IDE projects and fat JARs.
+     *
+     * @return a two-element array: [0] = main shader (Phong), [1] = depth shader (shadow map)
+     */
+    public ShaderProgram[] loadBuiltinShaders() {
+        ShaderProgram mainShader = serviceFactory.getShaderProgram();
+        mainShader.load("/shader/vsh/main_vsh.glsl", "/shader/fsh/main_fsh.glsl");
+        LOGGER.info("Built-in main shader loaded");
+
+        ShaderProgram depthShader = serviceFactory.getShaderProgram();
+        depthShader.load("/shader/vsh/depth_vsh.glsl", "/shader/fsh/depth_fsh.glsl");
+        LOGGER.info("Built-in depth shader loaded");
+
+        return new ShaderProgram[]{ mainShader, depthShader };
     }
 }

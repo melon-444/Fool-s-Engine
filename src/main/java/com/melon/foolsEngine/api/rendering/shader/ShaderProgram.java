@@ -29,6 +29,15 @@ public interface ShaderProgram {
      * @param fragmentShaderPath path to the fragment shader source
      */
     void load(Path vertexShaderPath, Path fragmentShaderPath);
+
+    /**
+     * Loads, compiles, and links vertex and fragment shaders from classpath resources.
+     * Works both in project and inside a fat JAR.
+     * @param vertexResource classpath path, e.g. "/shader/vsh/main_vsh.glsl"
+     * @param fragmentResource classpath path, e.g. "/shader/fsh/main_fsh.glsl"
+     */
+    void load(String vertexResource, String fragmentResource);
+
     /** Binds this shader program for rendering */
     void bind();
     /** Unbinds the shader program */

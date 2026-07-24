@@ -5,6 +5,8 @@ import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,27 +34,60 @@ class GLShaderProgram implements ShaderProgram {
 
         try (BufferedReader vertexShaderReader = new BufferedReader(new FileReader(vertexShaderPath.toFile()));
              BufferedReader fragmentShaderReader = new BufferedReader(new FileReader(fragmentShaderPath.toFile()))) {
-            String vertexShader;
-            String fragmentShader;
-            while ((vertexShader = vertexShaderReader.readLine()) != null) {
-                vertexShaderSource.append(vertexShader).append("\n");
+            String line;
+            while ((line = vertexShaderReader.readLine()) != null) {
+                vertexShaderSource.append(line).append("\n");
             }
-            while ((fragmentShader = fragmentShaderReader.readLine()) != null) {
-                fragmentShaderSource.append(fragmentShader).append("\n");
+            while ((line = fragmentShaderReader.readLine()) != null) {
+                fragmentShaderSource.append(line).append("\n");
             }
         } catch (IOException e) {
             System.err.println("Failed to load shader file:\n " + e.getMessage());
             System.exit(-1);
         }
+        compileAndLink(vertexShaderSource, fragmentShaderSource);
+    }
+
+    @Override
+    public void load(String vertexResource, String fragmentResource) {
+        StringBuilder vSrc = new StringBuilder();
+        StringBuilder fSrc = new StringBuilder();
+        try {
+            readResource(vertexResource, vSrc);
+            readResource(fragmentResource, fSrc);
+        } catch (IOException e) {
+            System.err.println("Failed to load shader resource: " + e.getMessage());
+            System.exit(-1);
+        }
+        compileAndLink(vSrc, fSrc);
+    }
+
+    private void readResource(String resourcePath, StringBuilder out) throws IOException {
+        InputStream in = getClass().getResourceAsStream(resourcePath);
+        if (in == null) {
+            in = ClassLoader.getSystemResourceAsStream(resourcePath.replaceFirst("^/", ""));
+        }
+        if (in == null) {
+            throw new IOException("Shader resource not found: " + resourcePath);
+        }
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                out.append(line).append('\n');
+            }
+        }
+    }
+
+    private void compileAndLink(StringBuilder vSrc, StringBuilder fSrc) {
         vertexShaderID = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(vertexShaderID, vertexShaderSource);
+        glShaderSource(vertexShaderID, vSrc);
         glCompileShader(vertexShaderID);
-        checkCompileStatus(vertexShaderID,GL_VERTEX_SHADER);
+        checkCompileStatus(vertexShaderID, GL_VERTEX_SHADER);
 
         fragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(fragmentShaderID, fragmentShaderSource);
+        glShaderSource(fragmentShaderID, fSrc);
         glCompileShader(fragmentShaderID);
-        checkCompileStatus(fragmentShaderID,GL_FRAGMENT_SHADER);
+        checkCompileStatus(fragmentShaderID, GL_FRAGMENT_SHADER);
 
         uniformLocations.clear();
         programID = glCreateProgram();
