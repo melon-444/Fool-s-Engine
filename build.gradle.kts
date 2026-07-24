@@ -29,6 +29,7 @@ if (lwjglUseMaven) {
         api("org.lwjgl", "lwjgl-glfw")
         api("org.lwjgl", "lwjgl-opengl")
         api("org.lwjgl", "lwjgl-stb")
+        compileOnly("org.lwjgl", "lwjgl-vulkan")
         runtimeOnly("org.lwjgl", "lwjgl",          classifier = "natives-$lwjglNatives")
         runtimeOnly("org.lwjgl", "lwjgl-glfw",     classifier = "natives-$lwjglNatives")
         runtimeOnly("org.lwjgl", "lwjgl-opengl",   classifier = "natives-$lwjglNatives")

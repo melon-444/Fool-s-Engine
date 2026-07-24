@@ -27,12 +27,17 @@ import com.melon.foolsEngine.api.windows.WindowsManager;
 
 public abstract class InternalFactoryStub implements APIFactory {
 
-    static{
-            try {
-                Class.forName("com.melon.foolsEngine.backend.OpenGL.GLInternalFactory");
-            } catch (ClassNotFoundException e) {
-                throw new InternalError(e);
-            }
+    static {
+        try {
+            Class.forName("com.melon.foolsEngine.backend.OpenGL.GLInternalFactory");
+        } catch (ClassNotFoundException e) {
+            throw new InternalError(e);
+        }
+        try {
+            Class.forName("com.melon.foolsEngine.backend.Vulkan.VKInternalFactory");
+        } catch (ClassNotFoundException e) {
+            // Vulkan backend not available on classpath — OK
+        }
     }
 
     protected abstract WindowsManager windowsManager();
