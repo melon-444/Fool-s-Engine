@@ -12,6 +12,8 @@ import com.melon.foolsEngine.api.windows.WindowsManager;
 
 public class VKInternalFactory extends InternalFactoryStub {
 
+    private final VKRenderFrame renderFrame = new VKRenderFrame();
+
     private VKInternalFactory() {}
 
     static {
@@ -20,12 +22,12 @@ public class VKInternalFactory extends InternalFactoryStub {
 
     @Override
     protected WindowsManager windowsManager() {
-        return new VKWindowsManager();
+        return new VKWindowsManager(renderFrame);
     }
 
     @Override
     protected RenderFrame renderFrame() {
-        return new VKRenderFrame();
+        return renderFrame;
     }
 
     @Override

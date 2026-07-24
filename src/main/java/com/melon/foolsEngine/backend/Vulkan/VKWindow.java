@@ -4,12 +4,17 @@ import com.melon.foolsEngine.api.rendering.render.GraphicsContext;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.util.CursorMode;
 import org.lwjgl.glfw.GLFWVidMode;
+import org.lwjgl.glfw.GLFWVulkan;
+import org.lwjgl.system.MemoryStack;
+import org.lwjgl.vulkan.VkInstance;
 
+import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.system.MemoryUtil.NULL;
+import static org.lwjgl.vulkan.VK10.VK_SUCCESS;
 
 class VKWindow implements Window, GraphicsContext {
 
@@ -24,6 +29,7 @@ class VKWindow implements Window, GraphicsContext {
     private int height = 0;
     private CursorMode cursorMode = CursorMode.NORMAL;
     private int intervalMode = 0;
+    private long surface = 0;
 
     VKWindow(long id, String title, int intervalMode, boolean resizeable, boolean isFullScreen, boolean isVisible, int width, int height) {
         this.id = id;
@@ -39,6 +45,22 @@ class VKWindow implements Window, GraphicsContext {
         setResizable(resizeable);
         setSize(width, height);
         setFullscreen(isFullScreen);
+    }
+
+    public long createSurface(VkInstance instance) {
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            LongBuffer pSurface = stack.mallocLong(1);
+            int result = GLFWVulkan.glfwCreateWindowSurface(instance, id, null, pSurface);
+            if (result != VK_SUCCESS) {
+                throw new RuntimeException("Failed to create window surface: VkResult " + result);
+            }
+            surface = pSurface.get(0);
+            return surface;
+        }
+    }
+
+    public long getSurface() {
+        return surface;
     }
 
     @Override
@@ -140,17 +162,14 @@ class VKWindow implements Window, GraphicsContext {
 
     @Override
     public void makeCurrent() {
-        glfwMakeContextCurrent(id);
     }
 
     @Override
     public void releaseCurrent() {
-        glfwMakeContextCurrent(0);
     }
 
     @Override
     public void swapBuffers() {
-        glfwSwapBuffers(id);
     }
 
     @Override
@@ -160,9 +179,6 @@ class VKWindow implements Window, GraphicsContext {
 
     @Override
     public void update() {
-        glfwMakeContextCurrent(id);
-        glfwSwapInterval(intervalMode);
-        glfwSwapBuffers(this.id);
         glfwPollEvents();
     }
 

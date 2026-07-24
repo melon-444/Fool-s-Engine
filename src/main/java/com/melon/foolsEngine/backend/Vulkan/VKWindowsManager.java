@@ -2,6 +2,7 @@ package com.melon.foolsEngine.backend.Vulkan;
 
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.api.windows.WindowsManager;
+import org.lwjgl.glfw.GLFWVulkan;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,6 +15,11 @@ class VKWindowsManager implements WindowsManager {
 
     private final ArrayList<Window> windows = new ArrayList<>();
     private final HashMap<Long, int[]> fullscreenWindowSize = new HashMap<>();
+    private final VKRenderFrame renderFrame;
+
+    VKWindowsManager(VKRenderFrame renderFrame) {
+        this.renderFrame = renderFrame;
+    }
 
     @Override
     public Window createWindow() {
@@ -23,6 +29,10 @@ class VKWindowsManager implements WindowsManager {
     public Window createWindow(String title, int width, int height, int vsyncMode, boolean resizeable, boolean fullscreen, boolean isVisible) {
         if (!glfwInit()) {
             throw new IllegalStateException("GLFW init failed");
+        }
+
+        if (!GLFWVulkan.glfwVulkanSupported()) {
+            throw new IllegalStateException("Vulkan is not supported on this system");
         }
 
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
@@ -40,6 +50,7 @@ class VKWindowsManager implements WindowsManager {
         });
 
         windows.add(win);
+        renderFrame.setWindow(win);
         return win;
     }
 

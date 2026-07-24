@@ -14,7 +14,7 @@ java {
 
 val lwjglNatives = project.properties["lwjglNatives"] as? String ?: "windows"
 val lwjglUseMaven = project.properties["lwjglUseMaven"] == "true"
-val lwjglVersion = "3.4.1"
+val lwjglVersion = "3.4.2"
 val imguiVersion = "1.92.0"
 
 if (lwjglUseMaven) {
@@ -29,11 +29,14 @@ if (lwjglUseMaven) {
         api("org.lwjgl", "lwjgl-glfw")
         api("org.lwjgl", "lwjgl-opengl")
         api("org.lwjgl", "lwjgl-stb")
-        compileOnly("org.lwjgl", "lwjgl-vulkan")
+        api("org.lwjgl", "lwjgl-vulkan")
+        api("org.lwjgl", "lwjgl-shaderc")
         runtimeOnly("org.lwjgl", "lwjgl",          classifier = "natives-$lwjglNatives")
         runtimeOnly("org.lwjgl", "lwjgl-glfw",     classifier = "natives-$lwjglNatives")
         runtimeOnly("org.lwjgl", "lwjgl-opengl",   classifier = "natives-$lwjglNatives")
         runtimeOnly("org.lwjgl", "lwjgl-stb",      classifier = "natives-$lwjglNatives")
+        runtimeOnly("org.lwjgl", "lwjgl-vulkan",  classifier = "natives-$lwjglNatives")
+        runtimeOnly("org.lwjgl", "lwjgl-shaderc", classifier = "natives-$lwjglNatives")
         api("org.joml:joml:1.10.5")
         compileOnly("io.github.spair:imgui-java-binding:$imguiVersion")
         compileOnly("io.github.spair:imgui-java-lwjgl3:$imguiVersion"){
@@ -62,11 +65,14 @@ if (lwjglUseMaven) {
         api(files("${libs}lwjgl-glfw/lwjgl-glfw.jar"))
         api(files("${libs}lwjgl-opengl/lwjgl-opengl.jar"))
         api(files("${libs}lwjgl-stb/lwjgl-stb.jar"))
-
+        api(files("${libs}lwjgl-vulkan/lwjgl-vulkan.jar"))
+        api(files("${libs}lwjgl-shaderc/lwjgl-shaderc.jar"))
         runtimeOnly(files("${libs}lwjgl/lwjgl-natives-${lwjglNatives}.jar"))
         runtimeOnly(files("${libs}lwjgl-glfw/lwjgl-glfw-natives-${lwjglNatives}.jar"))
         runtimeOnly(files("${libs}lwjgl-opengl/lwjgl-opengl-natives-${lwjglNatives}.jar"))
         runtimeOnly(files("${libs}lwjgl-stb/lwjgl-stb-natives-${lwjglNatives}.jar"))
+        runtimeOnly(files("${libs}lwjgl-vulkan/lwjgl-vulkan-natives-${lwjglNatives}.jar"))
+        runtimeOnly(files("${libs}lwjgl-shaderc/lwjgl-shaderc-natives-${lwjglNatives}.jar"))
         api("org.joml:joml:1.10.5")
         compileOnly("io.github.spair:imgui-java-binding:$imguiVersion")
         compileOnly("io.github.spair:imgui-java-lwjgl3:$imguiVersion"){
