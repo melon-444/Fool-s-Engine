@@ -84,7 +84,10 @@ public class TesECSRenderFlow {
         ImGuiRenderer imGuiRenderer = new ImGuiRenderer(imGuiContext);
         ImGuiDebugOverlay debugOverlay = new ImGuiDebugOverlay();
 
+
+
         LightEnvironment lightEnv = new LightEnvironment();
+        int lightEnvEntity = foolsEngine.entityFactory.createLightEnvironment(lightEnv);
         lightEnv.setAmbient(0.08f, 0.08f, 0.08f);
         lightEnv.setShadowMapSize(SHADOW_MAP_SIZE);
 
@@ -92,7 +95,7 @@ public class TesECSRenderFlow {
                 SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, RenderTarget.TARGET_DEPTH, MAX_SHADOW_LAYERS);
         lightEnv.enableShadows(shadowArray, depthMaterial, MAX_SHADOW_LAYERS);
 
-        int lightEnvEntity = foolsEngine.entityFactory.createLightEnvironment(lightEnv);
+
 
         int textureMgrEntity = foolsEngine.entityManager.createEntity();
         foolsEngine.entityManager.bindComponent(textureMgrEntity,

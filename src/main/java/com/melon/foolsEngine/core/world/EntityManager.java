@@ -86,6 +86,11 @@ public class EntityManager {
         updateSignature(entityID, component);
     }
 
+    @SuppressWarnings("unchecked")
+    public <T extends Component> T getComponent(int entityID,Class<T> componentClass) {
+        return (T) getSet(componentClass).get(entityID);
+    }
+
     private <T extends Component> void updateSignature(int entityID, T component) {
         if(component != null)
             signatures[entityID] = signatures[entityID].mix(Instance.componentManager.getComponentSignature(component.getClass()));
