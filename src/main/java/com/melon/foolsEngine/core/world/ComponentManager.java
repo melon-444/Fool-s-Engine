@@ -70,19 +70,37 @@ public class ComponentManager {
     }
 
     /**
-     * Callback function
+     * Swaps the component data of the last entity into the destroyed entity's slot,
+     * then properly deletes the last entity's entry. Respects cases where either
+     * entity may not have the component type.
      *
      * @param entityID the destroyed entity
+     * @param lastIndex the last entity being compacted
      */
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public void clearComponentFromSet(int entityID, int lastIndex) {
-        for (var set : componentSparseSetMap.values()) {
-            if(set.getComponent(entityID)!=null)
-                copyHelper(set, entityID, lastIndex);
+        if (entityID == lastIndex) {
+            for (var set : componentSparseSetMap.values()) {
+                if (set.exists(entityID))
+                    set.deleteComponent(entityID);
+            }
+            return;
         }
-    }
-
-    private <T extends Component> void copyHelper(SparseSet<T> tSparseSet, int i, int j) {
-        tSparseSet.setComponent(i, tSparseSet.getComponent(j));
+        for (var set : componentSparseSetMap.values()) {
+            SparseSet raw = set;
+            boolean a = raw.exists(entityID);
+            boolean b = raw.exists(lastIndex);
+            Instance.LOGGER.debug("raw.exists(entityID=%d):%b, raw.exists(lastIndex=%d):%b",entityID,a,lastIndex,b);
+            if (a && b) {
+                raw.setComponent(entityID, raw.getComponent(lastIndex));
+                raw.deleteComponent(lastIndex);
+            } else if (a) {
+                raw.deleteComponent(entityID);
+            } else if (b) {
+                raw.createComponent(entityID, raw.getComponent(lastIndex));
+                raw.deleteComponent(lastIndex);
+            }
+        }
     }
 
     public <T extends Component> SparseSet<T> getComponentSparseSet(Class<T> componentClass) {

@@ -120,6 +120,12 @@ public class SceneCollector extends ClientSystem {
 
         Set<Integer> current = new HashSet<>(entities);
         Set<Integer> toRemove = new HashSet<>(activeLights.keySet());
+
+        if (env.getLights().isEmpty() && !activeLights.isEmpty()) {
+            activeLights.clear();
+            return;
+        }
+
         toRemove.removeAll(current);
 
         for (int eid : toRemove) {

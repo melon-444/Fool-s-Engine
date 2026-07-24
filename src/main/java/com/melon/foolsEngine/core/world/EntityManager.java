@@ -55,14 +55,16 @@ public class EntityManager {
 
     public void destroyEntity(int entity) {
         int lastIndex = livingEntityCount - 1;
-        Instance.componentManager.clearComponentFromSet(entity, lastIndex);
-        if (entity != lastIndex) {
+        if (entity < lastIndex) {
+            Instance.componentManager.clearComponentFromSet(entity, lastIndex);
             signatures[entity] = signatures[lastIndex];
-            Instance.systemManager.entitySignatureChanged(entity, signatures[entity]);
-        } else {
             Instance.systemManager.entitySignatureChanged(entity, new Signature(Instance.MAX_COMPONENTS));
+            signatures[lastIndex] = null;
+        } else {
+            Instance.componentManager.clearComponentFromSet(entity, entity);
+            Instance.systemManager.entitySignatureChanged(entity, new Signature(Instance.MAX_COMPONENTS));
+            signatures[entity] = null;
         }
-        signatures[lastIndex] = null;
         livingEntityCount = lastIndex;
     }
 

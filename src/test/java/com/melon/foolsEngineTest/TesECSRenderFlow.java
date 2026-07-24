@@ -20,6 +20,7 @@ import com.melon.foolsEngine.util.*;
 import com.melon.foolsEngine.util.imgui.ImGuiContext;
 import com.melon.foolsEngine.util.imgui.ImGuiDebugOverlay;
 import com.melon.foolsEngine.util.imgui.ImGuiRenderer;
+import com.melon.foolsEngine.util.logger.Logger;
 import org.joml.*;
 import org.joml.Math;
 
@@ -30,6 +31,8 @@ public class TesECSRenderFlow {
     private static final int SHADOW_MAP_SIZE = 8192;
     private static final int MAX_SHADOW_LAYERS = 16;
     private static final float SPOT_SHADOW_NEAR = 0.1f;
+
+    private static final Logger TESTLOGGER = new Logger();
 
     public static void main(String[] args) {
         WindowsManager manager = foolsEngine.serviceFactory.getWindowsManager();
@@ -238,7 +241,9 @@ public class TesECSRenderFlow {
                         new LightComp(color, new Vector3f(lookDir), new Vector3f(cameraPos), 10f, 10f)));
             }
             if (input.isActionPressed(clearLights)) {
+                TESTLOGGER.info("ActualLightCounts: %d",scene.getLighting().getLights().size());
                 for (int eid : lightEntities) {
+                    TESTLOGGER.info("clearLight: %d",eid);
                     foolsEngine.entityManager.destroyEntity(eid);
                 }
                 lightEntities.clear();

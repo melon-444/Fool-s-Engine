@@ -67,6 +67,7 @@ public class EntityFactory {
         final int entityID = Instance.entityManager.createEntity();
         Instance.entityManager.bindComponent(entityID, new TransformComp(lightComp.position != null ? lightComp.position : new Vector3f()));
         Instance.entityManager.bindComponent(entityID, lightComp);
+        Instance.LOGGER.debug("Light Created,ID:%d,%s",entityID,lightComp);
         return entityID;
     }
 
