@@ -65,5 +65,11 @@ public class Transform extends Component {
         }
         return matrix;
     }
+
+    public void setFromMatrix(Matrix4f matrix) {
+        this.matrix.set(matrix);
+        if(dirty)
+            dirty = false;
+    }
 }
 //M = t*r*s

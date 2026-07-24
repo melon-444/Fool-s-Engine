@@ -67,7 +67,7 @@ public class TesECSRenderFlow {
 
         java.util.List<Integer> lightEntities = new java.util.ArrayList<>();
 
-        Vector3f cameraPos = new Vector3f(0, 0, -12);
+        Vector3f cameraPos = new Vector3f(0, 0, 12);
         Transform cameraTransform = foolsEngine.entityFactory.createCamera(cameraPos);
 
         win.show();
@@ -94,7 +94,7 @@ public class TesECSRenderFlow {
         scene.setBackGroundColor(lightEnv.getAmbient().x, lightEnv.getAmbient().y, lightEnv.getAmbient().z, 1.0f);
 
         InputManager input = foolsEngine.serviceFactory.createInputManager(win);
-        win.setCursorMode(CursorMode.HIDDEN);
+        win.setCursorMode(CursorMode.DISABLED);
 
         Action moveForward = () -> SignalType.BUTTON;
         Action moveBackward = () -> SignalType.BUTTON;
@@ -156,18 +156,24 @@ public class TesECSRenderFlow {
             float deltaTime = (currentTime - lastTime) / 1e9f;
             lastTime = currentTime;
 
+
             float renderStart = System.nanoTime();
             scheduler.update();
             float renderTimeMs = (System.nanoTime() - renderStart) / 1e6f;
+            if(renderDebug){
+                imGuiRenderer.beginFrame();
+                debugOverlay.render(scene, deltaTime, renderTimeMs,
+                        cameraPos, yaw, pitch, frame.getDrawCallCount());
+                imGuiRenderer.endFrame();
+            }
             input.beginFrame();
 
             Vector3f forward = new Vector3f(
-                    Math.sin(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)),
-                    Math.sin(Math.toRadians(pitch)),
-                    Math.cos(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch))
+                    -(float)Math.sin(Math.toRadians(yaw)) * (float)Math.cos(Math.toRadians(pitch)),
+                    (float)Math.sin(Math.toRadians(pitch)),
+                    -(float)Math.cos(Math.toRadians(yaw)) * (float)Math.cos(Math.toRadians(pitch))
             ).normalize();
             Vector3f right = new Vector3f(forward).cross(worldUp).normalize();
-            Vector3f up = new Vector3f(right).cross(forward).normalize();
 
             if (input.isActionDown(moveForward)) {
                 cameraPos.add(new Vector3f(forward).mul(moveSpeed * 0.016f));
@@ -194,16 +200,16 @@ public class TesECSRenderFlow {
             Vector2f mouseDelta = win.getCursorMode() == CursorMode.DISABLED ? input.getActionAxis2DDelta(lookDelta) : new Vector2f(0.0f);
             yaw -= mouseDelta.x * lookSensitivity;
             pitch -= mouseDelta.y * lookSensitivity;
-            pitch = Math.min(89.0f, Math.max(-89.0f, pitch));
+            pitch = Math.min(89.5f, Math.max(-89.5f, pitch));
 
-            Vector3f lookDir = forward;
-            cameraTransform.position.set(cameraPos);
-            cameraTransform.rotation.identity();
-            cameraTransform.rotation.rotateY((float) Math.toRadians(yaw));
-            Vector3f localRight = new Vector3f(1, 0, 0);
-            cameraTransform.rotation.transform(localRight);
-            cameraTransform.rotation.rotateAxis((float) Math.toRadians(pitch), localRight.x, localRight.y, localRight.z);
-            cameraTransform.markDirty();
+            Vector3f lookDir = new Vector3f(
+                    Math.sin(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)),
+                    Math.sin(Math.toRadians(pitch)),
+                    Math.cos(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch))
+            ).normalize();
+            Vector3f cameraTarget = new Vector3f(cameraPos).add(lookDir);
+            cameraTransform.setFromMatrix(cameraTransform.getMatrix().lookAt(cameraPos, cameraTarget, worldUp));
+
 
             if (input.isActionPressed(spawnDirLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
@@ -261,13 +267,6 @@ public class TesECSRenderFlow {
 
             if (input.isActionPressed(switchDebugWindow)) {
                 renderDebug = !renderDebug;
-            }
-
-            if(renderDebug){
-                imGuiRenderer.beginFrame();
-                debugOverlay.render(scene, deltaTime, renderTimeMs,
-                        cameraPos, yaw, pitch, frame.getDrawCallCount());
-                imGuiRenderer.endFrame();
             }
 
             input.endFrame();
