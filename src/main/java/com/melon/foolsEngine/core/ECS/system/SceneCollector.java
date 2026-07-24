@@ -77,9 +77,7 @@ public class SceneCollector extends ClientSystem {
             Transform t = transforms.getComponent(e);
             if (t == null) continue;
 
-            view.identity()
-                    .rotate(t.rotation.conjugate(conjugateTmp))
-                    .translate(-t.position.x, -t.position.y, -t.position.z);
+            view.identity().set(t.getMatrix().invert());
             persp.aspect = INSTANCE.aspect;
             persp.fov = cam.FOVy;
             persp.near = cam.near;

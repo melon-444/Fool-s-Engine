@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+@Deprecated
 public class LightCollector extends ClientSystem {
 
     private final SparseSet<com.melon.foolsEngine.core.ECS.basicComponents.Light> ecsLights;

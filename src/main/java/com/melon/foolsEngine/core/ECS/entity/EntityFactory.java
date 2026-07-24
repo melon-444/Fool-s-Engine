@@ -70,6 +70,7 @@ public class EntityFactory {
 
     /**
      * Create an active camera entity and return its Transform for per-frame updates.
+     * Consider it as a dot with a vector in the world(Input the normal transform to the return instead of its invert)
      * The Transform is bound to the entity — mutate it directly, then call markDirty().
      */
     public Transform createCamera(Vector3f position) {

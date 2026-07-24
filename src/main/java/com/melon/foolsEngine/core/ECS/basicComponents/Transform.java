@@ -21,9 +21,9 @@ import org.joml.*;
 
 public class Transform extends Component {
 
-    public final Vector3f position = new Vector3f();
-    public final Quaternionf rotation = new Quaternionf();
-    public final Vector3f scale = new Vector3f(1, 1, 1);
+    private final Vector3f position = new Vector3f();
+    private final Quaternionf rotation = new Quaternionf();
+    private final Vector3f scale = new Vector3f(1, 1, 1);
 
     // 缓存（避免频繁 new）
     private final Matrix4f matrix = new Matrix4f();
@@ -32,18 +32,18 @@ public class Transform extends Component {
     public Transform() {}
 
     public Transform(Vector3f position, Quaternionf rotation) {
-        this.position.set(position);
-        this.rotation.set(rotation);
+        this.getPosition().set(position);
+        this.getRotation().set(rotation);
     }
 
     public Transform(Vector3f position, Quaternionf rotation, Vector3f scale) {
-        this.position.set(position);
-        this.rotation.set(rotation);
-        this.scale.set(scale);
+        this.getPosition().set(position);
+        this.getRotation().set(rotation);
+        this.getScale().set(scale);
     }
 
     public Transform(Vector3f position) {
-        this.position.set(position);
+        this.getPosition().set(position);
     }
 
     // dirty marker
@@ -55,9 +55,9 @@ public class Transform extends Component {
     public Matrix4f getMatrix() {
         if (dirty) {
             matrix.identity()
-                    .translate(position)
-                    .rotate(rotation)
-                    .scale(scale);
+                    .translate(getPosition())
+                    .rotate(getRotation())
+                    .scale(getScale());
             dirty = false;
         }
         return matrix;
@@ -73,9 +73,9 @@ public class Transform extends Component {
 
         Matrix3f rotation = new Matrix3f();
         // 1. 提取平移
-        position.x = mat[3];
-        position.y = mat[7];
-        position.z = mat[11];
+        getPosition().x = mat[3];
+        getPosition().y = mat[7];
+        getPosition().z = mat[11];
 
         // 2. 提取列向量 (注意列主序)
         Vector3f col0 = new Vector3f(mat[0], mat[4], mat[8]);
@@ -83,24 +83,50 @@ public class Transform extends Component {
         Vector3f col2 = new Vector3f(mat[2], mat[6], mat[10]);
 
         // 3. 计算缩放
-        scale.x = col0.length();
-        scale.y = col1.length();
-        scale.z = col2.length();
+        getScale().x = col0.length();
+        getScale().y = col1.length();
+        getScale().z = col2.length();
 
         // 4. 构造旋转矩阵（单位化列）
-        rotation.m00 = col0.x / scale.x; rotation.m01 = col1.x / scale.y; rotation.m02 = col2.x / scale.z;
-        rotation.m10 = col0.y / scale.x; rotation.m11 = col1.y / scale.y; rotation.m12 = col2.y / scale.z;
-        rotation.m20 = col0.z / scale.x; rotation.m21 = col1.z / scale.y; rotation.m22 = col2.z / scale.z;
+        rotation.m00 = col0.x / getScale().x; rotation.m01 = col1.x / getScale().y; rotation.m02 = col2.x / getScale().z;
+        rotation.m10 = col0.y / getScale().x; rotation.m11 = col1.y / getScale().y; rotation.m12 = col2.y / getScale().z;
+        rotation.m20 = col0.z / getScale().x; rotation.m21 = col1.z / getScale().y; rotation.m22 = col2.z / getScale().z;
 
         // 5. 修复镜像
         if (rotation.determinant() < 0) {
-            scale.z = -scale.z;
+            getScale().z = -getScale().z;
             rotation.m02 = -rotation.m02;
             rotation.m12 = -rotation.m12;
             rotation.m22 = -rotation.m22;
         }
-        this.rotation.setFromNormalized(rotation);
+        this.getRotation().setFromNormalized(rotation);
     }
 
+    public Vector3f getPosition() {
+        return position;
+    }
+
+    public Quaternionf getRotation() {
+        return rotation;
+    }
+
+    public Vector3f getScale() {
+        return scale;
+    }
+
+    public void position(Vector3f position) {
+        this.position.set(position);
+        markDirty();
+    }
+
+    public void rotation(Quaternionf rotation) {
+        this.rotation.set(rotation);
+        markDirty();
+    }
+
+    public void scale(Vector3f scale) {
+        this.scale.set(scale);
+        markDirty();
+    }
 }
 //M = t*r*s

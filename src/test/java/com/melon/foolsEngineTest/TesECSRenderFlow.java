@@ -1,7 +1,6 @@
 package com.melon.foolsEngineTest;
 
 import com.melon.foolsEngine.api.input.*;
-import com.melon.foolsEngine.api.rendering.render.RenderCommand;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
@@ -202,12 +201,11 @@ public class TesECSRenderFlow {
             pitch -= mouseDelta.y * lookSensitivity;
             pitch = Math.min(89.5f, Math.max(-89.5f, pitch));
 
-            cameraTransform.position.set(cameraPos);
-            cameraTransform.rotation.identity();
-            cameraTransform.rotation.rotateY(Math.toRadians(yaw));
-            cameraTransform.rotation.rotateX(Math.toRadians(pitch));
-            cameraTransform.markDirty();
 
+            cameraTransform.getRotation().identity();
+            cameraTransform.getRotation().rotateY(Math.toRadians(yaw));
+            cameraTransform.getRotation().rotateX(Math.toRadians(pitch));
+            cameraTransform.position(cameraPos);// mark dirty at the same time
 
             if (input.isActionPressed(spawnDirLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());

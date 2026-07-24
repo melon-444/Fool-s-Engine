@@ -25,6 +25,7 @@ import com.melon.foolsEngine.core.ECS.basicComponents.Transform;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.SparseSet;
 
+@Deprecated
 public class RenderableCollector extends ClientSystem {
     private final SparseSet<Transform> transforms;
     private final SparseSet<Renderable> renderables;

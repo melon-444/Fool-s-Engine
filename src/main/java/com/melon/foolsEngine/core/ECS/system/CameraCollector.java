@@ -26,6 +26,8 @@ import com.melon.foolsEngine.util.SparseSet;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 
+
+@Deprecated
 public class CameraCollector extends ClientSystem {
 
     private final SparseSet<CameraComponent> cameras;

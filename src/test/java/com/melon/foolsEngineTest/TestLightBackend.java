@@ -242,21 +242,21 @@ public class TestLightBackend {
 
             scene.clear();
 
-            Vector3f cache = new Vector3f(dragonTransform1.position);
+            Vector3f cache = new Vector3f(dragonTransform1.getPosition());
 
             for (int i = 0; i < 10; i++) {
                 Material mat = (i % 2 == 0) ? arrayMaterial : material;
                 for (int j = 0; j < 10; j++) {
                     scene.submit(new RenderCommand(dragonMesh, mat, new Matrix4f(dragonTransform1.getMatrix())));
-                    dragonTransform1.position.add(0, 0, 2);
+                    dragonTransform1.getPosition().add(0, 0, 2);
                     dragonTransform1.markDirty();
                 }
-                dragonTransform1.position.set(cache);
-                dragonTransform1.position.add(3 * i, 0, 0);
+                dragonTransform1.getPosition().set(cache);
+                dragonTransform1.getPosition().add(3 * i, 0, 0);
                 dragonTransform1.markDirty();
             }
 
-            dragonTransform1.position.set(cache);
+            dragonTransform1.getPosition().set(cache);
             dragonTransform1.markDirty();
 
             scene.setCamera(camera);
