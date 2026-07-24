@@ -275,8 +275,6 @@ public class TestLightBackend {
                 imGuiRenderer.endFrame();
             }
 
-            //Logger.debug("FPS: %.1f | Cam: (%.2f, %.2f, %.2f) | Yaw: %.1f | Pitch: %.1f | Lights: %d", 1.0f / deltaTime, cameraPos.x, cameraPos.y, cameraPos.z, yaw, pitch, lightEnv.size());
-
             input.endFrame();
             win.update();
 

@@ -48,7 +48,7 @@ public class CameraCollector extends ClientSystem {
 
     @Override
     public void update(float dt, RenderScene scene) {
-
+        super.update(dt, scene);
         for (int e : entities) {
             CameraComponent cam = cameras.getComponent(e);
             if (!cam.active)

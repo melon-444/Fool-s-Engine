@@ -16,6 +16,7 @@
 
 package com.melon.foolsEngine.core.ECS.system;
 
+import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.core.annotation.Distribution;
 import com.melon.foolsEngine.core.annotation.OnlyIn;
@@ -24,5 +25,9 @@ import com.melon.foolsEngine.core.annotation.OnlyIn;
 public abstract class ServerSystem<Context> extends System<Context> {
     public ServerSystem(FoolsEngine engine,Context context) {
         super(engine,context);
+    }
+    @Override
+    public void update(float dt, Context ctx){
+        if (ctx == null) ctx = context;
     }
 }

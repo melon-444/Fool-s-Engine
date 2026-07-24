@@ -43,6 +43,7 @@ public class LightCollector extends ClientSystem {
 
     @Override
     public void update(float dt, RenderScene scene) {
+        super.update(dt, scene);
         LightEnvironment env = scene.getLighting();
         if (env == null) {
             return;

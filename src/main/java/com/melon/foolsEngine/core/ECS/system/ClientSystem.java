@@ -25,6 +25,10 @@ import com.melon.foolsEngine.core.annotation.OnlyIn;
 @OnlyIn(Distribution.Client)
 public abstract class ClientSystem extends System<RenderScene> {
     public ClientSystem(FoolsEngine engine) {
-        super(engine,engine.systemScheduler.getScene());
+        super(engine);
+    }
+    @Override
+    public void update(float dt, RenderScene scene){
+        if (scene == null) scene = context;
     }
 }

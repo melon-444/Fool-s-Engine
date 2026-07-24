@@ -73,11 +73,11 @@ public class FoolsEngine {
             this.frame = serviceFactory.getRenderFrame();
             mainWindow = serviceFactory.getWindowsManager().createWindow();
             mainWindow.setSize(windowWidth, windowHeight);
-            this.systemScheduler = new SystemScheduler(frame, (GraphicsContext) mainWindow,systemManager);
             systemManager.registerSystem(CameraCollector.class);
             systemManager.registerSystem(LightCollector.class);
             systemManager.registerSystem(RenderableCollector.class);
             frame.init();
+            this.systemScheduler = new SystemScheduler(frame, (GraphicsContext) mainWindow,systemManager);
         } else {
             this.frame = null;
             this.systemScheduler = new SystemScheduler(systemManager);

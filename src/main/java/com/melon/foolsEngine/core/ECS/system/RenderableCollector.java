@@ -42,6 +42,7 @@ public class RenderableCollector extends ClientSystem {
 
     @Override
     public void update(float dt, RenderScene scene) {
+        super.update(dt, scene);
         for (int e : entities) {
             Transform t = transforms.getComponent(e);
             Mesh meshComp = renderables.getComponent(e).mesh;
