@@ -32,7 +32,7 @@ public class CameraCollector extends ClientSystem {
     private final SparseSet<Transform> transforms;
     private final Matrix4f view = new Matrix4f();
     private final Matrix4f proj = new Matrix4f();
-    private final PerspectiveProjection persp = new PerspectiveProjection(0, 0, 0);
+    private final PerspectiveProjection perspective = new PerspectiveProjection(0, 0, 0);
     private final Quaternionf conjugateTmp = new Quaternionf();
 
     {
@@ -57,17 +57,11 @@ public class CameraCollector extends ClientSystem {
                 deactivateOtherCam(e);
 
             Transform t = transforms.getComponent(e);
-            Matrix4f view = this.view.identity()
-                    .rotate(t.rotation.conjugate(conjugateTmp))
-                    .translate(
-                            -t.position.x,
-                            -t.position.y,
-                            -t.position.z
-                    );
-            persp.aspect = INSTANCE.aspect;
-            persp.fov = cam.FOVy;
-            persp.near = cam.near;
-            Matrix4f proj = persp.get(this.proj.identity());
+            Matrix4f view = this.view.identity().set(t.getMatrix());
+            perspective.aspect = INSTANCE.aspect;
+            perspective.fov = cam.FOVy;
+            perspective.near = cam.near;
+            Matrix4f proj = perspective.get(this.proj.identity());
             scene.setCamera(new Camera(view, proj));
             break;
         }

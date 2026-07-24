@@ -168,18 +168,18 @@ public class TesECSRenderFlow {
             }
             input.beginFrame();
 
-            Vector3f forward = new Vector3f(
-                    -(float)Math.sin(Math.toRadians(yaw)) * (float)Math.cos(Math.toRadians(pitch)),
-                    (float)Math.sin(Math.toRadians(pitch)),
-                    -(float)Math.cos(Math.toRadians(yaw)) * (float)Math.cos(Math.toRadians(pitch))
+            Vector3f lookDir = new Vector3f(
+                    -(float)Math.sin(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)),
+                    Math.sin(Math.toRadians(pitch)),
+                    -(float)Math.cos(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch))
             ).normalize();
-            Vector3f right = new Vector3f(forward).cross(worldUp).normalize();
+            Vector3f right = new Vector3f(lookDir).cross(worldUp).normalize();
 
             if (input.isActionDown(moveForward)) {
-                cameraPos.add(new Vector3f(forward).mul(moveSpeed * 0.016f));
+                cameraPos.add(new Vector3f(lookDir).mul(moveSpeed * 0.016f));
             }
             if (input.isActionDown(moveBackward)) {
-                cameraPos.sub(new Vector3f(forward).mul(moveSpeed * 0.016f));
+                cameraPos.sub(new Vector3f(lookDir).mul(moveSpeed * 0.016f));
             }
             if (input.isActionDown(moveRight)) {
                 cameraPos.add(new Vector3f(right).mul(moveSpeed * 0.016f));
@@ -202,13 +202,11 @@ public class TesECSRenderFlow {
             pitch -= mouseDelta.y * lookSensitivity;
             pitch = Math.min(89.5f, Math.max(-89.5f, pitch));
 
-            Vector3f lookDir = new Vector3f(
-                    Math.sin(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)),
-                    Math.sin(Math.toRadians(pitch)),
-                    Math.cos(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch))
-            ).normalize();
-            Vector3f cameraTarget = new Vector3f(cameraPos).add(lookDir);
-            cameraTransform.setFromMatrix(cameraTransform.getMatrix().lookAt(cameraPos, cameraTarget, worldUp));
+            cameraTransform.position.set(cameraPos);
+            cameraTransform.rotation.identity();
+            cameraTransform.rotation.rotateY(Math.toRadians(yaw));
+            cameraTransform.rotation.rotateX(Math.toRadians(pitch));
+            cameraTransform.markDirty();
 
 
             if (input.isActionPressed(spawnDirLight)) {
