@@ -55,16 +55,22 @@ public class TesECSRenderFlow {
         depthShader.load(Path.of("src/main/resources/shader/vsh/depth_vsh.glsl"), Path.of("src/main/resources/shader/fsh/depth_fsh.glsl"));
         Material depthMaterial = new Material(depthShader);
 
-        Transform dragonTransform1 = new Transform(new Vector3f(0, 0, 5), new Quaternionf(), new Vector3f(0.1f, 0.1f, 0.1f));
+        Vector3f origin = new Vector3f(0, 0, 5);
+        for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 10; j++) {
+                Material mat = (i % 2 == 0) ? arrayMaterial : material;
+                Vector3f pos = new Vector3f(origin).add(3 * i, 0, 2 * j);
+                foolsEngine.entityFactory.createModelEntity(
+                        dragonMesh, mat, pos, new Quaternionf(), new Vector3f(0.1f, 0.1f, 0.1f));
+            }
+        }
 
-        PerspectiveProjection proj = new PerspectiveProjection(foolsEngine.FOV, foolsEngine.aspect, foolsEngine.Z_NEAR);
+        java.util.List<Integer> lightEntities = new java.util.ArrayList<>();
+
         Vector3f cameraPos = new Vector3f(0, 0, -12);
-        Vector3f cameraTarget = new Vector3f(0, 0, 0);
-        Vector3f worldUp = new Vector3f(0, 1, 0);
-        Camera camera = new Camera(
-                new Matrix4f().lookAt(cameraPos, cameraTarget, worldUp),
-                proj.get(new Matrix4f())
-        );
+        Transform cameraTransform = foolsEngine.entityFactory.createCamera(cameraPos);
+        PerspectiveProjection proj = new PerspectiveProjection(foolsEngine.FOV, foolsEngine.aspect, foolsEngine.Z_NEAR);
+        Camera camera = new Camera(new Matrix4f(), proj.get(new Matrix4f()));
 
         win.show();
         RenderFrame frame = foolsEngine.frame;
@@ -87,7 +93,6 @@ public class TesECSRenderFlow {
         RenderScene scene = scheduler.getScene();
         scene.setLighting(lightEnv);
         scene.setTextureManager(textureManager);
-        scene.setCamera(camera);
         scene.setBackGroundColor(lightEnv.getAmbient().x, lightEnv.getAmbient().y, lightEnv.getAmbient().z, 1.0f);
 
         InputManager input = foolsEngine.serviceFactory.createInputManager(win);
@@ -136,11 +141,13 @@ public class TesECSRenderFlow {
         input.bind(input.getMouse(), FoolsEngineKeyCode.MOUSE_RIGHT, switchMouseMode);
 
         float moveSpeed = 5.0f;
-        float lookSensitivity = 1.0f;
-        float yaw = 0;
-        float pitch = 0;
+            float lookSensitivity = 1.0f;
+            float yaw = 0;
+            float pitch = 0;
 
-        boolean renderDebug = false;
+            Vector3f worldUp = new Vector3f(0, 1, 0);
+
+            boolean renderDebug = false;
 
         java.util.Random rng = new java.util.Random();
 
@@ -156,8 +163,13 @@ public class TesECSRenderFlow {
             float renderTimeMs = (System.nanoTime() - renderStart) / 1e6f;
             input.beginFrame();
 
-            Vector3f forward = new Vector3f(cameraTarget).sub(cameraPos).normalize();
+            Vector3f forward = new Vector3f(
+                    Math.sin(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)),
+                    Math.sin(Math.toRadians(pitch)),
+                    Math.cos(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch))
+            ).normalize();
             Vector3f right = new Vector3f(forward).cross(worldUp).normalize();
+            Vector3f up = new Vector3f(right).cross(forward).normalize();
 
             if (input.isActionDown(moveForward)) {
                 cameraPos.add(new Vector3f(forward).mul(moveSpeed * 0.016f));
@@ -186,35 +198,44 @@ public class TesECSRenderFlow {
             pitch -= mouseDelta.y * lookSensitivity;
             pitch = Math.min(89.0f, Math.max(-89.0f, pitch));
 
-            Vector3f lookDir = new Vector3f(
-                    Math.sin(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)),
-                    Math.sin(Math.toRadians(pitch)),
-                    Math.cos(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch))
-            ).normalize();
-
-            cameraTarget = new Vector3f(cameraPos).add(lookDir);
-            camera.view.identity().lookAt(cameraPos, cameraTarget, worldUp);
+            Vector3f lookDir = forward;
+            cameraTransform.position.set(cameraPos);
+            cameraTransform.rotation.identity();
+            cameraTransform.rotation.rotateY((float) Math.toRadians(yaw));
+            Vector3f localRight = new Vector3f(1, 0, 0);
+            cameraTransform.rotation.transform(localRight);
+            cameraTransform.rotation.rotateAxis((float) Math.toRadians(pitch), localRight.x, localRight.y, localRight.z);
+            cameraTransform.markDirty();
 
             if (input.isActionPressed(spawnDirLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
-                lightEnv.add(Light.directional(color, new Vector3f(lookDir)));
+                lightEntities.add(foolsEngine.entityFactory.createLightEntity(
+                        new com.melon.foolsEngine.core.ECS.basicComponents.Light(color, new Vector3f(lookDir))));
             }
             if (input.isActionPressed(spawnPointLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
-                lightEnv.add(Light.point(color, new Vector3f(cameraPos), 3.0f));
+                lightEntities.add(foolsEngine.entityFactory.createLightEntity(
+                        new com.melon.foolsEngine.core.ECS.basicComponents.Light(color, new Vector3f(lookDir), new Vector3f(cameraPos))));
             }
             if (input.isActionPressed(spawnSpotLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
-                lightEnv.add(Light.spot(color, new Vector3f(lookDir), new Vector3f(cameraPos), 10f, 10f, 2.0f));
+                lightEntities.add(foolsEngine.entityFactory.createLightEntity(
+                        new com.melon.foolsEngine.core.ECS.basicComponents.Light(color, new Vector3f(lookDir), new Vector3f(cameraPos), 10f, 10f)));
             }
             if (input.isActionPressed(clearLights)) {
+                for (int eid : lightEntities) {
+                    foolsEngine.entityManager.destroyEntity(eid);
+                }
+                lightEntities.clear();
                 lightEnv.clear();
             }
             if (input.isActionPressed(ambientUp)) {
                 lightEnv.getAmbient().mul(1.1f);
+                scene.setBackGroundColor(lightEnv.getAmbient().x, lightEnv.getAmbient().y, lightEnv.getAmbient().z, 1.0f);
             }
             if (input.isActionPressed(ambientDown)) {
                 lightEnv.getAmbient().mul(0.9f);
+                scene.setBackGroundColor(lightEnv.getAmbient().x, lightEnv.getAmbient().y, lightEnv.getAmbient().z, 1.0f);
             }
             if (input.isActionPressed(spawnShadowDirLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
@@ -241,25 +262,6 @@ public class TesECSRenderFlow {
             if (input.isActionPressed(switchDebugWindow)) {
                 renderDebug = !renderDebug;
             }
-
-            scene.clear();
-            scene.setCamera(camera);
-            scene.setBackGroundColor(lightEnv.getAmbient().x, lightEnv.getAmbient().y, lightEnv.getAmbient().z, 1.0f);
-
-            Vector3f cache = new Vector3f(dragonTransform1.position);
-            for (int i = 0; i < 10; i++) {
-                Material mat = (i % 2 == 0) ? arrayMaterial : material;
-                for (int j = 0; j < 10; j++) {
-                    scene.submit(new RenderCommand(dragonMesh, mat, new Matrix4f(dragonTransform1.getMatrix())));
-                    dragonTransform1.position.add(0, 0, 2);
-                    dragonTransform1.markDirty();
-                }
-                dragonTransform1.position.set(cache);
-                dragonTransform1.position.add(3 * i, 0, 0);
-                dragonTransform1.markDirty();
-            }
-            dragonTransform1.position.set(cache);
-            dragonTransform1.markDirty();
 
             if(renderDebug){
                 imGuiRenderer.beginFrame();

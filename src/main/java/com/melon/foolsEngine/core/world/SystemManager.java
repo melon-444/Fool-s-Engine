@@ -91,7 +91,7 @@ public class SystemManager {
     }
 
     public void entitySignatureChanged(int entity, Signature entitySignature) {
-
+        if (entitySignature==null) throw new NullPointerException("entitySignature is null");
         for (var systemClasses : systems.keySet()) {
             System system = systems.get(systemClasses);
             Signature systemSig = signatures.get(systemClasses);
