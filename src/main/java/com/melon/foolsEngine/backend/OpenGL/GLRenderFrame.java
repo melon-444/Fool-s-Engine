@@ -91,6 +91,7 @@ class GLRenderFrame implements RenderFrame {
 
             this.camera = scene.getCamera();
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            applyScreenViewport(scene, this.camera);
             glClearColor(scene.getBgR(), scene.getBgG(), scene.getBgB(), scene.getBgA());
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glClearDepth(0.0f);
@@ -108,7 +109,7 @@ class GLRenderFrame implements RenderFrame {
 
         Camera passCam = pass.cameraOverride() != null ? pass.cameraOverride() : scene.getCamera();
         this.camera = passCam;
-        RENDERLOGGER.debug( "override=%s proj.m11=%.4f view.m03=%.1f m13=%.1f", pass.cameraOverride() != null, passCam.projection.m11(), passCam.view.m03(), passCam.view.m13());
+        RENDERLOGGER.trace( "override=%s proj.m11=%.4f view.m03=%.1f m13=%.1f", pass.cameraOverride() != null, passCam.projection.m11(), passCam.view.m03(), passCam.view.m13());
         Material overrideMat = pass.overrideMaterial();
         RenderTarget target = pass.output();
         int layer = pass.arrayLayer();
@@ -123,6 +124,7 @@ class GLRenderFrame implements RenderFrame {
             glClearDepth(0.0f);
         } else {
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            applyScreenViewport(scene, passCam);
             glClearColor(scene.getBgR(), scene.getBgG(), scene.getBgB(), scene.getBgA());
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glClearDepth(0.0f);
@@ -139,6 +141,47 @@ class GLRenderFrame implements RenderFrame {
         }
 
         glViewport(savedViewport[0], savedViewport[1], savedViewport[2], savedViewport[3]);
+    }
+
+    /**
+     * Applies a screen viewport, optionally letterbox/pillarbox to preserve the
+     * camera projection aspect ratio. Clears the pillarbox areas to black.
+     */
+    private void applyScreenViewport(RenderScene scene, Camera cam) {
+        int vpW = scene.getScreenViewportW();
+        int vpH = scene.getScreenViewportH();
+
+        if (vpW <= 0 || vpH <= 0) return;
+
+        if (!scene.isPreserveScreenAspect() || cam == null || cam.projection == null) {
+            glViewport(0, 0, vpW, vpH);
+            glScissor(0, 0, vpW, vpH);
+            return;
+        }
+
+        float projAspect = Math.abs(cam.projection.m11() / cam.projection.m00());
+        float screenAspect = (float) vpW / vpH;
+        int vx, vy, vw, vh;
+
+        if (projAspect > screenAspect) {
+            vh = (int) (vpW / projAspect);
+            vw = vpW;
+            vx = 0;
+            vy = (vpH - vh) / 2;
+        } else {
+            vw = (int) (vpH * projAspect);
+            vh = vpH;
+            vx = (vpW - vw) / 2;
+            vy = 0;
+        }
+
+        glScissor(0, 0, vpW, vpH);
+        glEnable(GL_SCISSOR_TEST);
+        glClearColor(0, 0, 0, 1);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glViewport(vx, vy, vw, vh);
+        glScissor(vx, vy, vw, vh);
     }
 
     private void executeFullscreenPass(ShaderPass pass) {
