@@ -84,8 +84,7 @@ class GLRenderFrame implements RenderFrame {
     }
 
     private void executePass(ShaderPass pass, RenderScene scene, List<RenderCommand> commands) {
-        Camera passCam = pass.cameraOverride() != null ? pass.cameraOverride() : scene.getCamera();
-        this.camera = passCam;
+        this.camera = pass.cameraOverride() != null ? pass.cameraOverride() : scene.getCamera();
 
         Material overrideMat = pass.overrideMaterial();
         RenderTarget target = pass.output();
@@ -183,7 +182,7 @@ class GLRenderFrame implements RenderFrame {
         drawCallCounter += batches.size();
 
         for (List<RenderCommand> cmds : batches.values()) {
-            RenderCommand first = cmds.get(0);
+            RenderCommand first = cmds.getFirst();
             Mesh mesh = first.mesh();
             Material material = overrideMaterial != null ? overrideMaterial : first.material();
             ShaderProgram shader = material.shader();
@@ -208,32 +207,11 @@ class GLRenderFrame implements RenderFrame {
                 bindShadowArrayTexture();
                 lightEnv.apply(shader);
             }
+            //texture and Light
             binder.reset();
             for (String key : material.params().keySet()) {
                 Object param = material.params().get(key);
-                if (param instanceof Float f) {
-                    shader.setFloat(key, f);
-                } else if (param instanceof Integer i) {
-                    shader.setInt(key, i);
-                } else if (param instanceof Vector2f v) {
-                    shader.setVec2(key, v.x, v.y);
-                } else if (param instanceof Vector3f v) {
-                    shader.setVec3(key, v.x, v.y, v.z);
-                } else if (param instanceof Vector4f v) {
-                    shader.setVec4(key, v.x, v.y, v.z, v.w);
-                } else if (param instanceof Matrix4f m) {
-                    shader.setMat4(key, m.get(new float[16]));
-                } else if (param instanceof Texture t) {
-                    TextureManager tm = t.belongsTo();
-                    if (tm != null) {
-                        tm.bind(TextureManager.TEXTURE_ARRAY_SLOT);
-                        shader.setInt("textureArray", TextureManager.TEXTURE_ARRAY_SLOT);
-                        shader.setInt("textureLayer", t.getLayer());
-                    } else {
-                        int slot = binder.bind(t);
-                        shader.setInt(key, slot);
-                    }
-                }
+                bindUniformValue(shader, key, param);
             }
 
             if (pass != null) {
@@ -254,7 +232,7 @@ class GLRenderFrame implements RenderFrame {
         }
     }
 
-    private static void bindUniformValue(ShaderProgram shader, String name, Object value) {
+    private void bindUniformValue(ShaderProgram shader, String name, Object value) {
         if (value instanceof Float f) {
             shader.setFloat(name, f);
         } else if (value instanceof Integer i) {
@@ -268,7 +246,15 @@ class GLRenderFrame implements RenderFrame {
         } else if (value instanceof Matrix4f m) {
             shader.setMat4(name, m.get(new float[16]));
         } else if (value instanceof Texture t) {
-            // handled by material texture binding path above
+            TextureManager tm = t.belongsTo();
+            if (tm != null) {
+                tm.bind(TextureManager.TEXTURE_ARRAY_SLOT);
+                shader.setInt("textureArray", TextureManager.TEXTURE_ARRAY_SLOT);
+                shader.setInt("textureLayer", t.getLayer());
+            } else {
+                int slot = binder.bind(t);
+                shader.setInt(name, slot);
+            }
         }
     }
 

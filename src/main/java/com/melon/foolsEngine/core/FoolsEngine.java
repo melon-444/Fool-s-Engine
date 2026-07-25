@@ -76,9 +76,13 @@ public class FoolsEngine {
             mainWindow = serviceFactory.getWindowsManager().createWindow();
             mainWindow.setSize(windowWidth, windowHeight);
             LOGGER.debug("Window created | %dx%d", windowWidth, windowHeight);
-            systemManager.registerSystem(SceneCollector.class);
-            systemManager.registerSystem(MaterialCollector.class);
+            systemManager.registerSystem(LightEnvCollector.class);
+            systemManager.registerSystem(TextureManagerCollector.class);
+            systemManager.registerSystem(CameraCollector.class);
+            systemManager.registerSystem(LightCollector.class);
+            systemManager.registerSystem(RenderableCollector.class);
             systemManager.registerSystem(RenderPassCollector.class);
+            systemManager.registerSystem(MaterialCollector.class);
             LOGGER.debug("Systems registered");
             frame.init();
             LOGGER.debug("RenderFrame initialized");

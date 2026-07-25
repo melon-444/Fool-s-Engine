@@ -67,9 +67,8 @@ public class EntityFactory {
     /** Create a light entity with the given ECS Light component. */
     public int createLightEntity(LightComp lightComp) {
         final int entityID = Instance.entityManager.createEntity();
-        Instance.entityManager.bindComponent(entityID, new TransformComp(lightComp.position != null ? lightComp.position : new Vector3f()));
         Instance.entityManager.bindComponent(entityID, lightComp);
-        Instance.LOGGER.debug("Light Created,ID:%d,%s",entityID,lightComp);
+        Instance.LOGGER.debug("Light Created,ID:%d,%s", entityID, lightComp);
         return entityID;
     }
 
@@ -86,11 +85,18 @@ public class EntityFactory {
         return transform;
     }
 
-    /** Create a singleton entity with a pre-configured {@link LightEnvironment}. */
+    /** Create a light environment entity and return its ID. Get the env via ComponentManager. */
+    public int createLightEnvironment() {
+        final int entityID = Instance.entityManager.createEntity();
+        Instance.entityManager.bindComponent(entityID, new LightEnvComponent());
+        return entityID;
+    }
+
+    /** @deprecated Use {@link #createLightEnvironment()} and get env from the returned entity ID. */
+    @Deprecated
     public int createLightEnvironment(LightEnvironment env) {
         final int entityID = Instance.entityManager.createEntity();
         Instance.entityManager.bindComponent(entityID, new LightEnvComponent(env));
-        Instance.entityManager.bindComponent(entityID, new TransformComp());
         return entityID;
     }
 

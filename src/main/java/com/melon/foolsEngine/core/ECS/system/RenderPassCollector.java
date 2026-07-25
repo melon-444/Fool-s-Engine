@@ -26,7 +26,7 @@ public class RenderPassCollector extends ClientSystem {
 
     @Override
     public int priority() {
-        return 1;
+        return 4;
     }
 
     public RenderPassCollector(FoolsEngine engine) {

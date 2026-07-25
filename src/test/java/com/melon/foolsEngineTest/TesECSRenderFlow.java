@@ -89,8 +89,8 @@ public class TesECSRenderFlow {
 
 
         LightEnvironment lightEnv = new LightEnvironment();
-        int lightEnvEntity = foolsEngine.entityFactory.createLightEnvironment(lightEnv);
         lightEnv.setAmbient(0.08f, 0.08f, 0.08f);
+        int lightEnvEntity = foolsEngine.entityFactory.createLightEnvironment(lightEnv);
         lightEnv.setShadowMapSize(SHADOW_MAP_SIZE);
 
         RenderTarget shadowArray = foolsEngine.serviceFactory.createRenderTarget(
@@ -102,7 +102,6 @@ public class TesECSRenderFlow {
         int textureMgrEntity = foolsEngine.entityManager.createEntity();
         foolsEngine.entityManager.bindComponent(textureMgrEntity,
                 new TextureManagerComponent(textureManager));
-        foolsEngine.entityManager.bindComponent(textureMgrEntity, new TransformComp());
 
         SystemScheduler scheduler = foolsEngine.systemScheduler;
         RenderScene scene = scheduler.getScene();

@@ -227,7 +227,7 @@ public class ShadowManager {
     }
 
     /**
-     * Rebuilds a spot light's shadow camera view matrix from the light's current position
+     * Rebuilds a spotlight's shadow camera view matrix from the light's current position
      * and direction. The perspective projection remains unchanged after creation.
      */
     private void updateSpotShadowCamera(Light light) {

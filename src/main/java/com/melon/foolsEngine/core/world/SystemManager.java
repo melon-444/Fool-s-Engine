@@ -52,9 +52,8 @@ public class SystemManager {
         Instance = engineInstance;
     }
 
-    @SuppressWarnings("unchecked")
-    public <T extends System> T registerSystem(Class<T> systemClass) {
-
+    public <T extends System<?>> T registerSystem(Class<T> systemClass) {
+        Instance.LOGGER.debug("Registering System %s", systemClass.getSimpleName());
         try {
             T system = null;
             if (ClientSystem.class.isAssignableFrom(systemClass))
