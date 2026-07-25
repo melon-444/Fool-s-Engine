@@ -21,6 +21,9 @@ import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.core.ECS.system.ClientSystem;
 import com.melon.foolsEngine.core.ECS.system.ServerSystem;
+import com.melon.foolsEngine.core.events.EventBus;
+import com.melon.foolsEngine.core.events.builtInEvents.PostRender;
+import com.melon.foolsEngine.core.events.builtInEvents.PreRender;
 import com.melon.foolsEngine.core.ECS.system.System;
 
 import java.util.ArrayList;
@@ -133,7 +136,14 @@ public class SystemScheduler {
                 sceneFront.getBgB(), sceneFront.getBgA());
 
         ctx.makeCurrent();
+
+        EventBus bus = EventBus.get("SystemBus");
+        if (bus != null) bus.emit(new PreRender(sceneFront));
+
         frame.render(sceneFront);
+
+        if (bus != null) bus.emit(new PostRender(sceneFront));
+
         if (additionalRenderTask != null)
             additionalRenderTask.run();
         ctx.swapBuffers();

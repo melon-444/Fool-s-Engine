@@ -18,6 +18,10 @@ package com.melon.foolsEngine.core.world;
 
 import com.melon.foolsEngine.core.ECS.basicComponents.Component;
 import com.melon.foolsEngine.core.FoolsEngine;
+import com.melon.foolsEngine.core.events.EventBus;
+import com.melon.foolsEngine.core.events.builtInEvents.ComponentAdded;
+import com.melon.foolsEngine.core.events.builtInEvents.EntityCreated;
+import com.melon.foolsEngine.core.events.builtInEvents.EntityDestroyed;
 import com.melon.foolsEngine.util.Signature;
 import com.melon.foolsEngine.util.SparseSet;
 
@@ -50,6 +54,9 @@ public class EntityManager {
 
         signatures[id] = new Signature(Instance.MAX_COMPONENTS);
 
+        EventBus bus = EventBus.get("SystemBus");
+        if (bus != null) bus.emit(new EntityCreated(id));
+
         return id;
     }
 
@@ -66,6 +73,9 @@ public class EntityManager {
             signatures[entity] = null;
         }
         livingEntityCount = lastIndex;
+
+        EventBus bus = EventBus.get("SystemBus");
+        if (bus != null) bus.emit(new EntityDestroyed(entity));
     }
 
     public Signature getSignature(int entity) {
@@ -77,6 +87,9 @@ public class EntityManager {
         SparseSet<T> set = getSet(component.getClass());
         set.createComponent(entityID, component);
         updateSignature(entityID, component);
+
+        EventBus bus = EventBus.get("SystemBus");
+        if (bus != null) bus.emit(new ComponentAdded(entityID, component));
     }
 
 

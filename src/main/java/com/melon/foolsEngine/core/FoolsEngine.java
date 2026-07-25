@@ -23,9 +23,11 @@ import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.core.ECS.basicComponents.*;
 import com.melon.foolsEngine.core.ECS.entity.EntityFactory;
 import com.melon.foolsEngine.core.ECS.system.*;
+import com.melon.foolsEngine.core.annotation.EventBus;
 import com.melon.foolsEngine.core.world.*;
 import com.melon.foolsEngine.util.logger.Logger;
 
+@EventBus(id="SystemBus")
 public class FoolsEngine {
     public final EntityManager entityManager;
     public final EntityFactory entityFactory;

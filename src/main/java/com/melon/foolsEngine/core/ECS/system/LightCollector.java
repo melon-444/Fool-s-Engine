@@ -6,6 +6,9 @@ import com.melon.foolsEngine.api.rendering.resource.Light;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.core.ECS.basicComponents.LightComp;
 import com.melon.foolsEngine.core.FoolsEngine;
+import com.melon.foolsEngine.core.events.EventBus;
+import com.melon.foolsEngine.core.events.builtInEvents.LightAdded;
+import com.melon.foolsEngine.core.events.builtInEvents.LightRemoved;
 import com.melon.foolsEngine.util.SparseSet;
 import org.joml.Matrix4f;
 
@@ -49,9 +52,13 @@ public class LightCollector extends ClientSystem {
         }
 
         toRemove.removeAll(current);
+        EventBus bus = EventBus.get("SystemBus");
         for (int eid : toRemove) {
             Light removed = activeLights.remove(eid);
-            if (removed != null) env.remove(removed);
+            if (removed != null) {
+                env.remove(removed);
+                if (bus != null) bus.emit(new LightRemoved(eid, removed));
+            }
         }
 
         for (int eid : current) {
@@ -80,6 +87,8 @@ public class LightCollector extends ClientSystem {
 
             env.add(apiLight);
             activeLights.put(eid, apiLight);
+
+            if (bus != null) bus.emit(new LightAdded(eid, apiLight));
         }
     }
 }
