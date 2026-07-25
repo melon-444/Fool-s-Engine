@@ -1,6 +1,126 @@
 ## foolsEngine 更新日志
 
-### 0.1.1 — 2026-07-24
+### 0.1.3 — 2026-07-25
+
+#### 可配置渲染管线（ShaderPass 系统）
+
+- **`ShaderPass` + `PassInput`**：通用渲染 Pass 抽象——着色器、输出目标、渲染模式（场景几何/全屏四边形）、输入纹理绑定、自定义 uniform，builder 模式链式配置
+- **`RenderScene` 传 Pass**：新增 `submitPass()` / `getPasses()` / `clearPasses()`，Pass 列表随场景双缓冲一起 swap
+- **影子 Pass 自动化**：`GLRenderFrame.render()` 移除硬编码影子检测；`RenderPassCollector` 从 `LightEnvironment` + `ShadowManager` 动态生成影子 `ShaderPass`（正交相机、深度材质、FBO 层），插入用户 Pass 列表前端
+- **兼容路径保留影子**：`passes.isEmpty()` 时自动 fallback 到完整影子 → 颜色渲染，非 ECS 场景（TestLightBackend）影子不丢失
+- **`RenderPassComponent` 重写**：直接包装 `ShaderPass`，排序后由 Collector 提交至 Scene
+- **执行流程**：`executePass()` 统一处理 cameraOverride、materialOverride、arrayLayer 绑定、视口保存/恢复；`executeFullscreenPass()` 驱动全屏后处理
+- **视口恢复**：每 Pass 首尾保存/恢复 `glViewport`，Shadow Pass 渲染完不再污染后续 Pass
+- **`Renderer` 清理**：删除 `RenderFrame` 上所有 `@Deprecated` 方法和 frame 级 pass 存储，渲染入口只有 `render(RenderScene)` 和 `screenshot` 方法
+
+#### ECS 系统拆分 & Priority 机制
+
+- **SceneCollector → 7 个独立 Collector**：`LightEnvCollector`、`TextureManagerCollector`、`CameraCollector`、`LightCollector`、`RenderableCollector`、`RenderPassCollector`、`MaterialCollector`，各自声明精确的 `requiredComponents`
+- **`System.priority()`**：新增默认 0 的执行优先级方法；`SystemScheduler.registerClient()` 每次注册后按 priority 升序排序，执行顺序不再依赖 `registerSystem` 的先后位置
+- **CameraComponent.isMainCam**：替代 `active` + `deactivateOtherCam` 互斥模式——`isMainCam=true` 被 Collector 选为主视口相机，`false` 的副相机对 Collector 透明（供 mirror/minimap 等 Pass 引用）
+- **LightComp 解除 TransformComp 依赖**：`LightCollector` 现在仅需 `LightComp`，光源实体不再强制绑定 `TransformComp`；`createLightEntity()` 只绑定 `LightComp`
+- **`EntityFactory.createLightEnvironment()` 无参化**：返回 entityId，用户通过 `ComponentManager` 获取 env 对象
+
+#### Vulkan 后端（初步可用）
+
+- **11 个文件**：`VKInternalFactory`、`VKRenderFrame`、`VKShaderProgram`、`VKMesh`、`VKWindow`、`VKWindowsManager`、`VKKeyBoard`、`VKMouse`、`VKFrameBuffer`、`VKTexture`、`VKTextureManager`
+- **完整 Vulkan 初始化**：VkInstance → 物理设备筛选（优先 discrete GPU）→ 逻辑设备（graphics queue + swapchain 扩展）→ GLFW 窗口 Surface → Swapchain（MAILBOX 优先，fallback FIFO）→ ImageViews → RenderPass → GraphicsPipeline
+- **运行时着色器编译**：通过 `lwjgl-shaderc` 将 GLSL 源码编译为 SPIR-V 后创建 `VkShaderModule`；管线使用 push constants 传递 MVP 矩阵
+- **VkBuffer 管理**：`VKMesh` 实现顶点/索引缓冲（`VK_BUFFER_USAGE_VERTEX_BUFFER_BIT` / `INDEX_BUFFER_BIT`），host-visible coherent 内存映射上传
+- **三角形渲染**：每帧 `vkAcquireNextImageKHR` → record command buffer（clear + bind pipeline + push MVP + bind vertex buffer + draw 3 vertices）→ submit → present
+- **窗口管理**：`VKWindow` 实现 `Window` + `GraphicsContext`，`createSurface(VkInstance)` 创建 VkSurfaceKHR；`VKWindowsManager` 以 `GLFW_NO_API` 模式创建窗口，支持 Vulkan 可用性检测
+- **输入设备**：`VKKeyBoard` / `VKMouse` 实现 `InputDevice<Window>`，GLFW 回调驱动，与 OpenGL 后端共享同套 GLFW 窗口
+- **清除 & 初始化注入**：`VKInternalFactory` 持有单例 `VKRenderFrame`，`VKWindowsManager.createWindow()` 自动向 Frame 注入窗口引用
+
+#### 事件总线 & 运行时注解
+
+- **`@EventBus(id="XXX")`**：类注解，类加载时自动创建命名 `EventBus` 实例并注册到静态总线表；重名抛异常
+- **`@EventBusSubscriber(id="XXX")`**：类注解，类加载时自动扫描 `static` + `@SubscribeEvent` 方法并注册；实例方法需显式 `bus.addListener(this)`
+- **`@SubscribeEvent`**：方法注解，要求 `public void handler(EventType event)`，签名不符在注册期抛异常
+- **`EventBus` 重写**：BUSID 字段 + 静态注册表 + 双缓冲队列（`emit` / `process`）+ 类层次 dispatch；仅注解方法订阅，无 Consumer API
+- **自动发现**：`EngineBoot.ValidatingLoader.loadClass()` 拦截每个类加载，检测 `@EventBus` / `@EventBusSubscriber` 触发事件系统初始化
+- **内置事件 9 个**：`EntityCreated` / `EntityDestroyed`、`ComponentAdded` / `ComponentRemoved`、`MainCameraChanged`、`LightAdded` / `LightRemoved`、`PreRender` / `PostRender`
+- **事件发射点**：`EntityManager`（create/destroy/bindComponent）、`CameraCollector`、`LightCollector`、`SystemScheduler.update()`
+- **`FoolsEngine`** 标注 `@EventBus(id="SystemBus")`
+
+#### LWJGL 3.4.2 本地库升级
+
+- **库升级**：`lwjgl/` 目录下所有模块升级至 3.4.2；新增 `lwjgl-vulkan`、`lwjgl-shaderc`、`lwjgl-vma` 模块
+- **build.gradle.kts**：本地依赖分支新增 vulkan/shaderc 路径；移除 `lwjgl-vulkan-natives-windows`（Vulkan 原生库由显卡驱动提供，LWJGL 无 Windows natives）
+
+#### Bug 修复
+
+- **纹理不绑定导致模型全黑**：重构时 `bindUniformValue` 被提取为 `static` 方法，`Texture` 分支无法访问 `binder` 实例 → 纹理 0 绑定 → `texture()` 返回 (0,0,0) → Phong 光照乘零 → 全黑；修复为还原内联循环
+- **相机投影矩阵被影子系统污染**：`Camera` 构造函数直接存 Matrix4f 引用不复制，`SceneCollector.collectCamera()` 将字段 `proj` 传给 Camera → shadow 函数修改 `camera.projection` 时污染 Collector 内部状态；修复为 `new Matrix4f(proj)` + `LightCollector` / `RenderPassCollector` 防御性复制
+- **兼容路径影子丢失**：`passes.isEmpty()` fallback 分支删除 shadow loop 后 `TestLightBackend` 影子失效；恢复完整影子 → 颜色渲染路径
+
+#### 测试
+
+- **TestBackend / TestInputBackend**：标记 `@Deprecated`，由 TesECSRenderFlow 和 TestLightBackend 替代
+
+---
+
+## foolsEngine 更新日志
+
+### 0.1.3 — 2026-07-25
+
+#### Configurable Render Pipeline (ShaderPass System)
+
+- **`ShaderPass` + `PassInput`** — generic render pass abstraction: shader, output target, draw mode (scene geometry / fullscreen quad), input texture bindings, custom uniforms; builder-pattern fluent API
+- **`RenderScene` pass list** — `submitPass()` / `getPasses()` / `clearPasses()`; passes swap together with the scene double-buffer
+- **Shadow pass automation** — `GLRenderFrame.render()` removes hardcoded shadow detection; `RenderPassCollector` dynamically generates shadow `ShaderPass` objects from `LightEnvironment` + `ShadowManager` (orthographic camera, depth material, FBO layer), inserted before user passes
+- **Fallback path shadow restored** — `passes.isEmpty()` fallback now includes full shadow → color rendering; non-ECS scenes (TestLightBackend) no longer lose shadows
+- **`RenderPassComponent` rewrite** — directly wraps a `ShaderPass`; sorted by order and submitted to Scene by Collector
+- **Execute pass pipeline** — `executePass()` handles camera override, material override, arrayLayer attachment, viewport save/restore; `executeFullscreenPass()` drives fullscreen post-processing
+- **Viewport restore** — per-pass viewport save/restore; shadow pass no longer leaks its viewport into subsequent passes
+- **`Renderer` cleanup** — all `@Deprecated` methods and frame-level pass storage removed from `RenderFrame`; only `render(RenderScene)` and `screenshot` methods remain
+
+#### ECS System Split & Priority Mechanism
+
+- **SceneCollector → 7 independent Collectors** — `LightEnvCollector`, `TextureManagerCollector`, `CameraCollector`, `LightCollector`, `RenderableCollector`, `RenderPassCollector`, `MaterialCollector`; each declares precise `requiredComponents`
+- **`System.priority()`** — new execution priority method (default 0); `SystemScheduler.registerClient()` sorts by priority after each registration; execution order no longer depends on `registerSystem` call order
+- **CameraComponent.isMainCam** — replaces `active` + `deactivateOtherCam` mutex pattern; `isMainCam=true` cameras are selected by Collector as the main view camera; `isMainCam=false` side cameras are invisible to Collector (available for mirror/minimap/target-camera passes)
+- **LightComp decoupled from TransformComp** — `LightCollector` now requires only `LightComp`; light entities no longer need `TransformComp`; `createLightEntity()` binds only `LightComp`
+- **`EntityFactory.createLightEnvironment()` no-arg** — returns entityId; user retrieves the env object via `ComponentManager`
+
+#### Vulkan Backend (Functional Stub)
+
+- **11 files** — `VKInternalFactory`, `VKRenderFrame`, `VKShaderProgram`, `VKMesh`, `VKWindow`, `VKWindowsManager`, `VKKeyBoard`, `VKMouse`, `VKFrameBuffer`, `VKTexture`, `VKTextureManager`
+- **Full Vulkan initialization** — VkInstance → physical device selection (prefers discrete GPU) → logical device (graphics queue + swapchain extension) → GLFW window surface → swapchain (MAILBOX preferred, fallback FIFO) → ImageViews → RenderPass → GraphicsPipeline
+- **Runtime shader compilation** — GLSL source compiled to SPIR-V via `lwjgl-shaderc` at runtime; pipeline uses push constants for MVP matrix
+- **VkBuffer management** — `VKMesh` handles vertex/index buffers (`VK_BUFFER_USAGE_VERTEX_BUFFER_BIT` / `INDEX_BUFFER_BIT`) with host-visible coherent memory mapping
+- **Triangle rendering** — per-frame: `vkAcquireNextImageKHR` → record command buffer (clear + bind pipeline + push MVP + bind vertex buffer + draw 3 vertices) → submit → present
+- **Window management** — `VKWindow` implements `Window` + `GraphicsContext`, `createSurface(VkInstance)` for VkSurfaceKHR; `VKWindowsManager` uses `GLFW_NO_API` mode, includes Vulkan availability check
+- **Input devices** — `VKKeyBoard` / `VKMouse` implement `InputDevice<Window>` driven by GLFW callbacks, sharing the same GLFW window layer as the OpenGL backend
+- **Cleanup & init injection** — `VKInternalFactory` holds a singleton `VKRenderFrame`; `VKWindowsManager.createWindow()` auto-injects the window reference into the frame
+
+#### Event Bus & Runtime Annotations
+
+- **`@EventBus(id="XXX")`** — type annotation; creates a named `EventBus` instance and registers it in the static bus table at class-load time; duplicate IDs throw
+- **`@EventBusSubscriber(id="XXX")`** — type annotation; auto-scans `static` + `@SubscribeEvent` methods at class-load time and registers them; instance methods require explicit `bus.addListener(this)`
+- **`@SubscribeEvent`** — method annotation; requires `public void handler(EventType event)`; signature violations throw at registration time
+- **`EventBus` rewrite** — BUSID field + static registry + double-buffered queue (`emit` / `process`) + class-hierarchy dispatch; annotation-method-only API (no Consumer subscriptions)
+- **Auto-discovery** — `EngineBoot.ValidatingLoader.loadClass()` intercepts every class load, checks for `@EventBus` / `@EventBusSubscriber` to trigger event system initialization
+- **9 built-in events** — `EntityCreated` / `EntityDestroyed`, `ComponentAdded` / `ComponentRemoved`, `MainCameraChanged`, `LightAdded` / `LightRemoved`, `PreRender` / `PostRender`
+- **Emit points** — `EntityManager` (create/destroy/bindComponent), `CameraCollector`, `LightCollector`, `SystemScheduler.update()`
+- **`FoolsEngine`** annotated with `@EventBus(id="SystemBus")`
+
+#### LWJGL 3.4.2 Local Library Upgrade
+
+- **Library upgrade** — all modules under `lwjgl/` upgraded to 3.4.2; new modules `lwjgl-vulkan`, `lwjgl-shaderc`, `lwjgl-vma`
+- **build.gradle.kts** — local dependency branch adds vulkan/shaderc paths; removed `lwjgl-vulkan-natives-windows` (Vulkan loader is driver-provided; LWJGL has no Windows natives for vulkan)
+
+#### Bug Fixes
+
+- **Texture not binding causing black models** — `bindUniformValue` extracted as `static` method during refactor; `Texture` branch could not access `binder` instance → texture slot 0 unbound → `texture()` returns (0,0,0) → Phong lighting multiplied by zero → entirely black rendering. Fixed by restoring inline material param loop
+- **Camera projection matrix corrupted by shadow system** — `Camera` constructor stores Matrix4f references without copying; `SceneCollector.collectCamera()` passed field `proj` directly to Camera → shadow functions modifying `camera.projection` polluted Collector internal state. Fixed with `new Matrix4f(proj)` copy + defensive copies in `LightCollector` / `RenderPassCollector`
+- **Fallback path missing shadow rendering** — `passes.isEmpty()` fallback deleted the shadow loop; `TestLightBackend` lost shadows. Fixed by restoring full shadow → color path in the fallback branch
+
+#### Test
+
+- **TestBackend / TestInputBackend** — marked `@Deprecated`; replaced by TesECSRenderFlow and TestLightBackend
+
+---
 
 #### ECS 系统层
 

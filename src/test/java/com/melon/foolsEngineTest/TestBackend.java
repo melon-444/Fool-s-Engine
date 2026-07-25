@@ -54,7 +54,7 @@ public class TestBackend {
         RenderFrame frame = foolsEngine.frame;
 
         ShaderProgram shader = foolsEngine.serviceFactory.getShaderProgram();
-        shader.load(Path.of("src/main/resources/shader/vsh/main_vsh.glsl"), Path.of("src/main/resources/shader/fsh/main_fsh.glsl"));
+        shader.load(Path.of("src/main/resources/shader/main/main_vsh.glsl"), Path.of("src/main/resources/shader/main/main_fsh.glsl"));
         Material material = new Material(shader);
         Texture texture = foolsEngine.serviceFactory.getTexture();
         texture.upload(Path.of("src/test/resources/textures/test2.png"));

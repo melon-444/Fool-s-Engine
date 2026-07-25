@@ -11,7 +11,7 @@ A custom 3D game engine in Java, built on LWJGL 3 with OpenGL 4.3+ rendering, En
 | Layer | Technology |
 |---|---|
 | Language | Java 17+ |
-| Graphics | OpenGL 4.3+ (LWJGL 3.4.1) |
+| Graphics | OpenGL 4.3+ (LWJGL 3.4.2) / Vulkan 1.3 (stub, LWJGL 3.4.2) |
 | Windowing | GLFW (LWJGL) |
 | Math | JOML 1.10.5 |
 | Image loading | STBImage (LWJGL-STB) |
@@ -28,7 +28,7 @@ A custom 3D game engine in Java, built on LWJGL 3 with OpenGL 4.3+ rendering, En
 
 ### Local dependencies (default)
 
-LWJGL 3.3.6 JARs are bundled in the `lwjgl/` directory. The default platform is `windows`.  
+LWJGL 3.4.2 JARs are bundled in the `lwjgl/` directory. The default platform is `windows`.  
 Specify a different platform via `gradle.properties`:
 
 ```properties
@@ -68,6 +68,9 @@ lwjglNatives=windows
 # Run all tests
 ./gradlew.bat runAllTests
 
+# ECS + ShaderPass integration test
+./gradlew.bat runTesECSRenderFlow
+
 # Build fat JAR with all dependencies
 ./gradlew.bat fatJar
 ```
@@ -100,14 +103,25 @@ InputManager input = foolsEngine.serviceFactory.createInputManager(win);
 input.bind(input.getKeyboard(), FoolsEngineKeyCode.W, action);
 if (input.isActionPressed(action)) { ... }
 
-// Rendering
+// Rendering — pass-based pipeline
 RenderScene scene = new RenderScene();
 scene.setCamera(camera);
 scene.setLighting(lightEnv);
 scene.submit(new RenderCommand(mesh, material, transform));
-
+// Passes are configured via ECS entities (auto-shadow from LightEnvironment)
 frame.init();
-frame.render(scene);  // shadow pass auto-detected from lightEnv
+frame.render(scene);
+
+// Custom render passes (post-processing, custom effects)
+ShaderPass bloom = ShaderPass.postProcess(bloomShader)
+    .output(bloomRT)
+    .input(colorRT, "sceneColor")
+    .uniform("intensity", 1.5f);
+scene.submitPass(bloom);
+
+// EventBus — annotation-driven pub/sub
+// @EventBus(id="SystemBus") on FoolsEngine auto-creates the bus
+EventBus.get("SystemBus").emit(new LightAdded(entityId, light));
 
 // Shadows — owned by LightEnvironment, not by RenderFrame
 LightEnvironment lightEnv = new LightEnvironment();
@@ -149,7 +163,7 @@ src/main/java/com/melon/foolsEngine/
 
   backend/
     OpenGL/                     # OpenGL/GLFW implementation
-      GLRenderFrame.java        # Core renderer: batching, instancing, shadow pass
+      GLRenderFrame.java        # Core renderer: pass execution, batching, instancing
       GLMesh.java               # VAO/VBO/EBO + instanced attributes
       GLShaderProgram.java      # Shader compile, link, uniform binding
       GLTexture.java            # STBImage → GPU texture
@@ -159,15 +173,25 @@ src/main/java/com/melon/foolsEngine/
       GLFWKeyBoard.java         # GLFW keyboard input
       GLFWMouse.java            # GLFW mouse input
       GLInternalFactory.java    # Backend DI registration
+    Vulkan/                     # Vulkan backend (functional stub)
+      VKRenderFrame.java        # Full pipeline: instance/device/swapchain/pipeline/render
+      VKMesh.java               # VkBuffer vertex/index management
+      VKShaderProgram.java      # Runtime GLSL→SPIR-V via shaderc
+      VKWindow.java             # GLFW window + VkSurfaceKHR creation
+      VKWindowsManager.java     # GLFW_NO_API window lifecycle
+      VKKeyBoard.java           # Vulkan GLFW keyboard input
+      VKMouse.java              # Vulkan GLFW mouse input
+      VKInternalFactory.java    # Backend DI registration
 
   core/
-    FoolsEngine.java            # Engine entry point
+    FoolsEngine.java            # Engine entry point (@EventBus("SystemBus"))
     ECS/                        # Entity-Component-System
-      basicComponents/          # Transform, CameraComponent, Renderable, Light
+      basicComponents/          # Transform, CameraComponent, Renderable, Light, RenderPass, etc.
       entity/EntityFactory.java
-      system/                   # CameraCollector, RenderableCollector, LightCollector
-    events/                     # EventBus
-    world/                      # Entity/Component/System managers, ServiceFactory
+      system/                   # LightEnvCollector, CameraCollector, LightCollector, RenderableCollector, RenderPassCollector, etc.
+    events/                     # EventBus + builtInEvents (EntityCreated, LightAdded, PreRender, etc.)
+    annotation/                 # @EventBus, @EventBusSubscriber, @SubscribeEvent, @OnlyIn
+    world/                      # Entity/Component/System managers, ServiceFactory, SystemScheduler
 
    util/                         # Projection, CursorMode, ObjLoader, Signature, SparseSet, etc.
      Logger.java                 # Built-in logging (TRACE → ERROR)
@@ -189,19 +213,21 @@ src/main/resources/shader/
 ```
 frame.render(RenderScene)
     │
-    ├─ Shadow Pass (per shadow-casting light)
-    │     sm = scene.getLighting().getShadowManager()  // from LightEnvironment
-    │     ctx = sm.prepareShadow(light, mainCamera)
-    │     renderCommands(commands, ctx.target, ctx.depthMaterial, ctx.layer)
+    ├─ Pass list (from scene.getPasses(), populated by ECS systems)
+    │     for each ShaderPass:
+    │       executePass → renderCommands + uniforms + inputs
     │
-    └─ Color Pass
-          glClear → renderCommands(commands, null, null, -1)
-          (instanced draw, batched by Mesh+Material)
+    │   Shadow passes auto-generated by RenderPassCollector
+    │   Color pass from user-defined RenderPassComponent
+    │   Post-process passes via ShaderPass.fullscreen()
+    │
+    └─ Screen: glClear → present
 ```
 
 - **Reversed-Z**: `glDepthFunc(GL_GREATER)`, `glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE)` — superior depth precision at far distances.
 - **Instanced drawing**: Objects sharing the same Mesh+Material are batched into a single `glDrawElementsInstanced` call.
 - **Shadow mapping**: 2D texture array atlas with 5x5 PCF sampling in the fragment shader. `ShadowManager` is owned by `LightEnvironment` and handles layer allocation (with a free-list for reuse), shadow camera updates, and light-space matrix sync; the renderer executes the draw.
+- **Configurable passes**: `ShaderPass` + `RenderScene.submitPass()` allows arbitrary pass ordering; `RenderPassCollector` auto-generates shadow passes before user passes.
 
 ### ImGui Integration
 
@@ -217,17 +243,24 @@ frame.render(RenderScene)
 | Component | Plain data (Transform, CameraComponent, Renderable, Light) |
 | `SparseSet<T>` | Cache-friendly packed component storage (O(1) add/remove) |
 | `Signature` | Bitmask for entity-component matching |
-| System | Per-frame logic over matched entities (CameraCollector → frame.setCamera, RenderableCollector → frame.submit) |
-| `SystemScheduler` | Sequential system update per frame |
+| System | Per-frame logic over matched entities (CameraCollector → scene.setCamera, RenderableCollector → scene.submit) |
+| `SystemScheduler` | Sequential system update per frame (sorted by `priority()`) |
+
+### EventBus
+
+- **Annotation-driven**: `@EventBus(id="SystemBus")` on a class auto-creates a named bus; `@EventBusSubscriber` auto-registers static `@SubscribeEvent` methods at class-load time.
+- **Double-buffered dispatch**: `emit(Event)` queues per frame, `process()` dispatches to all matching listeners with class-hierarchy walk.
+- **Auto-discovery**: `EngineBoot.ValidatingLoader` intercepts class loading to trigger `@EventBus` / `@EventBusSubscriber` processing.
+- **Built-in events**: `EntityCreated/Destroyed`, `ComponentAdded/Removed`, `MainCameraChanged`, `LightAdded/Removed`, `PreRender/PostRender`.
 
 ### Backend Abstraction
 
 ```
 ServiceFactory → InternalFactoryStub → GLInternalFactory (OpenGL)
-                                      → Vulkan stub (future)
+                                      → VKInternalFactory (Vulkan)
 ```
 
-`APIFactory` defines the contract. Each backend registers itself via static injection. Currently only OpenGL is functional.
+`APIFactory` defines the contract. Each backend registers itself via static injection.
 
 ### Dependency Direction
 
@@ -250,12 +283,15 @@ ImGuiHelper ──guard──→ ImGuiInternal                         (only loa
 - **LightEnvironment owns ShadowManager**: shadow layers are per-light allocations. `clear()` auto-resets layers, preventing the user from forgetting `shadowManager.reset()`.
 - **ImGuiHelper lazy-loading**: Core engine never statically imports `imgui.ImGui`. A `Class.forName` guard + private inner class ensures the JVM never loads ImGui classes unless imgui-java is on the classpath.
 - **InputManager via Factory**: `createInputManager(win)` with generic `<E>` — api/test layers never reference concrete `GLFWKeyBoard`/`GLFWMouse` types.
+- **System priority over registration order**: `priority()` method decouples execution ordering from `registerSystem` call sequence.
+- **Passes via Scene, not Frame**: `scene.submitPass()` with double-buffer swap — passes are per-frame like commands, not persistent state.
+- **Annotation-driven EventBus**: `@EventBus`/`@EventBusSubscriber`/`@SubscribeEvent` — zero-lambda, method-only, auto-discovered at class-load time.
+- **CameraComponent.isMainCam**: boolean flag replaces active+mutex pattern — decouples main view camera from side cameras without modifying other entities.
 
 ## Known Limitations
 
 - `renderCommands()` in `GLRenderFrame` is a 200-line private method mixing batching, texture binding, shader params, and draw calls — should be split into composable Pass executors.
-- Vulkan backend is stubbed but not implemented.
-- `LightCollector` ECS system is a stub.
+- Vulkan backend renders a triangle; full scene integration (ECS commands, shadows, textures) not yet implemented.
 - Tests are manual integration `JavaExec` tasks, not JUnit.
 - `Light.buildDirLightShadowCam()` is `@Deprecated` — the logic now lives in `ShadowManager.updateDirShadowCamera()`, but the old method body is retained for backward compatibility.
 

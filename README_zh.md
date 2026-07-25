@@ -11,7 +11,7 @@
 | 层级 | 技术 |
 |---|---|
 | 语言 | Java 17+ |
-| 图形 API | OpenGL 4.3+ (LWJGL 3.4.1) |
+| 图形 API | OpenGL 4.3+ (LWJGL 3.4.2) / Vulkan 1.3 (stub, LWJGL 3.4.2) |
 | 窗口系统 | GLFW (LWJGL) |
 | 数学库 | JOML 1.10.5 |
 | 图片加载 | STBImage (LWJGL-STB) |
@@ -28,7 +28,7 @@
 
 ### 本地依赖（默认）
 
-LWJGL 3.3.6 JAR 包已内置在 `lwjgl/` 目录。默认平台为 `windows`。  
+LWJGL 3.4.2 JAR 包已内置在 `lwjgl/` 目录。默认平台为 `windows`。  
 在 `gradle.properties` 中指定其他平台：
 
 ```properties
@@ -68,6 +68,9 @@ lwjglNatives=windows
 # 运行全部测试
 ./gradlew.bat runAllTests
 
+# ECS + ShaderPass 集成测试
+./gradlew.bat runTesECSRenderFlow
+
 # 构建包含全部依赖的 fat JAR
 ./gradlew.bat fatJar
 ```
@@ -100,14 +103,25 @@ InputManager input = foolsEngine.serviceFactory.createInputManager(win);
 input.bind(input.getKeyboard(), FoolsEngineKeyCode.W, action);
 if (input.isActionPressed(action)) { ... }
 
-// 渲染
+// 渲染 — pass-based pipeline
 RenderScene scene = new RenderScene();
 scene.setCamera(camera);
 scene.setLighting(lightEnv);
 scene.submit(new RenderCommand(mesh, material, transform));
-
+// Passes are configured via ECS entities (auto-shadow from LightEnvironment)
 frame.init();
-frame.render(scene);  // 阴影通道从 lightEnv 自动检测
+frame.render(scene);
+
+// Custom render passes (post-processing, custom effects)
+ShaderPass bloom = ShaderPass.postProcess(bloomShader)
+    .output(bloomRT)
+    .input(colorRT, "sceneColor")
+    .uniform("intensity", 1.5f);
+scene.submitPass(bloom);
+
+// EventBus — annotation-driven pub/sub
+// @EventBus(id="SystemBus") on FoolsEngine auto-creates the bus
+EventBus.get("SystemBus").emit(new LightAdded(entityId, light));
 
 // 阴影 — 由 LightEnvironment 持有，而非 RenderFrame
 LightEnvironment lightEnv = new LightEnvironment();
@@ -149,7 +163,7 @@ src/main/java/com/melon/foolsEngine/
 
   backend/
     OpenGL/                     # OpenGL/GLFW 后端实现
-      GLRenderFrame.java        # 核心渲染器：合批、实例化、阴影通道
+      GLRenderFrame.java        # 核心渲染器：Pass 执行、合批、实例化
       GLMesh.java               # VAO/VBO/EBO + 实例化属性
       GLShaderProgram.java      # Shader 编译、链接、uniform 绑定
       GLTexture.java            # STBImage → GPU 纹理
@@ -159,15 +173,25 @@ src/main/java/com/melon/foolsEngine/
       GLFWKeyBoard.java         # GLFW 键盘输入
       GLFWMouse.java            # GLFW 鼠标输入
       GLInternalFactory.java    # 后端 DI 注册
+    Vulkan/                     # Vulkan 后端（初步可用）
+      VKRenderFrame.java        # 完整管线：instance/device/swapchain/pipeline/render
+      VKMesh.java               # VkBuffer 顶点/索引管理
+      VKShaderProgram.java      # 运行时 GLSL→SPIR-V 编译（shaderc）
+      VKWindow.java             # GLFW 窗口 + VkSurfaceKHR 创建
+      VKWindowsManager.java     # GLFW_NO_API 窗口生命周期
+      VKKeyBoard.java           # Vulkan GLFW 键盘输入
+      VKMouse.java              # Vulkan GLFW 鼠标输入
+      VKInternalFactory.java    # 后端 DI 注册
 
   core/
-    FoolsEngine.java            # 引擎入口点
+    FoolsEngine.java            # 引擎入口点 (@EventBus("SystemBus"))
     ECS/                        # 实体组件系统
-      basicComponents/          # Transform, CameraComponent, Renderable, Light
+      basicComponents/          # Transform, CameraComponent, Renderable, Light, RenderPass 等
       entity/EntityFactory.java
-      system/                   # CameraCollector, RenderableCollector, LightCollector
-    events/                     # 事件总线
-    world/                      # Entity/Component/System 管理器, ServiceFactory
+      system/                   # LightEnvCollector, CameraCollector, LightCollector, RenderableCollector, RenderPassCollector 等
+    events/                     # EventBus + builtInEvents (EntityCreated, LightAdded, PreRender 等)
+    annotation/                 # @EventBus, @EventBusSubscriber, @SubscribeEvent, @OnlyIn
+    world/                      # Entity/Component/System 管理器, ServiceFactory, SystemScheduler
 
    util/                         # Projection, CursorMode, ObjLoader, Signature, SparseSet 等
      Logger.java                 # 内置日志（TRACE → ERROR）
@@ -189,19 +213,21 @@ src/main/resources/shader/
 ```
 frame.render(RenderScene)
     │
-    ├─ 阴影通道（逐个投射阴影的光源）
-    │     sm = scene.getLighting().getShadowManager()  // 从 LightEnvironment 获取
-    │     ctx = sm.prepareShadow(light, mainCamera)
-    │     renderCommands(commands, ctx.target, ctx.depthMaterial, ctx.layer)
+    ├─ Pass 列表（来自 scene.getPasses()，由 ECS System 填充）
+    │     for each ShaderPass:
+    │       executePass → renderCommands + uniforms + inputs
     │
-    └─ 颜色通道
-          glClear → renderCommands(commands, null, null, -1)
-          （实例化绘制，按 Mesh+Material 合批）
+    │   影子 Pass 由 RenderPassCollector 自动生成
+    │   颜色 Pass 来自用户定义的 RenderPassComponent
+    │   后处理 Pass 通过 ShaderPass.fullscreen() 配置
+    │
+    └─ 屏幕: glClear → present
 ```
 
 - **反转 Z 缓冲**：`glDepthFunc(GL_GREATER)`、`glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE)`——在远距离场景下获得优异的深度精度。
 - **实例化绘制**：共享同一 Mesh+Material 的对象被合并为单次 `glDrawElementsInstanced` 调用。
 - **阴影映射**：使用 2D 纹理数组（`GL_TEXTURE_2D_ARRAY`）作为阴影贴图图集，片元着色器中以 5×5 PCF 采样。`ShadowManager` 由 `LightEnvironment` 持有，负责层分配（含空闲列表复用）、阴影相机更新和 light-space 矩阵同步；渲染器执行绘制。
+- **可配置 Pass**：`ShaderPass` + `RenderScene.submitPass()` 支持任意 Pass 排序；`RenderPassCollector` 自动在用户 Pass 之前生成阴影 Pass。
 
 ### ImGui 集成
 
@@ -217,17 +243,24 @@ frame.render(RenderScene)
 | Component | 纯数据（Transform, CameraComponent, Renderable, Light） |
 | `SparseSet<T>` | 缓存友好的紧凑组件存储（O(1) 增删） |
 | `Signature` | 实体-组件匹配的位掩码 |
-| System | 对匹配实体逐帧执行逻辑（CameraCollector → frame.setCamera，RenderableCollector → frame.submit） |
-| `SystemScheduler` | 逐帧顺序执行各 System |
+| System | 对匹配实体逐帧执行逻辑（CameraCollector → scene.setCamera，RenderableCollector → scene.submit） |
+| `SystemScheduler` | 逐帧顺序执行各 System（按 `priority()` 排序） |
+
+### EventBus
+
+- **注解驱动**：`@EventBus(id="SystemBus")` 在类上自动创建命名总线；`@EventBusSubscriber` 在类加载时自动注册静态 `@SubscribeEvent` 方法。
+- **双缓冲分发**：`emit(Event)` 每帧排队，`process()` 分发至所有匹配监听器，含类层次遍历。
+- **自动发现**：`EngineBoot.ValidatingLoader` 拦截类加载，触发 `@EventBus` / `@EventBusSubscriber` 处理。
+- **内置事件**：`EntityCreated/Destroyed`、`ComponentAdded/Removed`、`MainCameraChanged`、`LightAdded/Removed`、`PreRender/PostRender`。
 
 ### 后端抽象
 
 ```
 ServiceFactory → InternalFactoryStub → GLInternalFactory（OpenGL）
-                                      → Vulkan 桩（预留）
+                                      → VKInternalFactory（Vulkan）
 ```
 
-`APIFactory` 定义了服务创建协议。各后端通过静态注入完成注册。目前仅 OpenGL 可用。
+`APIFactory` 定义了服务创建协议。各后端通过静态注入完成注册。
 
 ### 依赖方向
 
@@ -250,12 +283,15 @@ ImGuiHelper ──守卫──→ ImGuiInternal                         （仅 i
 - **LightEnvironment 持有 ShadowManager**：阴影层按光源分配，`clear()` 自动重置层，避免用户忘记调用 `shadowManager.reset()`。
 - **ImGuiHelper 惰性加载**：核心引擎绝不静态导入 `imgui.ImGui`。通过 `Class.forName` 守卫 + 私有内部类保证 JVM 仅在 imgui-java 处于 classpath 时才加载 ImGui 相关类。
 - **通过 Factory 创建 InputManager**：`createInputManager(win)` 使用泛型 `<E>`——api/test 层绝不引用具体的 `GLFWKeyBoard`/`GLFWMouse` 类型。
+- **System priority 取代注册顺序**：`priority()` 方法解耦执行顺序与 `registerSystem` 调用先后。
+- **Pass 走 Scene 不走 Frame**：`scene.submitPass()` 配合双缓冲 swap——Pass 如同 RenderCommand 一样是每帧重建的临时数据。
+- **注解驱动 EventBus**：`@EventBus`/`@EventBusSubscriber`/`@SubscribeEvent`——零 lambda、纯方法、类加载时自动发现。
+- **CameraComponent.isMainCam**：布尔标记替代 active+互斥模式——解耦主视口相机与副相机（mirror/minimap 等），不修改其他实体的状态。
 
 ## 已知限制
 
 - `GLRenderFrame` 中的 `renderCommands()` 是一个 200 行的 private 方法，混合了合批、纹理绑定、Shader 参数设置和 draw call——应拆分为可组合的 Pass 执行器。
-- Vulkan 后端仅有桩代码，未实现。
-- `LightCollector` ECS System 为桩代码。
+- Vulkan 后端仅完成三角形渲染；完整场景集成（ECS Commands、阴影、纹理）尚未实现。
 - 测试为手动集成 `JavaExec` 任务，未使用 JUnit 框架。
 - `Light.buildDirLightShadowCam()` 已标记 `@Deprecated`——逻辑已迁移至 `ShadowManager.updateDirShadowCamera()`，但旧方法体保留以保持向后兼容。
 

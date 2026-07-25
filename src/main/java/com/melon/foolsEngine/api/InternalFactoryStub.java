@@ -24,8 +24,11 @@ import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
 import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.WindowsManager;
+import com.melon.foolsEngine.util.logger.Logger;
 
 public abstract class InternalFactoryStub implements APIFactory {
+
+    private static final Logger FLOG = new Logger("APIFactory");
 
     static {
         try {
@@ -65,6 +68,7 @@ public abstract class InternalFactoryStub implements APIFactory {
     public static APIFactory VulkanINSTANCE() {
         if (VulkanINSTANCE == null)
             throw new IllegalStateException("Factory not initialized");
+        FLOG.warn("Vulkan instance is experimental and not stable at all, prefer to use OpenGL instance instead.");
         return VulkanINSTANCE;
     }
 
