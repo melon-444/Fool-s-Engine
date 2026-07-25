@@ -2,6 +2,8 @@ package com.melon.foolsEngine.backend.OpenGL;
 
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.api.windows.WindowsManager;
+import com.melon.foolsEngine.core.events.EventBus;
+import com.melon.foolsEngine.core.events.builtInEvents.WindowResizedEvent;
 import org.lwjgl.opengl.GL;
 
 import java.util.ArrayList;
@@ -55,6 +57,8 @@ class GLFWWindowsManager implements WindowsManager {
 
         glfwSetFramebufferSizeCallback(window_pointer, (window, w, h) -> {
             win.setSize(w, h);
+            EventBus bus = EventBus.get("SystemBus");
+            if (bus != null) bus.emit(new WindowResizedEvent(w, h));
         });
 
         windows.add(win);

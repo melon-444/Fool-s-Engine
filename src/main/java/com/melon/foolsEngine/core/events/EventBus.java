@@ -123,18 +123,18 @@ public class EventBus {
     /** Queues an event for dispatch in the next {@link #process()} call. */
     public void emit(Event event) {
         (front ? queue1 : queue0).add(event);
+        process();
     }
 
     /** Dispatches all queued events to registered listeners. */
-    public void process() {
+    private void process() {
         Queue<Event> active = front ? queue0 : queue1;
         while (!active.isEmpty()) {
             dispatch(active.poll());
         }
         front = !front;
     }
-
-    @SuppressWarnings("unchecked")
+    
     private <T extends Event> void dispatch(T event) {
         Class<?> type = event.getClass();
         while (type != null) {

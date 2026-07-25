@@ -2,6 +2,9 @@ package com.melon.foolsEngine.backend.OpenGL;
 
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.MeshData;
+import com.melon.foolsEngine.core.events.EventBus;
+import com.melon.foolsEngine.core.events.builtInEvents.MeshDestroyedEvent;
+import com.melon.foolsEngine.core.events.builtInEvents.MeshUploadedEvent;
 import com.melon.foolsEngine.util.VertexLayout;
 import org.lwjgl.BufferUtils;
 
@@ -56,6 +59,9 @@ class GLMesh implements Mesh {
         glBindBuffer(GL_ARRAY_BUFFER,0);
 
         unbindVAO();
+
+        EventBus bus = EventBus.get("SystemBus");
+        if (bus != null) bus.emit(new MeshUploadedEvent(this));
     }
 
     @Override
@@ -68,6 +74,9 @@ class GLMesh implements Mesh {
             instanceVBO = 0;
         }
         glDeleteVertexArrays(vao);
+
+        EventBus bus = EventBus.get("SystemBus");
+        if (bus != null) bus.emit(new MeshDestroyedEvent(this));
     }
 
     @Override

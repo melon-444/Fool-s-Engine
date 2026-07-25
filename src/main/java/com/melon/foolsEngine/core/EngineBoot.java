@@ -50,8 +50,24 @@ public final class EngineBoot {
         }
         FoolsEngine engine = new FoolsEngine(maxEntities, maxComponents, width, height, isServer);
         engine.updateSettings();
+        loadEventSubscribers(loader);
         LOG.info("Engine ready | FOV=%.1f aspect=%.2f zNear=%.4f", engine.FOV, engine.aspect, engine.Z_NEAR);
         return engine;
+    }
+
+    private static void loadEventSubscribers(ClassLoader loader) {
+        String[] subscribers = {
+                "com.melon.foolsEngine.core.events.subscribers.WindowEventHandler",
+                "com.melon.foolsEngine.core.events.subscribers.ResourceEventHandler",
+                "com.melon.foolsEngine.core.events.subscribers.ShadowEventHandler",
+        };
+        for (String name : subscribers) {
+            try {
+                loader.loadClass(name);
+            } catch (ClassNotFoundException e) {
+                LOG.warn("Event subscriber not found: %s", name);
+            }
+        }
     }
 
     public static void validateSystems(FoolsEngine engine) {

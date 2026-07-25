@@ -1,6 +1,9 @@
 package com.melon.foolsEngine.backend.OpenGL;
 
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
+import com.melon.foolsEngine.core.events.EventBus;
+import com.melon.foolsEngine.core.events.builtInEvents.ShaderDestroyedEvent;
+import com.melon.foolsEngine.core.events.builtInEvents.ShaderLoadedEvent;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -95,6 +98,9 @@ class GLShaderProgram implements ShaderProgram {
         glAttachShader(programID, fragmentShaderID);
         glLinkProgram(programID);
         glValidateProgram(programID);
+
+        EventBus bus = EventBus.get("SystemBus");
+        if (bus != null) bus.emit(new ShaderLoadedEvent(this));
     }
 
     private void checkCompileStatus(int shaderID,int type) {
@@ -121,6 +127,9 @@ class GLShaderProgram implements ShaderProgram {
         this.programID = 0;
         glDeleteShader(vertexShaderID);
         glDeleteShader(fragmentShaderID);
+
+        EventBus bus = EventBus.get("SystemBus");
+        if (bus != null) bus.emit(new ShaderDestroyedEvent(this));
     }
 
     private int getUniformLocation(String name) {

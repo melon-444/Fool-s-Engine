@@ -12,6 +12,7 @@ import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.rendering.resource.Camera;
 import com.melon.foolsEngine.api.rendering.resource.Material;
 import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
+import com.melon.foolsEngine.core.world.ViewportState;
 import com.melon.foolsEngine.util.VertexLayout;
 import com.melon.foolsEngine.util.logger.Logger;
 import org.joml.Matrix4f;
@@ -146,11 +147,16 @@ class GLRenderFrame implements RenderFrame {
     /**
      * Applies a screen viewport, optionally letterbox/pillarbox to preserve the
      * camera projection aspect ratio. Clears the pillarbox areas to black.
+     * Falls back to {@link ViewportState} when the scene provides no dimensions.
      */
     private void applyScreenViewport(RenderScene scene, Camera cam) {
         int vpW = scene.getScreenViewportW();
         int vpH = scene.getScreenViewportH();
 
+        if (vpW <= 0 || vpH <= 0) {
+            vpW = ViewportState.viewportW;
+            vpH = ViewportState.viewportH;
+        }
         if (vpW <= 0 || vpH <= 0) return;
 
         if (!scene.isPreserveScreenAspect() || cam == null || cam.projection == null) {

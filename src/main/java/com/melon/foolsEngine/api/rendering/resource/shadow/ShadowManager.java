@@ -21,6 +21,10 @@ import com.melon.foolsEngine.api.rendering.resource.Camera;
 import com.melon.foolsEngine.api.rendering.resource.Light;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.api.rendering.resource.Material;
+import com.melon.foolsEngine.core.events.EventBus;
+import com.melon.foolsEngine.core.events.builtInEvents.ShadowLayerAllocatedEvent;
+import com.melon.foolsEngine.core.events.builtInEvents.ShadowLayerReleasedEvent;
+import com.melon.foolsEngine.core.events.builtInEvents.ShadowPassPreparedEvent;
 import com.melon.foolsEngine.util.OrthogonalProjection;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -153,11 +157,16 @@ public class ShadowManager {
         light.shadowInfo.lightSpaceMatrices().getFirst().set(
                 light.shadowInfo.shadowCamera().vp());
 
-        return new ShadowPassContext(
+        ShadowPassContext ctx = new ShadowPassContext(
                 light.shadowInfo.shadowCamera(),
                 shadowArray,
                 depthMaterial,
                 light.shadowInfo.shadowLayer());
+
+        EventBus bus = EventBus.get("SystemBus");
+        if (bus != null) bus.emit(new ShadowPassPreparedEvent(light, ctx));
+
+        return ctx;
     }
 
     /**
@@ -257,6 +266,8 @@ public class ShadowManager {
     public void releaseLayer(int layer) {
         if (layer >= 0 && layer < nextLayer) {
             releasedLayers.add(layer);
+            EventBus bus = EventBus.get("SystemBus");
+            if (bus != null) bus.emit(new ShadowLayerReleasedEvent(layer));
         }
     }
 
@@ -286,14 +297,18 @@ public class ShadowManager {
     }
 
     private int allocateLayer() {
+        int layer;
         if (!releasedLayers.isEmpty()) {
-            int layer = releasedLayers.iterator().next();
+            layer = releasedLayers.iterator().next();
             releasedLayers.remove(layer);
-            return layer;
+        } else {
+            if (nextLayer >= maxLayers) {
+                throw new IllegalStateException("Shadow layer limit exceeded: " + maxLayers);
+            }
+            layer = nextLayer++;
         }
-        if (nextLayer >= maxLayers) {
-            throw new IllegalStateException("Shadow layer limit exceeded: " + maxLayers);
-        }
-        return nextLayer++;
+        EventBus bus = EventBus.get("SystemBus");
+        if (bus != null) bus.emit(new ShadowLayerAllocatedEvent(layer));
+        return layer;
     }
 }

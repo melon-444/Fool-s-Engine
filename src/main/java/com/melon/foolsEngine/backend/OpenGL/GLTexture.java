@@ -2,6 +2,9 @@ package com.melon.foolsEngine.backend.OpenGL;
 
 import com.melon.foolsEngine.api.rendering.resource.texture.LoadedImage;
 import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
+import com.melon.foolsEngine.core.events.EventBus;
+import com.melon.foolsEngine.core.events.builtInEvents.TextureDestroyedEvent;
+import com.melon.foolsEngine.core.events.builtInEvents.TextureLoadedEvent;
 import com.melon.foolsEngine.util.ImageFormatDetector;
 import org.lwjgl.stb.STBImage;
 import org.lwjgl.system.MemoryStack;
@@ -96,11 +99,16 @@ class GLTexture implements Texture {
         );
         glGenerateMipmap(GL_TEXTURE_2D);
         unbind();
+
+        EventBus bus = EventBus.get("SystemBus");
+        if (bus != null) bus.emit(new TextureLoadedEvent(this));
     }
 
     @Override
     public void destroy() {
         glDeleteTextures(textureId);
+        EventBus bus = EventBus.get("SystemBus");
+        if (bus != null) bus.emit(new TextureDestroyedEvent(this));
     }
 
     @Override

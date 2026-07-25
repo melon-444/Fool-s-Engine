@@ -18,6 +18,8 @@ package com.melon.foolsEngine.core.world;
 
 import com.melon.foolsEngine.core.ECS.basicComponents.*;
 import com.melon.foolsEngine.core.FoolsEngine;
+import com.melon.foolsEngine.core.events.EventBus;
+import com.melon.foolsEngine.core.events.builtInEvents.ComponentRemovedEvent;
 import com.melon.foolsEngine.util.Signature;
 import com.melon.foolsEngine.util.SparseSet;
 
@@ -79,10 +81,14 @@ public class ComponentManager {
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
     public void clearComponentFromSet(int entityID, int lastIndex) {
+        EventBus bus = EventBus.get("SystemBus");
+
         if (entityID == lastIndex) {
             for (var set : componentSparseSetMap.values()) {
-                if (set.exists(entityID))
+                if (set.exists(entityID)) {
+                    if(bus != null) bus.emit(new ComponentRemovedEvent(entityID,set.get(entityID)));
                     set.deleteComponent(entityID);
+                }
             }
             return;
         }
@@ -92,9 +98,11 @@ public class ComponentManager {
             boolean b = raw.exists(lastIndex);
             Instance.LOGGER.trace("raw.exists(entityID=%d):%b, raw.exists(lastIndex=%d):%b",entityID,a,lastIndex,b);
             if (a && b) {
+                if(bus != null) bus.emit(new ComponentRemovedEvent(entityID,set.get(entityID)));
                 raw.setComponent(entityID, raw.getComponent(lastIndex));
                 raw.deleteComponent(lastIndex);
             } else if (a) {
+                if(bus != null) bus.emit(new ComponentRemovedEvent(entityID,set.get(entityID)));
                 raw.deleteComponent(entityID);
             } else if (b) {
                 raw.createComponent(entityID, raw.getComponent(lastIndex));
