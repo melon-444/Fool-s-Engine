@@ -18,6 +18,7 @@ package com.melon.foolsEngine.core;
 
 import com.melon.foolsEngine.core.annotation.Distribution;
 import com.melon.foolsEngine.core.annotation.OnlyIn;
+import com.melon.foolsEngine.util.logger.LogLevel;
 import com.melon.foolsEngine.util.logger.Logger;
 
 import java.io.ByteArrayOutputStream;
@@ -30,8 +31,11 @@ public final class EngineBoot {
 
     private EngineBoot() {
     }
+    public static FoolsEngine create(int maxEntities, int maxComponents, int width, int height, boolean isServer){
+        return create(maxEntities, maxComponents, width, height, isServer,LogLevel.INFO);
+    }
 
-    public static FoolsEngine create(int maxEntities, int maxComponents, int width, int height, boolean isServer) {
+    public static FoolsEngine create(int maxEntities, int maxComponents, int width, int height, boolean isServer, LogLevel level) {
         LOG.info("Engine starting | mode=%s maxEntities=%d", isServer ? "SERVER" : "CLIENT", maxEntities);
         ValidatingLoader loader = new ValidatingLoader(Thread.currentThread().getContextClassLoader(),isServer);
         Thread.currentThread().setContextClassLoader(loader);

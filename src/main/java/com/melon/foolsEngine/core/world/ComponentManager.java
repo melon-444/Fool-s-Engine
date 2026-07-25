@@ -90,7 +90,7 @@ public class ComponentManager {
             SparseSet raw = set;
             boolean a = raw.exists(entityID);
             boolean b = raw.exists(lastIndex);
-            Instance.LOGGER.debug("raw.exists(entityID=%d):%b, raw.exists(lastIndex=%d):%b",entityID,a,lastIndex,b);
+            Instance.LOGGER.trace("raw.exists(entityID=%d):%b, raw.exists(lastIndex=%d):%b",entityID,a,lastIndex,b);
             if (a && b) {
                 raw.setComponent(entityID, raw.getComponent(lastIndex));
                 raw.deleteComponent(lastIndex);

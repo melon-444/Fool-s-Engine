@@ -21,7 +21,7 @@ import org.joml.Math;
 
 import java.nio.file.Path;
 
-
+@Deprecated
 public class TestInputBackend {
     private static final int SHADOW_MAP_SIZE = 4096;
     static FoolsEngine foolsEngine = EngineBoot.create(1000, 100, 800, 600, false);
@@ -55,7 +55,7 @@ public class TestInputBackend {
         win.show();
         RenderFrame frame = foolsEngine.frame;
         frame.init();
-        frame.setBackGroundColor(0.2f, 0.3f, 0.35f, 1);
+        foolsEngine.systemScheduler.getScene().setBackGroundColor(0.2f, 0.3f, 0.35f, 1);
 
         InputManager input = foolsEngine.serviceFactory.createInputManager(win);
         win.setCursorMode(CursorMode.DISABLED);

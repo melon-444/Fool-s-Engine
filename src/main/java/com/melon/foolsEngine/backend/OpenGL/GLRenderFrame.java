@@ -1,18 +1,16 @@
 package com.melon.foolsEngine.backend.OpenGL;
 
 import com.melon.foolsEngine.api.rendering.render.*;
-import com.melon.foolsEngine.api.rendering.resource.Light;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
-import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowPassContext;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.MeshData;
 import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.rendering.resource.Camera;
 import com.melon.foolsEngine.api.rendering.resource.Material;
-import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowManager;
 import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
 import com.melon.foolsEngine.util.VertexLayout;
+import com.melon.foolsEngine.util.logger.Logger;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
@@ -34,23 +32,8 @@ class GLRenderFrame implements RenderFrame {
     private float[] instanceBuffer = new float[0];
     private final float[] vpBuffer = new float[16];
     private GLMesh fullscreenQuad;
-
-    private final List<ShaderPass> passes = new ArrayList<>();
-
-    @Override
-    public void addPass(ShaderPass pass) {
-        passes.add(pass);
-    }
-
-    @Override
-    public void clearPasses() {
-        passes.clear();
-    }
-
-    @Override
-    public List<ShaderPass> getPasses() {
-        return Collections.unmodifiableList(passes);
-    }
+    private final TextureBinder binder = new TextureBinder();
+    private static final Logger RENDERLOGGER = new Logger("Render Debug");
 
     @Override
     public void init() {
@@ -62,59 +45,10 @@ class GLRenderFrame implements RenderFrame {
         glCullFace(GL_BACK);
         init = true;
     }
-
     private void initTest() {
         if (!init) throw new IllegalStateException("RenderFrame didn't initialize yet!");
     }
 
-    @Override
-    @Deprecated
-    public void beginFrame() {
-        initTest();
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClearDepth(0.0f);
-        commandQueue.clear();
-    }
-
-    private final TextureBinder binder = new TextureBinder();
-
-    @Override
-    @Deprecated
-    public void endFrame() {
-        initTest();
-        List<RenderCommand> commands = new ArrayList<>();
-        RenderCommand cmd;
-        while ((cmd = commandQueue.poll()) != null) {
-            commands.add(cmd);
-        }
-        commandQueue.clear();
-        if (!commands.isEmpty()) {
-            renderCommands(commands, null, null, -1, null);
-        }
-    }
-
-    @Override
-    @Deprecated
-    public void endFrame(RenderTarget target) {
-        endFrame(target, null);
-    }
-
-    @Override
-    @Deprecated
-    public void endFrame(RenderTarget target, Material overrideMaterial) {
-        endFrame(target, overrideMaterial, -1);
-    }
-
-    @Override
-    @Deprecated
-    public void endFrame(RenderTarget target, Material overrideMaterial, int arrayLayer) {
-        initTest();
-        List<RenderCommand> commands = new ArrayList<>(commandQueue);
-        if (!commands.isEmpty()) {
-            renderCommands(commands, target, overrideMaterial, arrayLayer, null);
-        }
-    }
 
     // ────────────────────── render / pass system ──────────────────────
 
@@ -126,6 +60,7 @@ class GLRenderFrame implements RenderFrame {
         List<RenderCommand> commands = new ArrayList<>(scene.getCommands());
 
         this.lightEnv = scene.getLighting();
+        //RENDERLOGGER.debug("lightEnv=" + scene.getLighting() + " passes=" + scene.getPasses().size());
 
         TextureManager textureManager = scene.getTextureManager();
         if (textureManager != null) {
@@ -275,7 +210,30 @@ class GLRenderFrame implements RenderFrame {
             }
             binder.reset();
             for (String key : material.params().keySet()) {
-                bindUniformValue(shader, key, material.params().get(key));
+                Object param = material.params().get(key);
+                if (param instanceof Float f) {
+                    shader.setFloat(key, f);
+                } else if (param instanceof Integer i) {
+                    shader.setInt(key, i);
+                } else if (param instanceof Vector2f v) {
+                    shader.setVec2(key, v.x, v.y);
+                } else if (param instanceof Vector3f v) {
+                    shader.setVec3(key, v.x, v.y, v.z);
+                } else if (param instanceof Vector4f v) {
+                    shader.setVec4(key, v.x, v.y, v.z, v.w);
+                } else if (param instanceof Matrix4f m) {
+                    shader.setMat4(key, m.get(new float[16]));
+                } else if (param instanceof Texture t) {
+                    TextureManager tm = t.belongsTo();
+                    if (tm != null) {
+                        tm.bind(TextureManager.TEXTURE_ARRAY_SLOT);
+                        shader.setInt("textureArray", TextureManager.TEXTURE_ARRAY_SLOT);
+                        shader.setInt("textureLayer", t.getLayer());
+                    } else {
+                        int slot = binder.bind(t);
+                        shader.setInt(key, slot);
+                    }
+                }
             }
 
             if (pass != null) {
@@ -402,35 +360,6 @@ class GLRenderFrame implements RenderFrame {
         return batches;
     }
 
-    // ────────────────────── deprecated setters ──────────────────────
-
-    @Override
-    @Deprecated
-    public void setCamera(Camera camera) {
-        initTest();
-        this.camera = camera;
-    }
-
-    @Override
-    @Deprecated
-    public void submit(RenderCommand command) {
-        initTest();
-        commandQueue.add(command);
-    }
-
-    @Override
-    @Deprecated
-    public void setBackGroundColor(float r, float g, float b, float a) {
-        initTest();
-        glClearColor(r, g, b, a);
-    }
-
-    @Override
-    @Deprecated
-    public void applyLightEnvironment(LightEnvironment env) {
-        initTest();
-        this.lightEnv = env;
-    }
 
     @Override
     public int getDrawCallCount() {

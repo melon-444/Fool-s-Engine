@@ -21,6 +21,7 @@ import com.melon.foolsEngine.util.*;
 import com.melon.foolsEngine.util.imgui.ImGuiContext;
 import com.melon.foolsEngine.util.imgui.ImGuiDebugOverlay;
 import com.melon.foolsEngine.util.imgui.ImGuiRenderer;
+import com.melon.foolsEngine.util.logger.LogLevel;
 import com.melon.foolsEngine.util.logger.Logger;
 import org.joml.*;
 import org.joml.Math;
@@ -28,7 +29,7 @@ import org.joml.Math;
 import java.nio.file.Path;
 
 public class TesECSRenderFlow {
-    static FoolsEngine foolsEngine = EngineBoot.create(20000000, 100, 800, 600, false);
+    static FoolsEngine foolsEngine = EngineBoot.create(20000000, 100, 800, 600, false, LogLevel.DEBUG);
     private static final int SHADOW_MAP_SIZE = 8192;
     private static final int MAX_SHADOW_LAYERS = 16;
     private static final float SPOT_SHADOW_NEAR = 0.1f;
@@ -78,8 +79,6 @@ public class TesECSRenderFlow {
 
         win.show();
         RenderFrame frame = foolsEngine.frame;
-        frame.init();
-
         foolsEngine.entityFactory.createShaderPass(0, ShaderPass.color(shader));
 
         ImGuiContext imGuiContext = new ImGuiContext();
@@ -130,6 +129,7 @@ public class TesECSRenderFlow {
         Action spawnShadowSpotLight = () -> SignalType.BUTTON;
         Action switchMouseMode = () -> SignalType.BUTTON;
         Action switchDebugWindow = () -> SignalType.BUTTON;
+        Action switchFullscreen = () -> SignalType.BUTTON;
 
         input.bind(input.getKeyboard(), FoolsEngineKeyCode.W, moveForward);
         input.bind(input.getKeyboard(), FoolsEngineKeyCode.S, moveBackward);
@@ -150,6 +150,7 @@ public class TesECSRenderFlow {
         input.bind(input.getKeyboard(), FoolsEngineKeyCode.ESC, exit);
 
         input.bind(input.getKeyboard(), FoolsEngineKeyCode.C, switchDebugWindow);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.F11, switchFullscreen);
 
         input.bind(input.getMouse(), FoolsEngineKeyCode.CURSOR, lookDelta);
         input.bind(input.getMouse(), FoolsEngineKeyCode.MOUSE_RIGHT, switchMouseMode);
@@ -289,6 +290,10 @@ public class TesECSRenderFlow {
 
             if (input.isActionPressed(switchDebugWindow)) {
                 renderDebug = !renderDebug;
+            }
+
+            if(input.isActionPressed(switchFullscreen)) {
+                win.setFullscreen(!win.isFullscreen());
             }
 
             input.endFrame();

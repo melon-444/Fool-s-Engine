@@ -40,54 +40,16 @@ import java.util.List;
  *   scene.clear();
  * }</pre>
  * <p>
- * The deprecated methods ({@link #beginFrame()}, {@link #endFrame()}, {@link #submit(RenderCommand)},
- * {@link #setCamera(Camera)}, etc.) are retained for backward compatibility only.
  */
 public interface RenderFrame {
     /** Initializes the renderer (must be called once before any rendering) */
     void init();
-
-    /** @deprecated Use {@link #render(RenderScene)} instead */
-    @Deprecated void beginFrame();
-
-    /** @deprecated Use {@link #render(RenderScene)} instead */
-    @Deprecated void endFrame();
-
-    /** @deprecated Use {@link #render(RenderScene)} with a {@link RenderTarget} overload */
-    @Deprecated void endFrame(RenderTarget target);
-
-    /** @deprecated Use {@link #render(RenderScene)} with a {@link RenderTarget} overload */
-    @Deprecated void endFrame(RenderTarget target, Material overrideMaterial);
-
-    /** @deprecated Use {@link #render(RenderScene)} with a {@link RenderTarget} overload */
-    @Deprecated void endFrame(RenderTarget target, Material overrideMaterial, int arrayLayer);
 
     /**
      * Renders a complete scene: shadow pass (if ShadowManager is set) followed by the color pass.
      * This is the preferred rendering entry point.
      */
     void render(RenderScene scene);
-
-    /** @deprecated Use {@link RenderScene#setCamera(Camera)} instead */
-    @Deprecated void setCamera(Camera camera);
-
-    /** @deprecated Use {@link RenderScene#submit(RenderCommand)} instead */
-    @Deprecated void submit(RenderCommand command);
-
-    /** @deprecated Use {@link RenderScene#setBackGroundColor(float, float, float, float)} instead */
-    @Deprecated void setBackGroundColor(float r, float g, float b, float a);
-
-    /** @deprecated Use {@link RenderScene#setLighting(LightEnvironment)} instead */
-    @Deprecated void applyLightEnvironment(LightEnvironment env);
-
-    /**
-     * @deprecated Use {@link LightEnvironment#enableShadows(com.melon.foolsEngine.api.rendering.render.RenderTarget, com.melon.foolsEngine.api.rendering.resource.Material, int)}
-     * instead. The renderer now reads the ShadowManager from the scene's
-     * LightEnvironment via {@link LightEnvironment#getShadowManager()}.
-     */
-    @Deprecated
-    default void setShadowManager(ShadowManager shadowManager) {
-    }
 
     /**
      * Returns the number of draw calls issued in the last {@link #render(RenderScene)} call.
@@ -112,21 +74,4 @@ public interface RenderFrame {
      * Captures the given render target and saves it as a PNG file at the given path.
      */
     void screenShot(java.nio.file.Path path, RenderTarget target);
-
-    /**
-     * Adds a {@link ShaderPass} to the rendering pipeline. Passes execute in insertion
-     * order after the automatic shadow-map pass. If no passes are added,
-     * {@link #render(RenderScene)} falls back to direct color rendering (backward compatible).
-     */
-    default void addPass(ShaderPass pass) {
-    }
-
-    /** Removes all passes from the rendering pipeline. */
-    default void clearPasses() {
-    }
-
-    /** Returns an unmodifiable view of the current pass list. */
-    default List<ShaderPass> getPasses() {
-        return Collections.emptyList();
-    }
 }

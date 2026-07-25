@@ -22,6 +22,7 @@ import org.joml.Vector3f;
 
 import java.nio.file.Path;
 
+@Deprecated
 public class TestBackend {
     static FoolsEngine foolsEngine = EngineBoot.create(1000, 100, 800, 600, false);
 

@@ -37,7 +37,6 @@ public class FoolsEngine {
     public final SystemScheduler systemScheduler;
     public final boolean isServer;
 
-
     public final Logger LOGGER = new Logger("SYSTEM");
 
     public final int MAX_ENTITIES;

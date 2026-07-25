@@ -752,15 +752,6 @@ class VKRenderFrame implements RenderFrame {
         }
     }
 
-    @Override @Deprecated public void beginFrame() {}
-    @Override @Deprecated public void endFrame() {}
-    @Override @Deprecated public void endFrame(RenderTarget target) {}
-    @Override @Deprecated public void endFrame(RenderTarget target, Material m) {}
-    @Override @Deprecated public void endFrame(RenderTarget target, Material m, int layer) {}
-    @Override @Deprecated public void setCamera(Camera camera) {}
-    @Override @Deprecated public void submit(RenderCommand command) {}
-    @Override @Deprecated public void setBackGroundColor(float r, float g, float b, float a) {}
-    @Override @Deprecated public void applyLightEnvironment(LightEnvironment env) {}
 
     @Override
     public void screenShot(ByteBuffer dstBuf) {

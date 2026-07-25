@@ -24,6 +24,11 @@ public class RenderPassCollector extends ClientSystem {
         requiredComponents.add(RenderPassComponent.class);
     }
 
+    @Override
+    public int priority() {
+        return 1;
+    }
+
     public RenderPassCollector(FoolsEngine engine) {
         super(engine);
         passComps = getSparseSet(RenderPassComponent.class);

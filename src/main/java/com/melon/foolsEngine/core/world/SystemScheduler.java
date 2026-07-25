@@ -23,6 +23,7 @@ import com.melon.foolsEngine.core.ECS.system.ClientSystem;
 import com.melon.foolsEngine.core.ECS.system.ServerSystem;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class SystemScheduler {
@@ -83,6 +84,7 @@ public class SystemScheduler {
 
     public void registerClient(ClientSystem system) {
         clientSystems.add(system);
+        clientSystems.sort(Comparator.comparingInt(s -> s.priority()));
     }
 
     public void additionalRenderTask(Runnable task) {

@@ -66,5 +66,13 @@ public abstract class System<Context> {
         return requiredComponents;
     }
 
+    /**
+     * Execution priority — lower runs first. Default 0.
+     * Override to declare ordering: e.g. SceneCollector=0 → PassCollector=1 → HUD=100.
+     */
+    public int priority() {
+        return 0;
+    }
+
     public abstract void update(float dt, Context ctx);
 }
