@@ -16,7 +16,9 @@
 
 package com.melon.foolsEngine.core;
 
-import com.melon.foolsEngine.core.annotation.Distribution;
+import com.melon.foolsEngine.util.Distribution;
+import com.melon.foolsEngine.core.annotation.EventBus;
+import com.melon.foolsEngine.core.annotation.EventBusSubscriber;
 import com.melon.foolsEngine.core.annotation.OnlyIn;
 import com.melon.foolsEngine.util.logger.LogLevel;
 import com.melon.foolsEngine.util.logger.Logger;
@@ -91,11 +93,28 @@ public final class EngineBoot {
             }
 
             validateClass(c, isServer);
+            processEventBusAnnotations(c);
 
             if (resolve) {
                 resolveClass(c);
             }
             return c;
+        }
+
+        private void processEventBusAnnotations(Class<?> c) {
+            EventBus busAnn = c.getAnnotation(EventBus.class);
+            if (busAnn != null) {
+                com.melon.foolsEngine.core.events.EventBus.create(busAnn.id());
+            }
+
+            EventBusSubscriber subAnn = c.getAnnotation(EventBusSubscriber.class);
+            if (subAnn != null) {
+                com.melon.foolsEngine.core.events.EventBus bus =
+                        com.melon.foolsEngine.core.events.EventBus.get(subAnn.id());
+                if (bus != null) {
+                    bus.registerStaticSubscribers(c);
+                }
+            }
         }
 
         @Override

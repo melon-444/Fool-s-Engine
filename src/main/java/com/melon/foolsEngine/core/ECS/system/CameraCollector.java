@@ -35,9 +35,7 @@ public class CameraCollector extends ClientSystem {
     public void update(float dt, RenderScene scene) {
         for (int e : entities) {
             CameraComponent cam = cameras.getComponent(e);
-            if (cam == null || !cam.active) continue;
-
-            deactivateOtherCam(e);
+            if (cam == null || !cam.active || !cam.isMainCam) continue;
 
             TransformComp t = transforms.getComponent(e);
             if (t == null) continue;
@@ -49,14 +47,6 @@ public class CameraCollector extends ClientSystem {
             persp.get(proj);
             scene.setCamera(new Camera(new Matrix4f(view), new Matrix4f(proj)));
             return;
-        }
-    }
-
-    private void deactivateOtherCam(int exclude) {
-        for (int e : entities) {
-            if (e == exclude) continue;
-            CameraComponent cam = cameras.getComponent(e);
-            if (cam != null) cam.active = false;
         }
     }
 }

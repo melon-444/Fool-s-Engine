@@ -26,6 +26,9 @@ public class CameraComponent extends Component {
     public float orthoSize;
     public boolean active;
 
+    /** When true, this camera is selected by CameraCollector as the scene's main view camera. */
+    public boolean isMainCam = true;
+
     public CameraComponent(float FOV, float near) {
         this(FOV, near, 1f, true);
     }

@@ -16,6 +16,8 @@
 
 package com.melon.foolsEngine.core.annotation;
 
+import com.melon.foolsEngine.util.Distribution;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;

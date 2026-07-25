@@ -18,7 +18,7 @@ package com.melon.foolsEngine.core.ECS.system;
 
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.core.FoolsEngine;
-import com.melon.foolsEngine.core.annotation.Distribution;
+import com.melon.foolsEngine.util.Distribution;
 import com.melon.foolsEngine.core.annotation.OnlyIn;
 
 @OnlyIn(Distribution.Client)
