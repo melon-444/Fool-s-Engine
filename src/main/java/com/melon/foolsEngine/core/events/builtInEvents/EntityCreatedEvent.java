@@ -19,10 +19,10 @@ package com.melon.foolsEngine.core.events.builtInEvents;
 import com.melon.foolsEngine.core.events.Event;
 
 /** Fired when an entity is created. */
-public class EntityCreated extends Event {
+public class EntityCreatedEvent extends Event {
     public final int entityId;
 
-    public EntityCreated(int entityId) {
+    public EntityCreatedEvent(int entityId) {
         this.entityId = entityId;
     }
 }

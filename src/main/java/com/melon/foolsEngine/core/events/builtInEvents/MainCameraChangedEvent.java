@@ -4,10 +4,10 @@ import com.melon.foolsEngine.api.rendering.resource.Camera;
 import com.melon.foolsEngine.core.events.Event;
 
 /** Fired when the main camera changes (set on RenderScene by CameraCollector). */
-public class MainCameraChanged extends Event {
+public class MainCameraChangedEvent extends Event {
     public final Camera camera;
 
-    public MainCameraChanged(Camera camera) {
+    public MainCameraChangedEvent(Camera camera) {
         this.camera = camera;
     }
 }

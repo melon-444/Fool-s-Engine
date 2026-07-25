@@ -6,7 +6,7 @@ import com.melon.foolsEngine.core.ECS.basicComponents.CameraComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.TransformComp;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.core.events.EventBus;
-import com.melon.foolsEngine.core.events.builtInEvents.MainCameraChanged;
+import com.melon.foolsEngine.core.events.builtInEvents.MainCameraChangedEvent;
 import com.melon.foolsEngine.util.SparseSet;
 import org.joml.Matrix4f;
 
@@ -51,7 +51,7 @@ public class CameraCollector extends ClientSystem {
             scene.setCamera(camera);
 
             EventBus bus = EventBus.get("SystemBus");
-            if (bus != null) bus.emit(new MainCameraChanged(camera));
+            if (bus != null) bus.emit(new MainCameraChangedEvent(camera));
             return;
         }
     }

@@ -19,9 +19,9 @@ package com.melon.foolsEngine.core.world;
 import com.melon.foolsEngine.core.ECS.basicComponents.Component;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.core.events.EventBus;
-import com.melon.foolsEngine.core.events.builtInEvents.ComponentAdded;
-import com.melon.foolsEngine.core.events.builtInEvents.EntityCreated;
-import com.melon.foolsEngine.core.events.builtInEvents.EntityDestroyed;
+import com.melon.foolsEngine.core.events.builtInEvents.ComponentAddedEvent;
+import com.melon.foolsEngine.core.events.builtInEvents.EntityCreatedEvent;
+import com.melon.foolsEngine.core.events.builtInEvents.EntityDestroyedEvent;
 import com.melon.foolsEngine.util.Signature;
 import com.melon.foolsEngine.util.SparseSet;
 
@@ -55,7 +55,7 @@ public class EntityManager {
         signatures[id] = new Signature(Instance.MAX_COMPONENTS);
 
         EventBus bus = EventBus.get("SystemBus");
-        if (bus != null) bus.emit(new EntityCreated(id));
+        if (bus != null) bus.emit(new EntityCreatedEvent(id));
 
         return id;
     }
@@ -75,7 +75,7 @@ public class EntityManager {
         livingEntityCount = lastIndex;
 
         EventBus bus = EventBus.get("SystemBus");
-        if (bus != null) bus.emit(new EntityDestroyed(entity));
+        if (bus != null) bus.emit(new EntityDestroyedEvent(entity));
     }
 
     public Signature getSignature(int entity) {
@@ -89,7 +89,7 @@ public class EntityManager {
         updateSignature(entityID, component);
 
         EventBus bus = EventBus.get("SystemBus");
-        if (bus != null) bus.emit(new ComponentAdded(entityID, component));
+        if (bus != null) bus.emit(new ComponentAddedEvent(entityID, component));
     }
 
 
