@@ -43,6 +43,7 @@ public class RenderScene {
     private LightEnvironment lightEnv;
     private TextureManager textureManager;
     private final List<RenderCommand> commands = new ArrayList<>();
+    private final List<ShaderPass> passes = new ArrayList<>();
     private float bgR = 0.05f;
     private float bgG = 0.05f;
     private float bgB = 0.1f;
@@ -104,5 +105,21 @@ public class RenderScene {
     /** Clears all submitted commands for the next frame */
     public void clear() {
         commands.clear();
+        passes.clear();
+    }
+
+    /** Adds a {@link ShaderPass} to the rendering pipeline for this frame. */
+    public void submitPass(ShaderPass pass) {
+        passes.add(pass);
+    }
+
+    /** @return an unmodifiable view of all submitted passes */
+    public List<ShaderPass> getPasses() {
+        return Collections.unmodifiableList(passes);
+    }
+
+    /** Clears only the pass list. */
+    public void clearPasses() {
+        passes.clear();
     }
 }

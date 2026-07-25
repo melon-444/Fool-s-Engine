@@ -19,10 +19,12 @@ package com.melon.foolsEngine.core.ECS.entity;
 import com.melon.foolsEngine.api.rendering.resource.Material;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
+import com.melon.foolsEngine.api.rendering.render.ShaderPass;
 import com.melon.foolsEngine.core.ECS.basicComponents.CameraComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.LightComp;
 import com.melon.foolsEngine.core.ECS.basicComponents.LightEnvComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.RenderableComp;
+import com.melon.foolsEngine.core.ECS.basicComponents.RenderPassComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.TransformComp;
 import com.melon.foolsEngine.core.FoolsEngine;
 import org.joml.Quaternionf;
@@ -89,6 +91,14 @@ public class EntityFactory {
         final int entityID = Instance.entityManager.createEntity();
         Instance.entityManager.bindComponent(entityID, new LightEnvComponent(env));
         Instance.entityManager.bindComponent(entityID, new TransformComp());
+        return entityID;
+    }
+
+    /** Create an entity that adds a {@link ShaderPass} to the rendering pipeline. */
+    public int createShaderPass(int order, ShaderPass pass) {
+        final int entityID = Instance.entityManager.createEntity();
+        Instance.entityManager.bindComponent(entityID, new TransformComp());
+        Instance.entityManager.bindComponent(entityID, new RenderPassComponent(order, pass));
         return entityID;
     }
 

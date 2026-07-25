@@ -125,37 +125,22 @@ class GLRenderFrame implements RenderFrame {
 
         List<RenderCommand> commands = new ArrayList<>(scene.getCommands());
 
-        LightEnvironment lighting = scene.getLighting();
-        ShadowManager shadowManager = lighting != null ? lighting.getShadowManager() : null;
-        this.lightEnv = lighting;
+        this.lightEnv = scene.getLighting();
 
         TextureManager textureManager = scene.getTextureManager();
         if (textureManager != null) {
             textureManager.flushMipmaps();
         }
 
-        if (shadowManager != null) {
-            Camera mainCamera = scene.getCamera();
-            if (mainCamera != null) {
-                for (Light light : lighting.getLights()) {
-                    if (!light.castsShadow()) continue;
-                    ShadowPassContext ctx = shadowManager.prepareShadow(light, mainCamera);
-                    this.camera = ctx.shadowCamera();
-                    renderCommands(commands, ctx.target(), ctx.depthMaterial(), ctx.layer(), null);
-                }
-            }
-        }
+        List<ShaderPass> passes = scene.getPasses();
 
-        this.camera = scene.getCamera();
-
-        if (passes.isEmpty()) {
+        if (passes.isEmpty() && !commands.isEmpty()) {
+            this.camera = scene.getCamera();
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glClearColor(scene.getBgR(), scene.getBgG(), scene.getBgB(), scene.getBgA());
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glClearDepth(0.0f);
-            if (!commands.isEmpty()) {
-                renderCommands(commands, null, null, -1, null);
-            }
+            renderCommands(commands, null, null, -1, null);
         } else {
             for (ShaderPass pass : passes) {
                 executePass(pass, scene, commands);
@@ -164,10 +149,18 @@ class GLRenderFrame implements RenderFrame {
     }
 
     private void executePass(ShaderPass pass, RenderScene scene, List<RenderCommand> commands) {
+        Camera passCam = pass.cameraOverride() != null ? pass.cameraOverride() : scene.getCamera();
+        this.camera = passCam;
+
+        Material overrideMat = pass.overrideMaterial();
         RenderTarget target = pass.output();
+        int layer = pass.arrayLayer();
 
         if (target != null) {
             target.bind();
+            if (target.getLayers() > 1 && layer >= 0) {
+                target.attachLayer(layer);
+            }
             glViewport(0, 0, target.getWidth(), target.getHeight());
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glClearDepth(0.0f);
@@ -181,7 +174,7 @@ class GLRenderFrame implements RenderFrame {
         if (pass.isFullscreen()) {
             executeFullscreenPass(pass);
         } else if (!commands.isEmpty()) {
-            renderCommands(commands, null, null, -1, pass);
+            renderCommands(commands, null, overrideMat, layer, pass);
         }
 
         if (target != null) {

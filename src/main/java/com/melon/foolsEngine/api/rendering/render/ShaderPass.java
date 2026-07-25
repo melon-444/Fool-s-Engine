@@ -18,6 +18,8 @@ package com.melon.foolsEngine.api.rendering.render;
 
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
+import com.melon.foolsEngine.api.rendering.resource.Camera;
+import com.melon.foolsEngine.api.rendering.resource.Material;
 
 import java.util.*;
 
@@ -58,6 +60,10 @@ public class ShaderPass {
     private final List<PassInput> inputs = new ArrayList<>();
     private final Map<String, Object> uniforms = new LinkedHashMap<>();
 
+    private Camera cameraOverride;
+    private Material overrideMaterial;
+    private int arrayLayer = -1;
+
     public ShaderPass(ShaderProgram shader) {
         if (shader == null) throw new NullPointerException("shader must not be null");
         this.shader = shader;
@@ -90,6 +96,15 @@ public class ShaderPass {
         return this;
     }
 
+    /** Override the camera for this pass (used by shadow passes). null = use scene camera. */
+    public ShaderPass camera(Camera cam) { this.cameraOverride = cam; return this; }
+
+    /** Override all entity materials with a single material (used by shadow passes). */
+    public ShaderPass overrideMaterial(Material mat) { this.overrideMaterial = mat; return this; }
+
+    /** Set the texture array layer to attach (used by shadow map array). */
+    public ShaderPass arrayLayer(int layer) { this.arrayLayer = layer; return this; }
+
     // ── Getters ──
 
     public ShaderProgram shader() { return shader; }
@@ -97,6 +112,9 @@ public class ShaderPass {
     public boolean isFullscreen() { return fullscreenQuad; }
     public List<PassInput> inputs() { return Collections.unmodifiableList(inputs); }
     public Map<String, Object> uniforms() { return Collections.unmodifiableMap(uniforms); }
+    public Camera cameraOverride() { return cameraOverride; }
+    public Material overrideMaterial() { return overrideMaterial; }
+    public int arrayLayer() { return arrayLayer; }
 
     // ── Convenience factories ──
 

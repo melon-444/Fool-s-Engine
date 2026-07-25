@@ -4,6 +4,7 @@ import com.melon.foolsEngine.api.input.*;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
+import com.melon.foolsEngine.api.rendering.render.ShaderPass;
 import com.melon.foolsEngine.api.rendering.resource.*;
 import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
 import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
@@ -78,6 +79,8 @@ public class TesECSRenderFlow {
         win.show();
         RenderFrame frame = foolsEngine.frame;
         frame.init();
+
+        foolsEngine.entityFactory.createShaderPass(0, ShaderPass.color(shader));
 
         ImGuiContext imGuiContext = new ImGuiContext();
         imGuiContext.init(win.getID(), "#version 330");

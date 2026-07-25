@@ -1,6 +1,13 @@
 package com.melon.foolsEngine.core.ECS.system;
 
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
+import com.melon.foolsEngine.api.rendering.render.RenderTarget;
+import com.melon.foolsEngine.api.rendering.render.ShaderPass;
+import com.melon.foolsEngine.api.rendering.resource.Camera;
+import com.melon.foolsEngine.api.rendering.resource.Light;
+import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
+import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowManager;
+import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowPassContext;
 import com.melon.foolsEngine.core.ECS.basicComponents.RenderPassComponent;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.SparseSet;
@@ -9,18 +16,9 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-/**
- * Collects {@link RenderPassComponent} entities into an ordered pass list,
- * consumed by the renderer to configure per-pass GL state (depth, blend, etc.).
- *
- * <p>Multiple RenderPassComponent entities on different entities define the pipeline.
- * This collector sorts them by {@link RenderPassComponent#order} and exposes the list.</p>
- */
 public class RenderPassCollector extends ClientSystem {
 
-    private final SparseSet<RenderPassComponent> passes;
-    private final List<RenderPassComponent> sortedPasses = new ArrayList<>();
-    private boolean dirty = true;
+    private final SparseSet<RenderPassComponent> passComps;
 
     {
         requiredComponents.add(RenderPassComponent.class);
@@ -28,27 +26,43 @@ public class RenderPassCollector extends ClientSystem {
 
     public RenderPassCollector(FoolsEngine engine) {
         super(engine);
-        passes = getSparseSet(RenderPassComponent.class);
+        passComps = getSparseSet(RenderPassComponent.class);
     }
 
     @Override
     public void update(float dt, RenderScene scene) {
-        // TODO: wire into GLRenderFrame — pass sortedPasses to renderer for per-pass state setup
-        // TODO: handle pass-specific cameras (e.g. shadow pass uses shadow cam)
-        if (!dirty) return;
+        scene.clearPasses();
 
-        sortedPasses.clear();
-        List<RenderPassComponent> list = new ArrayList<>();
+        generateShadowPasses(scene);
+
+        List<RenderPassComponent> userPasses = new ArrayList<>();
         for (int e : entities) {
-            RenderPassComponent p = passes.getComponent(e);
-            if (p != null) list.add(p);
+            RenderPassComponent pc = passComps.getComponent(e);
+            if (pc != null) userPasses.add(pc);
         }
-        list.sort(Comparator.comparingInt(p -> p.order));
-        sortedPasses.addAll(list);
-        dirty = false;
+        userPasses.sort(Comparator.comparingInt(p -> p.order));
+
+        for (RenderPassComponent pc : userPasses) {
+            scene.submitPass(pc.pass);
+        }
     }
 
-    public List<RenderPassComponent> getSortedPasses() {
-        return sortedPasses;
+    private void generateShadowPasses(RenderScene scene) {
+        LightEnvironment lightEnv = scene.getLighting();
+        if (lightEnv == null) return;
+        ShadowManager sm = lightEnv.getShadowManager();
+        Camera mainCamera = scene.getCamera();
+        if (sm == null || mainCamera == null) return;
+
+        for (Light light : lightEnv.getLights()) {
+            if (!light.castsShadow()) continue;
+            ShadowPassContext ctx = sm.prepareShadow(light, mainCamera);
+            ShaderPass sp = new ShaderPass(ctx.depthMaterial().shader())
+                    .output(ctx.target())
+                    .camera(ctx.shadowCamera())
+                    .overrideMaterial(ctx.depthMaterial())
+                    .arrayLayer(ctx.layer());
+            scene.submitPass(sp);
+        }
     }
 }
