@@ -38,6 +38,7 @@ public final class EngineBoot {
     }
 
     public static FoolsEngine create(int maxEntities, int maxComponents, int width, int height, boolean isServer, LogLevel level) {
+        Logger.setLevel(level);
         LOG.info("Engine starting | mode=%s maxEntities=%d", isServer ? "SERVER" : "CLIENT", maxEntities);
         ValidatingLoader loader = new ValidatingLoader(Thread.currentThread().getContextClassLoader(),isServer);
         Thread.currentThread().setContextClassLoader(loader);
