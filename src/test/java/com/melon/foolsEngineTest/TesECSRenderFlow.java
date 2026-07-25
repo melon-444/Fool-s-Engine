@@ -12,6 +12,7 @@ import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.api.windows.WindowsManager;
 import com.melon.foolsEngine.core.ECS.basicComponents.LightComp;
+import com.melon.foolsEngine.core.ECS.basicComponents.LightEnvComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.TextureManagerComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.TransformComp;
 import com.melon.foolsEngine.core.EngineBoot;
@@ -88,16 +89,14 @@ public class TesECSRenderFlow {
 
 
 
-        LightEnvironment lightEnv = new LightEnvironment();
+        int lightEnvEntity = foolsEngine.entityFactory.createLightEnvironment();
+        LightEnvironment lightEnv = ((LightEnvComponent)foolsEngine.componentManager.getComponentMap().get(LightEnvComponent.class).get(lightEnvEntity)).env;
         lightEnv.setAmbient(0.08f, 0.08f, 0.08f);
-        int lightEnvEntity = foolsEngine.entityFactory.createLightEnvironment(lightEnv);
         lightEnv.setShadowMapSize(SHADOW_MAP_SIZE);
 
         RenderTarget shadowArray = foolsEngine.serviceFactory.createRenderTarget(
                 SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, RenderTarget.TARGET_DEPTH, MAX_SHADOW_LAYERS);
         lightEnv.enableShadows(shadowArray, depthMaterial, MAX_SHADOW_LAYERS);
-
-
 
         int textureMgrEntity = foolsEngine.entityManager.createEntity();
         foolsEngine.entityManager.bindComponent(textureMgrEntity,

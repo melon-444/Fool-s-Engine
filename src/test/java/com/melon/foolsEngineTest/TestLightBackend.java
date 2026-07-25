@@ -41,7 +41,7 @@ public class TestLightBackend {
         dragonMesh.upload(ObjLoader.loadMesh(Path.of("src/test/resources/shaders/model/dragon.obj")));
 
         ShaderProgram shader = foolsEngine.serviceFactory.getShaderProgram();
-        shader.load(Path.of("src/main/resources/shader/vsh/main_vsh.glsl"), Path.of("src/main/resources/shader/fsh/main_fsh.glsl"));
+        shader.load(Path.of("src/main/resources/shader/main/main_vsh.glsl"), Path.of("src/main/resources/shader/main/main_fsh.glsl"));
         Material material = new Material(shader);
         Texture texture = foolsEngine.serviceFactory.getTexture();
         texture.upload(Path.of("src/test/resources/textures/test2.png"));
@@ -53,7 +53,7 @@ public class TestLightBackend {
         arrayMaterial.set("textureSampler", arrayTexture);
 
         ShaderProgram depthShader = foolsEngine.serviceFactory.getShaderProgram();
-        depthShader.load(Path.of("src/main/resources/shader/vsh/depth_vsh.glsl"), Path.of("src/main/resources/shader/fsh/depth_fsh.glsl"));
+        depthShader.load(Path.of("src/main/resources/shader/depth/depth_vsh.glsl"), Path.of("src/main/resources/shader/depth/depth_fsh.glsl"));
         Material depthMaterial = new Material(depthShader);
 
         TransformComp dragonTransform1 = new TransformComp(new Vector3f(0, 0, 5), new Quaternionf(), new Vector3f(0.1f, 0.1f, 0.1f));
