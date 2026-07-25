@@ -16,6 +16,8 @@
 
 package com.melon.foolsEngine.core.events;
 
+import com.melon.foolsEngine.core.annotation.InstanceBusSubscriber;
+
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
@@ -84,16 +86,24 @@ public class EventBus {
         }
     }
 
-    /** Registers all instance {@code @SubscribeEvent} methods on {@code subscriber}.
-     * If the class carries {@code @AutoRegisterBus}, validates that its id matches this bus. */
-    public void addListener(Object subscriber) {
-        com.melon.foolsEngine.core.annotation.AutoRegisterBus arb =
-                subscriber.getClass().getAnnotation(
-                        com.melon.foolsEngine.core.annotation.AutoRegisterBus.class);
-        if (arb != null && !arb.id().equals(busId)) {
-            throw new IllegalArgumentException(
-                    "@AutoRegisterBus id mismatch: class expects '" + arb.id()
-                    + "' but bus is '" + busId + "'");
+    /**
+     * Registers all instance {@code @SubscribeEvent} methods on {@code subscriber}
+     * onto the bus specified by the class's {@code @InstanceBusSubscriber} annotation.
+     * Un-annotated classes default to {@code SystemBus}.
+     * Idempotent: calling with the same instance again is a no-op.
+     */
+    public static void addListener(Object subscriber) {
+        InstanceBusSubscriber ibs = subscriber.getClass().getAnnotation(InstanceBusSubscriber.class);
+        String busId = ibs != null ? ibs.id() : "SystemBus";
+        EventBus bus = get(busId);
+        if (bus == null)
+            throw new IllegalStateException("Bus not found: " + busId);
+        bus.addListenerImpl(subscriber);
+    }
+
+    private void addListenerImpl(Object subscriber) {
+        for (Map<Method, Object> map : listeners.values()) {
+            if (map.containsValue(subscriber)) return;
         }
         for (Method m : subscriber.getClass().getDeclaredMethods()) {
             if (m.getAnnotation(com.melon.foolsEngine.core.annotation.SubscribeEvent.class) == null) continue;

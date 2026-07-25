@@ -12,7 +12,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-public @interface AutoRegisterBus {
-    /** The {@link com.melon.foolsEngine.core.events.EventBus} id to register on. */
-    String id();
+public @interface InstanceBusSubscriber {
+    /** The {@link com.melon.foolsEngine.core.events.EventBus} id to register on. Defaults to {@code "SystemBus"}. */
+    String id() default "SystemBus";
 }

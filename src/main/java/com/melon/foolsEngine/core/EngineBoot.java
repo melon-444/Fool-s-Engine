@@ -16,6 +16,7 @@
 
 package com.melon.foolsEngine.core;
 
+import com.melon.foolsEngine.util.ConstructorInjector;
 import com.melon.foolsEngine.util.Distribution;
 import com.melon.foolsEngine.core.annotation.EventBus;
 import com.melon.foolsEngine.core.annotation.EventBusSubscriber;
@@ -132,6 +133,7 @@ public final class EngineBoot {
                     buf.write(tmp, 0, n);
                 }
                 byte[] bytes = buf.toByteArray();
+                bytes = ConstructorInjector.inject(bytes);
                 return defineClass(name, bytes, 0, bytes.length);
             } catch (IOException e) {
                 throw new ClassNotFoundException(name, e);
