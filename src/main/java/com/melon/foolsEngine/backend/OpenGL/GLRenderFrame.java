@@ -1,19 +1,18 @@
 package com.melon.foolsEngine.backend.OpenGL;
 
-import com.melon.foolsEngine.api.rendering.render.RenderFrame;
-import com.melon.foolsEngine.api.rendering.render.RenderTarget;
+import com.melon.foolsEngine.api.rendering.render.*;
 import com.melon.foolsEngine.api.rendering.resource.Light;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowPassContext;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
+import com.melon.foolsEngine.api.rendering.resource.MeshData;
 import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.rendering.resource.Camera;
 import com.melon.foolsEngine.api.rendering.resource.Material;
-import com.melon.foolsEngine.api.rendering.render.RenderCommand;
-import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowManager;
 import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
+import com.melon.foolsEngine.util.VertexLayout;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
@@ -25,19 +24,37 @@ import java.util.*;
 
 import static org.lwjgl.opengl.GL45.*;
 
-class GLRenderFrame implements RenderFrame{
+class GLRenderFrame implements RenderFrame {
 
-    private final Queue<RenderCommand> commandQueue = new LinkedList<RenderCommand>();
+    private final Queue<RenderCommand> commandQueue = new LinkedList<>();
     private Camera camera;
     private boolean init = false;
     private LightEnvironment lightEnv;
     private int drawCallCounter;
     private float[] instanceBuffer = new float[0];
     private final float[] vpBuffer = new float[16];
+    private GLMesh fullscreenQuad;
+
+    private final List<ShaderPass> passes = new ArrayList<>();
 
     @Override
-    public void init(){
-        if(init){return;}
+    public void addPass(ShaderPass pass) {
+        passes.add(pass);
+    }
+
+    @Override
+    public void clearPasses() {
+        passes.clear();
+    }
+
+    @Override
+    public List<ShaderPass> getPasses() {
+        return Collections.unmodifiableList(passes);
+    }
+
+    @Override
+    public void init() {
+        if (init) { return; }
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_GREATER);
         glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
@@ -46,11 +63,12 @@ class GLRenderFrame implements RenderFrame{
         init = true;
     }
 
-    private void initTest(){
-        if(!init) throw new IllegalStateException("RenderFrame didn't initialize yet!");
+    private void initTest() {
+        if (!init) throw new IllegalStateException("RenderFrame didn't initialize yet!");
     }
 
     @Override
+    @Deprecated
     public void beginFrame() {
         initTest();
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -62,53 +80,59 @@ class GLRenderFrame implements RenderFrame{
     private final TextureBinder binder = new TextureBinder();
 
     @Override
+    @Deprecated
     public void endFrame() {
         initTest();
-
         List<RenderCommand> commands = new ArrayList<>();
         RenderCommand cmd;
         while ((cmd = commandQueue.poll()) != null) {
             commands.add(cmd);
         }
         commandQueue.clear();
-
         if (!commands.isEmpty()) {
-            renderCommands(commands, null, null, -1);
+            renderCommands(commands, null, null, -1, null);
         }
     }
 
     @Override
+    @Deprecated
     public void endFrame(RenderTarget target) {
         endFrame(target, null);
     }
 
     @Override
+    @Deprecated
     public void endFrame(RenderTarget target, Material overrideMaterial) {
         endFrame(target, overrideMaterial, -1);
     }
 
     @Override
+    @Deprecated
     public void endFrame(RenderTarget target, Material overrideMaterial, int arrayLayer) {
         initTest();
-
         List<RenderCommand> commands = new ArrayList<>(commandQueue);
-
         if (!commands.isEmpty()) {
-            renderCommands(commands, target, overrideMaterial, arrayLayer);
+            renderCommands(commands, target, overrideMaterial, arrayLayer, null);
         }
     }
+
+    // ────────────────────── render / pass system ──────────────────────
 
     @Override
     public void render(RenderScene scene) {
         initTest();
-
         drawCallCounter = 0;
 
         List<RenderCommand> commands = new ArrayList<>(scene.getCommands());
-        if (commands.isEmpty()) return;
 
         LightEnvironment lighting = scene.getLighting();
         ShadowManager shadowManager = lighting != null ? lighting.getShadowManager() : null;
+        this.lightEnv = lighting;
+
+        TextureManager textureManager = scene.getTextureManager();
+        if (textureManager != null) {
+            textureManager.flushMipmaps();
+        }
 
         if (shadowManager != null) {
             Camera mainCamera = scene.getCamera();
@@ -117,28 +141,103 @@ class GLRenderFrame implements RenderFrame{
                     if (!light.castsShadow()) continue;
                     ShadowPassContext ctx = shadowManager.prepareShadow(light, mainCamera);
                     this.camera = ctx.shadowCamera();
-                    renderCommands(commands, ctx.target(), ctx.depthMaterial(), ctx.layer());
+                    renderCommands(commands, ctx.target(), ctx.depthMaterial(), ctx.layer(), null);
                 }
             }
         }
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glClearColor(scene.getBgR(), scene.getBgG(), scene.getBgB(), scene.getBgA());
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClearDepth(0.0f);
-
         this.camera = scene.getCamera();
-        this.lightEnv = scene.getLighting();
 
-        TextureManager textureManager = scene.getTextureManager();
-        if (textureManager != null) {
-            textureManager.flushMipmaps();
+        if (passes.isEmpty()) {
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glClearColor(scene.getBgR(), scene.getBgG(), scene.getBgB(), scene.getBgA());
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glClearDepth(0.0f);
+            if (!commands.isEmpty()) {
+                renderCommands(commands, null, null, -1, null);
+            }
+        } else {
+            for (ShaderPass pass : passes) {
+                executePass(pass, scene, commands);
+            }
         }
-
-        renderCommands(commands, null, null, -1);
     }
 
-    private void renderCommands(List<RenderCommand> commands, RenderTarget target, Material overrideMaterial, int arrayLayer) {
+    private void executePass(ShaderPass pass, RenderScene scene, List<RenderCommand> commands) {
+        RenderTarget target = pass.output();
+
+        if (target != null) {
+            target.bind();
+            glViewport(0, 0, target.getWidth(), target.getHeight());
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glClearDepth(0.0f);
+        } else {
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glClearColor(scene.getBgR(), scene.getBgG(), scene.getBgB(), scene.getBgA());
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glClearDepth(0.0f);
+        }
+
+        if (pass.isFullscreen()) {
+            executeFullscreenPass(pass);
+        } else if (!commands.isEmpty()) {
+            renderCommands(commands, null, null, -1, pass);
+        }
+
+        if (target != null) {
+            target.unbind();
+        }
+    }
+
+    private void executeFullscreenPass(ShaderPass pass) {
+        pass.shader().bind();
+
+        int slot = 0;
+        for (PassInput input : pass.inputs()) {
+            glActiveTexture(GL_TEXTURE0 + slot);
+            if (input.texture().getType() == RenderTarget.TARGET_DEPTH) {
+                glBindTexture(GL_TEXTURE_2D_ARRAY, input.texture().getTextureId());
+            } else {
+                glBindTexture(GL_TEXTURE_2D, input.texture().getTextureId());
+            }
+            pass.shader().setInt(input.samplerName(), slot);
+            slot++;
+        }
+
+        for (var e : pass.uniforms().entrySet()) {
+            bindUniformValue(pass.shader(), e.getKey(), e.getValue());
+        }
+
+        drawFullscreenQuad();
+
+        pass.shader().unbind();
+    }
+
+    private void drawFullscreenQuad() {
+        if (fullscreenQuad == null) createFullscreenQuad();
+        fullscreenQuad.bind();
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        fullscreenQuad.unbind();
+    }
+
+    private void createFullscreenQuad() {
+        float[] vertices = {
+                -1, -1, 0,   0, 0,
+                 1, -1, 0,   1, 0,
+                 1,  1, 0,   1, 1,
+                -1,  1, 0,   0, 1,
+        };
+        int[] indices = {0, 1, 2, 2, 3, 0};
+        VertexLayout layout = new VertexLayout().add(0, 3).add(1, 2);
+        MeshData data = new MeshData(vertices, indices, layout);
+        fullscreenQuad = new GLMesh();
+        fullscreenQuad.upload(data);
+    }
+
+    // ────────────────────── core draw ──────────────────────
+
+    private void renderCommands(List<RenderCommand> commands, RenderTarget target,
+                                 Material overrideMaterial, int arrayLayer, ShaderPass pass) {
         int[] savedViewport = null;
         if (target != null) {
             savedViewport = new int[4];
@@ -153,7 +252,6 @@ class GLRenderFrame implements RenderFrame{
         }
 
         Map<Long, List<RenderCommand>> batches = groupCommands(commands);
-
         drawCallCounter += batches.size();
 
         for (List<RenderCommand> cmds : batches.values()) {
@@ -184,31 +282,15 @@ class GLRenderFrame implements RenderFrame{
             }
             binder.reset();
             for (String key : material.params().keySet()) {
-                Object param = material.params().get(key);
-                if (param instanceof Float f) {
-                    shader.setFloat(key, f);
-                } else if (param instanceof Integer i) {
-                    shader.setInt(key, i);
-                } else if (param instanceof Vector2f v) {
-                    shader.setVec2(key, v.x, v.y);
-                } else if (param instanceof Vector3f v) {
-                    shader.setVec3(key, v.x, v.y, v.z);
-                } else if (param instanceof Vector4f v) {
-                    shader.setVec4(key, v.x, v.y, v.z, v.w);
-                } else if (param instanceof Matrix4f m) {
-                    shader.setMat4(key, m.get(new float[16]));
-                } else if (param instanceof Texture t) {
-                    TextureManager tm = t.belongsTo();
-                    if (tm != null) {
-                        tm.bind(TextureManager.TEXTURE_ARRAY_SLOT);
-                        shader.setInt("textureArray", TextureManager.TEXTURE_ARRAY_SLOT);
-                        shader.setInt("textureLayer", t.getLayer());
-                    } else {
-                        int slot = binder.bind(t);
-                        shader.setInt(key, slot);
-                    }
+                bindUniformValue(shader, key, material.params().get(key));
+            }
+
+            if (pass != null) {
+                for (var e : pass.uniforms().entrySet()) {
+                    bindUniformValue(shader, e.getKey(), e.getValue());
                 }
             }
+
             camera.vp().get(vpBuffer);
             shader.setMat4("vp", vpBuffer);
 
@@ -220,6 +302,26 @@ class GLRenderFrame implements RenderFrame{
             glViewport(savedViewport[0], savedViewport[1], savedViewport[2], savedViewport[3]);
         }
     }
+
+    private static void bindUniformValue(ShaderProgram shader, String name, Object value) {
+        if (value instanceof Float f) {
+            shader.setFloat(name, f);
+        } else if (value instanceof Integer i) {
+            shader.setInt(name, i);
+        } else if (value instanceof Vector2f v) {
+            shader.setVec2(name, v.x, v.y);
+        } else if (value instanceof Vector3f v) {
+            shader.setVec3(name, v.x, v.y, v.z);
+        } else if (value instanceof Vector4f v) {
+            shader.setVec4(name, v.x, v.y, v.z, v.w);
+        } else if (value instanceof Matrix4f m) {
+            shader.setMat4(name, m.get(new float[16]));
+        } else if (value instanceof Texture t) {
+            // handled by material texture binding path above
+        }
+    }
+
+    // ────────────────────── screenshots ──────────────────────
 
     @Override
     public void screenShot(ByteBuffer dstBuf) {
@@ -278,6 +380,8 @@ class GLRenderFrame implements RenderFrame{
         }
     }
 
+    // ────────────────────── shadows ──────────────────────
+
     private void bindShadowArrayTexture() {
         if (lightEnv == null || lightEnv.getLights().isEmpty()) return;
         for (var l : lightEnv.getLights()) {
@@ -294,6 +398,8 @@ class GLRenderFrame implements RenderFrame{
         }
     }
 
+    // ────────────────────── batching ──────────────────────
+
     private Map<Long, List<RenderCommand>> groupCommands(List<RenderCommand> commands) {
         Map<Long, List<RenderCommand>> batches = new LinkedHashMap<>();
         for (RenderCommand c : commands) {
@@ -302,6 +408,8 @@ class GLRenderFrame implements RenderFrame{
         }
         return batches;
     }
+
+    // ────────────────────── deprecated setters ──────────────────────
 
     @Override
     @Deprecated
@@ -319,22 +427,24 @@ class GLRenderFrame implements RenderFrame{
 
     @Override
     @Deprecated
+    public void setBackGroundColor(float r, float g, float b, float a) {
+        initTest();
+        glClearColor(r, g, b, a);
+    }
+
+    @Override
+    @Deprecated
     public void applyLightEnvironment(LightEnvironment env) {
         initTest();
         this.lightEnv = env;
     }
 
     @Override
-    @Deprecated
-    public void setBackGroundColor(float r, float g, float b,float a) {
-        initTest();
-        glClearColor(r, g, b, a);
-    }
-
-    @Override
     public int getDrawCallCount() {
         return drawCallCounter;
     }
+
+    // ────────────────────── TextureBinder ──────────────────────
 
     private static class TextureBinder {
         private final Map<Texture, Integer> bound = new HashMap<>();

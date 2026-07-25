@@ -21,6 +21,9 @@ import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.api.rendering.resource.Material;
 import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowManager;
 
+import java.util.Collections;
+import java.util.List;
+
 /**
  * Main rendering orchestrator. Manages a frame lifecycle and executes draw calls.
  * <p>
@@ -109,4 +112,21 @@ public interface RenderFrame {
      * Captures the given render target and saves it as a PNG file at the given path.
      */
     void screenShot(java.nio.file.Path path, RenderTarget target);
+
+    /**
+     * Adds a {@link ShaderPass} to the rendering pipeline. Passes execute in insertion
+     * order after the automatic shadow-map pass. If no passes are added,
+     * {@link #render(RenderScene)} falls back to direct color rendering (backward compatible).
+     */
+    default void addPass(ShaderPass pass) {
+    }
+
+    /** Removes all passes from the rendering pipeline. */
+    default void clearPasses() {
+    }
+
+    /** Returns an unmodifiable view of the current pass list. */
+    default List<ShaderPass> getPasses() {
+        return Collections.emptyList();
+    }
 }

@@ -18,8 +18,6 @@ package com.melon.foolsEngine.core;
 
 import com.melon.foolsEngine.api.rendering.render.GraphicsContext;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
-import com.melon.foolsEngine.api.rendering.resource.Material;
-import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.core.ECS.basicComponents.*;
@@ -108,11 +106,11 @@ public class FoolsEngine {
      */
     public ShaderProgram[] loadBuiltinShaders() {
         ShaderProgram mainShader = serviceFactory.getShaderProgram();
-        mainShader.load("/shader/vsh/main_vsh.glsl", "/shader/fsh/main_fsh.glsl");
+        mainShader.load("/shader/main/main_vsh.glsl", "/shader/main/main_fsh.glsl");
         LOGGER.info("Built-in main shader loaded");
 
         ShaderProgram depthShader = serviceFactory.getShaderProgram();
-        depthShader.load("/shader/vsh/depth_vsh.glsl", "/shader/fsh/depth_fsh.glsl");
+        depthShader.load("/shader/depth/depth_vsh.glsl", "/shader/depth/depth_fsh.glsl");
         LOGGER.info("Built-in depth shader loaded");
 
         return new ShaderProgram[]{ mainShader, depthShader };
