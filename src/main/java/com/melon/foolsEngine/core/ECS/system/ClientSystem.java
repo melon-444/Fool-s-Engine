@@ -16,7 +16,6 @@
 
 package com.melon.foolsEngine.core.ECS.system;
 
-import com.melon.foolsEngine.api.rendering.render.GraphicsContext;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.core.annotation.Distribution;

@@ -52,9 +52,9 @@ public class SystemManager {
         Instance = engineInstance;
     }
 
-    public <T extends System<?>> T registerSystem(Class<T> systemClass) {
-        Instance.LOGGER.debug("Registering System %s", systemClass.getSimpleName());
+    public <T extends System<?>> void registerSystem(Class<T> systemClass) {
         try {
+            LOG.debug("Registering system %s", systemClass.getSimpleName());
             T system = null;
             if (ClientSystem.class.isAssignableFrom(systemClass))
                 system = systemClass.getDeclaredConstructor(FoolsEngine.class).newInstance(Instance);
@@ -82,7 +82,9 @@ public class SystemManager {
                 }
             }
 
-            return system;
+            if(Instance.systemScheduler!=null){
+                Instance.systemScheduler.scheduleSystem(this);
+            }
 
         } catch (Exception e) {
             LOG.error("Failed to register system %s: %s", systemClass.getSimpleName(), e.toString());

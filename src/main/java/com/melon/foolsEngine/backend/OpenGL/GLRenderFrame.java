@@ -1,7 +1,10 @@
 package com.melon.foolsEngine.backend.OpenGL;
 
 import com.melon.foolsEngine.api.rendering.render.*;
+import com.melon.foolsEngine.api.rendering.resource.Light;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
+import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowManager;
+import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowPassContext;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.MeshData;
 import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
@@ -60,7 +63,6 @@ class GLRenderFrame implements RenderFrame {
         List<RenderCommand> commands = new ArrayList<>(scene.getCommands());
 
         this.lightEnv = scene.getLighting();
-        //RENDERLOGGER.debug("lightEnv=" + scene.getLighting() + " passes=" + scene.getPasses().size());
 
         TextureManager textureManager = scene.getTextureManager();
         if (textureManager != null) {
@@ -68,8 +70,25 @@ class GLRenderFrame implements RenderFrame {
         }
 
         List<ShaderPass> passes = scene.getPasses();
-
         if (passes.isEmpty() && !commands.isEmpty()) {
+            //hardcoded shadow pass
+            LightEnvironment lighting = this.lightEnv;
+            ShadowManager shadowManager = lighting != null ? lighting.getShadowManager() : null;
+            if (shadowManager != null) {
+                Camera mainCamera = scene.getCamera();
+                if (mainCamera != null) {
+                    Camera camCopy = new Camera(
+                            new org.joml.Matrix4f(mainCamera.view),
+                            new org.joml.Matrix4f(mainCamera.projection));
+                    for (Light light : lighting.getLights()) {
+                        if (!light.castsShadow()) continue;
+                        ShadowPassContext ctx = shadowManager.prepareShadow(light, camCopy);
+                        this.camera = ctx.shadowCamera();
+                        renderCommands(commands, ctx.target(), ctx.depthMaterial(), ctx.layer(), null);
+                    }
+                }
+            }
+
             this.camera = scene.getCamera();
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glClearColor(scene.getBgR(), scene.getBgG(), scene.getBgB(), scene.getBgA());
@@ -84,8 +103,12 @@ class GLRenderFrame implements RenderFrame {
     }
 
     private void executePass(ShaderPass pass, RenderScene scene, List<RenderCommand> commands) {
-        this.camera = pass.cameraOverride() != null ? pass.cameraOverride() : scene.getCamera();
+        int[] savedViewport = new int[4];
+        glGetIntegerv(GL_VIEWPORT, savedViewport);
 
+        Camera passCam = pass.cameraOverride() != null ? pass.cameraOverride() : scene.getCamera();
+        this.camera = passCam;
+        RENDERLOGGER.debug( "override=%s proj.m11=%.4f view.m03=%.1f m13=%.1f", pass.cameraOverride() != null, passCam.projection.m11(), passCam.view.m03(), passCam.view.m13());
         Material overrideMat = pass.overrideMaterial();
         RenderTarget target = pass.output();
         int layer = pass.arrayLayer();
@@ -114,6 +137,8 @@ class GLRenderFrame implements RenderFrame {
         if (target != null) {
             target.unbind();
         }
+
+        glViewport(savedViewport[0], savedViewport[1], savedViewport[2], savedViewport[3]);
     }
 
     private void executeFullscreenPass(ShaderPass pass) {

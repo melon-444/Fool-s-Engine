@@ -34,6 +34,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+@Deprecated
 public class SceneCollector extends ClientSystem {
 
     private final SparseSet<CameraComponent> cameras;

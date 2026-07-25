@@ -21,6 +21,7 @@ import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.core.ECS.system.ClientSystem;
 import com.melon.foolsEngine.core.ECS.system.ServerSystem;
+import com.melon.foolsEngine.core.ECS.system.System;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -49,6 +50,10 @@ public class SystemScheduler {
     private long accumulatorNs;
     private long lastFrameNs = java.lang.System.nanoTime();
 
+    public SystemScheduler(SystemManager systemManager) {
+        this(null, null,systemManager);
+    }
+
     public SystemScheduler(RenderFrame frame, GraphicsContext ctx,SystemManager systemManager) {
         this.frame = frame;
         this.ctx = ctx;
@@ -61,30 +66,33 @@ public class SystemScheduler {
             sceneBack.setBackGroundColor(0.1f, 0.1f, 0.12f, 1.0f);
         }
 
+        scheduleSystem(systemManager);
+
+    }
+
+    public void scheduleSystem(SystemManager systemManager) {
         for(var system: systemManager.getRegisteredSystems().values()) {
             if (system instanceof ClientSystem clientSystem)
                 registerClient(clientSystem);
             if (system instanceof ServerSystem<?> serverSystem)
                 registerServer(serverSystem,serverSystem.getContext());
         }
-
-    }
-
-    public SystemScheduler(SystemManager systemManager) {
-        this(null, null,systemManager);
     }
 
     public boolean isHeadless() {
         return headless;
     }
 
-    public <Context> void registerServer(ServerSystem<?> system, Context ctx) {
-        serverEntries.add(new ServerEntry(system, ctx));
+    private <Context> void registerServer(ServerSystem<?> system, Context ctx) {
+        if(!serverEntries.stream().anyMatch(serverEntry -> serverEntry.system == system))
+            serverEntries.add(new ServerEntry(system, ctx));
+        serverEntries.sort(Comparator.comparingInt(entry -> entry.system.priority()));
     }
 
-    public void registerClient(ClientSystem system) {
-        clientSystems.add(system);
-        clientSystems.sort(Comparator.comparingInt(s -> s.priority()));
+    private void registerClient(ClientSystem system) {
+        if(!clientSystems.contains(system))
+            clientSystems.add(system);
+        clientSystems.sort(Comparator.comparingInt(System::priority));
     }
 
     public void additionalRenderTask(Runnable task) {

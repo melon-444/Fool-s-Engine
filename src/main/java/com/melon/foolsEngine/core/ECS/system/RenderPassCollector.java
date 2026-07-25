@@ -11,6 +11,7 @@ import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowPassContext;
 import com.melon.foolsEngine.core.ECS.basicComponents.RenderPassComponent;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.SparseSet;
+import org.joml.Matrix4f;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -59,9 +60,13 @@ public class RenderPassCollector extends ClientSystem {
         Camera mainCamera = scene.getCamera();
         if (sm == null || mainCamera == null) return;
 
+        Camera camCopy = new Camera(
+                new Matrix4f(mainCamera.view),
+                new Matrix4f(mainCamera.projection));
+
         for (Light light : lightEnv.getLights()) {
             if (!light.castsShadow()) continue;
-            ShadowPassContext ctx = sm.prepareShadow(light, mainCamera);
+            ShadowPassContext ctx = sm.prepareShadow(light, camCopy);
             ShaderPass sp = new ShaderPass(ctx.depthMaterial().shader())
                     .output(ctx.target())
                     .camera(ctx.shadowCamera())
