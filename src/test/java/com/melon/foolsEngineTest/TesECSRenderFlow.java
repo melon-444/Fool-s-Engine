@@ -30,7 +30,7 @@ import org.joml.Math;
 import java.nio.file.Path;
 
 public class TesECSRenderFlow {
-    static FoolsEngine foolsEngine = EngineBoot.create(20000000, 100, 800, 600, false, LogLevel.DEBUG);
+    static FoolsEngine foolsEngine = EngineBoot.create(20000000, 100, 2560, 1600, false, LogLevel.DEBUG);
     private static final int SHADOW_MAP_SIZE = 8192;
     private static final int MAX_SHADOW_LAYERS = 16;
     private static final float SPOT_SHADOW_NEAR = 0.1f;

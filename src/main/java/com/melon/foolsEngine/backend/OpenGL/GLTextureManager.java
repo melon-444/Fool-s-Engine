@@ -5,6 +5,9 @@ import com.melon.foolsEngine.util.LoadMode;
 import com.melon.foolsEngine.api.rendering.resource.texture.LoadedImage;
 import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
 import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
+import com.melon.foolsEngine.core.events.EventBus;
+import com.melon.foolsEngine.core.events.builtInEvents.TextureDestroyedEvent;
+import com.melon.foolsEngine.core.events.builtInEvents.TextureLoadedEvent;
 import com.melon.foolsEngine.util.WrapMode;
 import org.lwjgl.stb.STBImage;
 import org.lwjgl.system.MemoryStack;
@@ -307,13 +310,19 @@ class GLTextureManager implements TextureManager {
         GLArrayTexture tex = new GLArrayTexture(this, layer,
                 new LoadedImage(pixels, width, height, () -> MemoryUtil.memFree(pixels)));
         textureMap.put(layer, tex);
+        EventBus bus = EventBus.get("SystemBus");
+        if (bus != null) bus.emit(new TextureLoadedEvent(tex));
         return tex;
     }
 
     private void releaseCache(int layer) {
         GLArrayTexture old = textureMap.remove(layer);
-        if (old != null && old.getImage() != null) {
-            old.getImage().free();
+        if (old != null) {
+            EventBus bus = EventBus.get("SystemBus");
+            if (bus != null) bus.emit(new TextureDestroyedEvent(old));
+            if (old.getImage() != null) {
+                old.getImage().free();
+            }
         }
     }
 

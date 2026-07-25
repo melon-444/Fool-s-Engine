@@ -84,8 +84,17 @@ public class EventBus {
         }
     }
 
-    /** Registers all instance {@code @SubscribeEvent} methods on {@code subscriber}. */
+    /** Registers all instance {@code @SubscribeEvent} methods on {@code subscriber}.
+     * If the class carries {@code @AutoRegisterBus}, validates that its id matches this bus. */
     public void addListener(Object subscriber) {
+        com.melon.foolsEngine.core.annotation.AutoRegisterBus arb =
+                subscriber.getClass().getAnnotation(
+                        com.melon.foolsEngine.core.annotation.AutoRegisterBus.class);
+        if (arb != null && !arb.id().equals(busId)) {
+            throw new IllegalArgumentException(
+                    "@AutoRegisterBus id mismatch: class expects '" + arb.id()
+                    + "' but bus is '" + busId + "'");
+        }
         for (Method m : subscriber.getClass().getDeclaredMethods()) {
             if (m.getAnnotation(com.melon.foolsEngine.core.annotation.SubscribeEvent.class) == null) continue;
             if (Modifier.isStatic(m.getModifiers())) continue;
