@@ -1,10 +1,7 @@
 package com.melon.foolsEngine.backend.OpenGL;
 
 import com.melon.foolsEngine.api.rendering.render.*;
-import com.melon.foolsEngine.api.rendering.resource.Light;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
-import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowManager;
-import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowPassContext;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.MeshData;
 import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
@@ -29,7 +26,6 @@ import static org.lwjgl.opengl.GL45.*;
 
 class GLRenderFrame implements RenderFrame {
 
-    private final Queue<RenderCommand> commandQueue = new LinkedList<>();
     private Camera camera;
     private boolean init = false;
     private LightEnvironment lightEnv;
@@ -69,10 +65,13 @@ class GLRenderFrame implements RenderFrame {
     private boolean clearDepthKnown;
     private double clearDepth;
 
+    private boolean depthTestEnabledKnown;
+    private boolean depthTestEnabled;
+
     @Override
     public void init() {
         if (init) { return; }
-        glEnable(GL_DEPTH_TEST);
+        setDepthTestEnabled(true);
         glDepthFunc(GL_GREATER);
         glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
         glEnable(GL_CULL_FACE);
@@ -111,50 +110,20 @@ class GLRenderFrame implements RenderFrame {
             }
 
             List<ShaderPass> passes = scene.getPasses();
-//            boolean hardcodedPass = passes.isEmpty() && !commands.isEmpty();
-//            if (hardcodedPass)
-//                hardcoded(scene,commands);
-//            else
-                for (ShaderPass pass : passes) {
-                    executePass(pass, scene, commands);
-                }
+            for (ShaderPass pass : passes) {
+                executePass(pass, scene, commands);
+            }
 
         } finally {
             // Do not leak a screen-space clipping rectangle to external rendering code.
             setScissorEnabled(false);
+            // Keep the renderer's documented default for external rendering hooks.
+            setDepthTestEnabled(true);
         }
-    }
-
-    @Deprecated
-    private void hardcoded(RenderScene scene,List<RenderCommand> commands) {
-        //hardcoded shadow pass
-        LightEnvironment lighting = this.lightEnv;
-        ShadowManager shadowManager = lighting != null ? lighting.getShadowManager() : null;
-        if (shadowManager != null) {
-            Camera mainCamera = scene.getCamera();
-            if (mainCamera != null) {
-                Camera camCopy = new Camera(
-                        new org.joml.Matrix4f(mainCamera.view),
-                        new org.joml.Matrix4f(mainCamera.projection));
-                for (Light light : lighting.getLights()) {
-                    if (!light.castsShadow()) continue;
-                    ShadowPassContext ctx = shadowManager.prepareShadow(light, camCopy);
-                    this.camera = ctx.shadowCamera();
-                    renderCommands(commands, ctx.target(), ctx.depthMaterial(), ctx.layer(), null);
-                }
-            }
-        }
-
-        this.camera = scene.getCamera();
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        applyScreenViewport(scene, this.camera);
-        setClearColor(scene.getBgR(), scene.getBgG(), scene.getBgB(), scene.getBgA());
-        setClearDepth(0.0);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        renderCommands(commands, null, null, -1, null);
     }
 
     private void executePass(ShaderPass pass, RenderScene scene, List<RenderCommand> commands) {
+        pass.validate();
         ensureViewportKnown();
         int savedViewportX = viewportX;
         int savedViewportY = viewportY;
@@ -163,8 +132,15 @@ class GLRenderFrame implements RenderFrame {
 
         Camera passCam = pass.cameraOverride() != null ? pass.cameraOverride() : scene.getCamera();
         this.camera = passCam;
-        RENDERLOGGER.trace( "override=%s proj.m11=%.4f view.m03=%.1f m13=%.1f", pass.cameraOverride() != null, passCam.projection.m11(), passCam.view.m03(), passCam.view.m13());
-        Material overrideMat = pass.overrideMaterial();
+        if (pass.type() == ShaderPass.Type.CORE && passCam == null) {
+            throw new IllegalStateException("CORE pass requires a scene or pass camera");
+        }
+        if (passCam != null) {
+            RENDERLOGGER.trace("override=%s proj.m11=%.4f view.m03=%.1f m13=%.1f",
+                    pass.cameraOverride() != null, passCam.projection.m11(),
+                    passCam.view.m03(), passCam.view.m13());
+        }
+
         RenderTarget target = pass.output();
         int layer = pass.arrayLayer();
 
@@ -175,20 +151,22 @@ class GLRenderFrame implements RenderFrame {
                 target.attachLayer(layer);
             }
             setViewport(0, 0, target.getWidth(), target.getHeight());
-            setClearDepth(0.0);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         } else {
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            applyScreenViewport(scene, passCam);
-            setClearColor(scene.getBgR(), scene.getBgG(), scene.getBgB(), scene.getBgA());
-            setClearDepth(0.0);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            applyScreenViewport(scene, passCam,
+                    pass.colorLoadOp() == ShaderPass.LoadOp.CLEAR);
         }
 
-        if (pass.isFullscreen()) {
-            executeFullscreenPass(pass);
-        } else if (!commands.isEmpty()) {
-            renderCommands(commands, null, overrideMat, layer, pass);
+        clearPassAttachments(pass, scene, target);
+
+        if (pass.type() == ShaderPass.Type.POSTEFFECT) {
+            setDepthTestEnabled(false);
+            executePostEffectPass(pass);
+        } else {
+            setDepthTestEnabled(true);
+            if (!commands.isEmpty()) {
+                renderCommands(commands, pass);
+            }
         }
 
         if (target != null) {
@@ -198,12 +176,35 @@ class GLRenderFrame implements RenderFrame {
         setViewport(savedViewportX, savedViewportY, savedViewportW, savedViewportH);
     }
 
+    private void clearPassAttachments(ShaderPass pass, RenderScene scene, RenderTarget target) {
+        int mask = 0;
+
+        if (pass.colorLoadOp() == ShaderPass.LoadOp.CLEAR
+                && (target == null || target.getType() == RenderTarget.TARGET_COLOR)) {
+            if (pass.hasCustomClearColor()) {
+                setClearColor(pass.clearR(), pass.clearG(), pass.clearB(), pass.clearA());
+            } else {
+                setClearColor(scene.getBgR(), scene.getBgG(), scene.getBgB(), scene.getBgA());
+            }
+            mask |= GL_COLOR_BUFFER_BIT;
+        }
+
+        if (pass.depthLoadOp() == ShaderPass.LoadOp.CLEAR) {
+            setClearDepth(pass.clearDepth());
+            mask |= GL_DEPTH_BUFFER_BIT;
+        }
+
+        if (mask != 0) {
+            glClear(mask);
+        }
+    }
+
     /**
      * Applies a screen viewport, optionally letterbox/pillarbox to preserve the
      * camera projection aspect ratio. Clears the black-bar areas.
      * Falls back to the current GL viewport when the scene provides no dimensions.
      */
-    private void applyScreenViewport(RenderScene scene, Camera cam) {
+    private void applyScreenViewport(RenderScene scene, Camera cam, boolean clearBars) {
         int vpW = scene.getScreenViewportW();
         int vpH = scene.getScreenViewportH();
 
@@ -231,9 +232,11 @@ class GLRenderFrame implements RenderFrame {
 
 
         setScissorEnabled(true);
-        setScissor(0, 0, vpW, vpH);
-        setClearColor(0, 0, 0, 1);
-        glClear(GL_COLOR_BUFFER_BIT);
+        if (clearBars) {
+            setScissor(0, 0, vpW, vpH);
+            setClearColor(0, 0, 0, 1);
+            glClear(GL_COLOR_BUFFER_BIT);
+        }
 
         setViewport(vx, vy, vw, vh);
         setScissor(vx, vy, vw, vh);
@@ -335,6 +338,21 @@ class GLRenderFrame implements RenderFrame {
         clearDepthKnown = true;
     }
 
+    private void setDepthTestEnabled(boolean enabled) {
+        if (depthTestEnabledKnown && depthTestEnabled == enabled) {
+            return;
+        }
+
+        if (enabled) {
+            glEnable(GL_DEPTH_TEST);
+        } else {
+            glDisable(GL_DEPTH_TEST);
+        }
+
+        depthTestEnabled = enabled;
+        depthTestEnabledKnown = true;
+    }
+
     /**
      * Must be called after switching this renderer to another OpenGL context,
      * or after external code mutates cached OpenGL state directly.
@@ -345,13 +363,15 @@ class GLRenderFrame implements RenderFrame {
         scissorBoxKnown = false;
         clearColorKnown = false;
         clearDepthKnown = false;
+        depthTestEnabledKnown = false;
     }
 
-    private void executeFullscreenPass(ShaderPass pass) {
+    private void executePostEffectPass(ShaderPass pass) {
         pass.shader().bind();
 
         int slot = 0;
         for (PassInput input : pass.inputs()) {
+            slot = nextUserTextureSlot(slot);
             glActiveTexture(GL_TEXTURE0 + slot);
             if (input.texture().getType() == RenderTarget.TARGET_DEPTH) {
                 glBindTexture(GL_TEXTURE_2D_ARRAY, input.texture().getTextureId());
@@ -362,6 +382,7 @@ class GLRenderFrame implements RenderFrame {
             slot++;
         }
 
+        binder.reset(slot);
         for (var e : pass.uniforms().entrySet()) {
             bindUniformValue(pass.shader(), e.getKey(), e.getValue());
         }
@@ -376,6 +397,14 @@ class GLRenderFrame implements RenderFrame {
         fullscreenQuad.bind();
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         fullscreenQuad.unbind();
+    }
+
+    private static int nextUserTextureSlot(int slot) {
+        while (slot == LightEnvironment.SHADOW_ARRAY_SLOT
+                || slot == TextureManager.TEXTURE_ARRAY_SLOT) {
+            slot++;
+        }
+        return slot;
     }
 
     private void createFullscreenQuad() {
@@ -394,37 +423,17 @@ class GLRenderFrame implements RenderFrame {
 
     // ────────────────────── core draw ──────────────────────
 
-    private void renderCommands(List<RenderCommand> commands, RenderTarget target,
-                                Material overrideMaterial, int arrayLayer, ShaderPass pass) {
-        int savedViewportX = 0;
-        int savedViewportY = 0;
-        int savedViewportW = 0;
-        int savedViewportH = 0;
-        if (target != null) {
-            ensureViewportKnown();
-            savedViewportX = viewportX;
-            savedViewportY = viewportY;
-            savedViewportW = viewportW;
-            savedViewportH = viewportH;
-
-            setScissorEnabled(false);
-            target.bind();
-            if (target.getLayers() > 1 && arrayLayer >= 0) {
-                target.attachLayer(arrayLayer);
-            }
-            setViewport(0, 0, target.getWidth(), target.getHeight());
-            setClearDepth(0.0);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        }
-
-        Map<Long, List<RenderCommand>> batches = groupCommands(commands);
+    private void renderCommands(List<RenderCommand> commands, ShaderPass pass) {
+        Map<BatchKey, List<RenderCommand>> batches = groupCommands(commands, pass);
         drawCallCounter += batches.size();
 
-        for (List<RenderCommand> cmds : batches.values()) {
+        for (Map.Entry<BatchKey, List<RenderCommand>> batch : batches.entrySet()) {
+            BatchKey key = batch.getKey();
+            List<RenderCommand> cmds = batch.getValue();
             RenderCommand first = cmds.getFirst();
             Mesh mesh = first.mesh();
-            Material material = overrideMaterial != null ? overrideMaterial : first.material();
-            ShaderProgram shader = material.shader();
+            Material material = key.material;
+            ShaderProgram shader = key.shader;
 
             GLMesh glMesh = (GLMesh) mesh;
             glMesh.configureInstancedModelMatrix();
@@ -442,15 +451,16 @@ class GLRenderFrame implements RenderFrame {
 
             shader.bind();
             shader.setInt("textureLayer", -1);
-            if (overrideMaterial == null && lightEnv != null) {
+            if (pass.materialMode() != ShaderPass.MaterialMode.OVERRIDE_MATERIAL
+                    && lightEnv != null) {
                 bindShadowArrayTexture();
                 lightEnv.apply(shader);
             }
             //texture and Light
             binder.reset();
-            for (String key : material.params().keySet()) {
-                Object param = material.params().get(key);
-                bindUniformValue(shader, key, param);
+            for (String pkey : material.params().keySet()) {
+                Object param = material.params().get(pkey);
+                bindUniformValue(shader, pkey, param);
             }
 
             if (pass != null) {
@@ -463,11 +473,8 @@ class GLRenderFrame implements RenderFrame {
             shader.setMat4("vp", vpBuffer);
 
             glDrawElementsInstanced(GL_TRIANGLES, mesh.indexCount(), GL_UNSIGNED_INT, 0, instanceCount);
-        }
-
-        if (target != null) {
-            target.unbind();
-            setViewport(savedViewportX, savedViewportY, savedViewportW, savedViewportH);
+            shader.unbind();
+            glMesh.unbind();
         }
     }
 
@@ -576,13 +583,67 @@ class GLRenderFrame implements RenderFrame {
 
     // ────────────────────── batching ──────────────────────
 
-    private Map<Long, List<RenderCommand>> groupCommands(List<RenderCommand> commands) {
-        Map<Long, List<RenderCommand>> batches = new LinkedHashMap<>();
+    private Map<BatchKey, List<RenderCommand>> groupCommands(
+            List<RenderCommand> commands, ShaderPass pass) {
+        Map<BatchKey, List<RenderCommand>> batches = new LinkedHashMap<>();
         for (RenderCommand c : commands) {
-            long key = ((long) c.mesh().hashCode() << 32) ^ (c.material().hashCode() & 0xFFFFFFFFL);
+            Material material;
+            ShaderProgram shader;
+
+            switch (pass.materialMode()) {
+                case COMMAND_MATERIAL -> {
+                    material = c.material();
+                    shader = material.shader();
+                }
+                case PASS_SHADER -> {
+                    material = c.material();
+                    shader = pass.shader();
+                }
+                case OVERRIDE_MATERIAL -> {
+                    material = pass.overrideMaterial();
+                    shader = material.shader();
+                }
+                default -> throw new IllegalStateException(
+                        "Unsupported material mode: " + pass.materialMode());
+            }
+
+            BatchKey key = new BatchKey(c.mesh(), material, shader);
             batches.computeIfAbsent(key, k -> new ArrayList<>()).add(c);
         }
         return batches;
+    }
+
+    /**
+     * Identity is intentional: GPU resources and mutable materials are batching
+     * units even if a future implementation adds value-based equals methods.
+     */
+    private static final class BatchKey {
+        private final Mesh mesh;
+        private final Material material;
+        private final ShaderProgram shader;
+        private final int hash;
+
+        private BatchKey(Mesh mesh, Material material, ShaderProgram shader) {
+            this.mesh = Objects.requireNonNull(mesh, "mesh");
+            this.material = Objects.requireNonNull(material, "material");
+            this.shader = Objects.requireNonNull(shader, "shader");
+            this.hash = 31 * (31 * System.identityHashCode(mesh)
+                    + System.identityHashCode(material))
+                    + System.identityHashCode(shader);
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof BatchKey key
+                    && mesh == key.mesh
+                    && material == key.material
+                    && shader == key.shader;
+        }
     }
 
 
@@ -601,6 +662,7 @@ class GLRenderFrame implements RenderFrame {
             if (bound.containsKey(texture)) {
                 return bound.get(texture);
             }
+            nextSlot = nextUserTextureSlot(nextSlot);
             int slot = nextSlot++;
             texture.bind(slot);
             bound.put(texture, slot);
@@ -608,8 +670,12 @@ class GLRenderFrame implements RenderFrame {
         }
 
         public void reset() {
+            reset(0);
+        }
+
+        public void reset(int firstFreeSlot) {
             bound.clear();
-            nextSlot = 0;
+            nextSlot = firstFreeSlot;
         }
     }
 }

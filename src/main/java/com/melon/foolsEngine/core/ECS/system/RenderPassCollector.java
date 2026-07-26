@@ -66,11 +66,13 @@ public class RenderPassCollector extends ClientSystem {
         for (Light light : lightEnv.getLights()) {
             if (!light.castsShadow()) continue;
             ShadowPassContext ctx = sm.prepareShadow(light, camCopy);
-            ShaderPass sp = new ShaderPass(ctx.depthMaterial().shader())
+            ShaderPass sp = ShaderPass.core()
                     .output(ctx.target())
                     .camera(ctx.shadowCamera())
                     .overrideMaterial(ctx.depthMaterial())
-                    .arrayLayer(ctx.layer());
+                    .arrayLayer(ctx.layer())
+                    .colorLoad(ShaderPass.LoadOp.LOAD)
+                    .clearDepth(0.0);
             scene.submitPass(sp);
         }
     }

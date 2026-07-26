@@ -117,9 +117,10 @@ public class RenderScene {
     }
 
     /**
-     * @param preserveAspect when true, the renderer computes a centered letterbox /
-     *                       pillarbox viewport that maintains the camera's projection
-     *                       aspect ratio within the screen area (default: true).
+     * @param preserveAspect when true, the renderer keeps the camera projection
+     *                       aspect ratio, allows vertical letterboxing on narrower
+     *                       screens, and crops vertically instead of adding pillarbox
+     *                       bars on wider screens (default: true).
      */
     public void setScreenViewport(int width, int height, boolean preserveAspect) {
         this.screenViewportW = width;
