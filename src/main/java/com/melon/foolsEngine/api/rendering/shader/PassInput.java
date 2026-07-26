@@ -14,7 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package com.melon.foolsEngine.api.rendering.render;
+package com.melon.foolsEngine.api.rendering.shader;
+
+import com.melon.foolsEngine.api.rendering.render.RenderTarget;
 
 /**
  * Binds a {@link RenderTarget} as a texture input to a {@link ShaderPass} sampler.

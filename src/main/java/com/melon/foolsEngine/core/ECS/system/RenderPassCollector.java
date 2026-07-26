@@ -1,8 +1,7 @@
 package com.melon.foolsEngine.core.ECS.system;
 
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
-import com.melon.foolsEngine.api.rendering.render.RenderTarget;
-import com.melon.foolsEngine.api.rendering.render.ShaderPass;
+import com.melon.foolsEngine.api.rendering.shader.ShaderPass;
 import com.melon.foolsEngine.api.rendering.resource.Camera;
 import com.melon.foolsEngine.api.rendering.resource.Light;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;

@@ -1,6 +1,6 @@
 package com.melon.foolsEngine.core.ECS.basicComponents;
 
-import com.melon.foolsEngine.api.rendering.render.ShaderPass;
+import com.melon.foolsEngine.api.rendering.shader.ShaderPass;
 
 /**
  * ECS component wrapping a {@link ShaderPass} for ordered pipeline construction.

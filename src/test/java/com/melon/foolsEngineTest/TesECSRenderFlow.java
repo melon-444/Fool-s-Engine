@@ -4,7 +4,7 @@ import com.melon.foolsEngine.api.input.*;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
-import com.melon.foolsEngine.api.rendering.render.ShaderPass;
+import com.melon.foolsEngine.api.rendering.shader.ShaderPass;
 import com.melon.foolsEngine.api.rendering.resource.*;
 import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
 import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
@@ -30,7 +30,7 @@ import org.joml.Math;
 import java.nio.file.Path;
 
 public class TesECSRenderFlow {
-    static FoolsEngine foolsEngine = EngineBoot.create(20000000, 100, 2560, 1600, false, LogLevel.DEBUG);
+    static FoolsEngine foolsEngine;
     private static final int SHADOW_MAP_SIZE = 8192;
     private static final int MAX_SHADOW_LAYERS = 16;
     private static final float SPOT_SHADOW_NEAR = 0.1f;
@@ -38,6 +38,13 @@ public class TesECSRenderFlow {
     private static final Logger TESTLOGGER = new Logger();
 
     public static void main(String[] args) {
+        Thread engineThread = new Thread(() -> {run(args);});
+        engineThread.setName("EngineMain");
+        engineThread.start();
+    }
+
+    public static void run(String[] args) {
+        foolsEngine = EngineBoot.create(20000000, 100, 2560, 1600, false, LogLevel.DEBUG);
         WindowsManager manager = foolsEngine.serviceFactory.getWindowsManager();
         Window win = foolsEngine.mainWindow;
         win.setTitle("TesECSRenderFlow - ECS + SystemScheduler + Shadows");
@@ -81,7 +88,7 @@ public class TesECSRenderFlow {
         win.show();
         RenderFrame frame = foolsEngine.frame;
         foolsEngine.entityFactory.createShaderPass(0, ShaderPass.color(shader));
-        foolsEngine.entityFactory.createShaderPass(1, ShaderPass.color(depthShader));
+        //foolsEngine.entityFactory.createShaderPass(1, ShaderPass.color(depthShader));
 
         ImGuiContext imGuiContext = new ImGuiContext();
         imGuiContext.init(win.getID(), "#version 330");
