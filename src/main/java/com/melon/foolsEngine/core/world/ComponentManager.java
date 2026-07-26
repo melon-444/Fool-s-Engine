@@ -40,7 +40,7 @@ public class ComponentManager {
         //register basic components
         registerComponent(TransformComp.class);
         registerComponent(CameraComponent.class);
-        registerComponent(LightComp.class);
+        registerComponent(LightComponent.class);
         registerComponent(RenderableComp.class);
         registerComponent(LightEnvComponent.class);
         registerComponent(TextureManagerComponent.class);

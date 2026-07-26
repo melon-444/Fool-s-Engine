@@ -38,6 +38,9 @@ class GLRenderFrame implements RenderFrame {
     private final TextureBinder binder = new TextureBinder();
     private static final Logger RENDERLOGGER = new Logger("Render Debug");
 
+    private int lastVpW, lastVpH, lastVpX, lastVpY;
+    private boolean lastPassLetterbox;
+
     @Override
     public void init() {
         if (init) { return; }
@@ -144,10 +147,14 @@ class GLRenderFrame implements RenderFrame {
     }
 
     /**
-     * Applies a full-screen viewport, falling back to the current GL viewport
-     * when the scene provides no explicit dimensions.
+     * Applies a screen viewport, optionally letterbox/pillarbox to preserve the
+     * camera projection aspect ratio. Clears the black-bar areas.
+     * Falls back to the current GL viewport when the scene provides no dimensions.
      */
     private void applyScreenViewport(RenderScene scene, Camera cam) {
+        lastPassLetterbox = false;
+        lastVpW = lastVpH = lastVpX = lastVpY = 0;
+
         int vpW = scene.getScreenViewportW();
         int vpH = scene.getScreenViewportH();
 
@@ -159,8 +166,32 @@ class GLRenderFrame implements RenderFrame {
         }
         if (vpW <= 0 || vpH <= 0) return;
 
-        glViewport(0, 0, vpW, vpH);
+        if (!scene.isPreserveScreenAspect() || cam == null || cam.projection == null) {
+            glViewport(0, 0, vpW, vpH);
+            glScissor(0, 0, vpW, vpH);
+            return;
+        }
+
+        float projAspect = Math.abs(cam.projection.m11() / cam.projection.m00());
+        int vx, vy, vw, vh;
+
+
+            vh = (int) (vpW / projAspect);
+            vw = vpW;
+            vx = 0;
+            vy = (vpH - vh) / 2;
+
+
         glScissor(0, 0, vpW, vpH);
+        glEnable(GL_SCISSOR_TEST);
+        glClearColor(0, 0, 0, 1);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glViewport(vx, vy, vw, vh);
+        glScissor(vx, vy, vw, vh);
+
+        lastVpW = vw; lastVpH = vh; lastVpX = vx; lastVpY = vy;
+        lastPassLetterbox = vy > 0;
     }
 
     private void executeFullscreenPass(ShaderPass pass) {

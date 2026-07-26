@@ -50,6 +50,7 @@ public class RenderScene {
     private float bgA = 1.0f;
     private int screenViewportW;
     private int screenViewportH;
+    private boolean preserveScreenAspect = true;
 
     /** Sets the camera for this frame */
     public void setCamera(Camera camera) {
@@ -108,17 +109,29 @@ public class RenderScene {
      * Sets the framebuffer-0 viewport size (window/client area).
      * Call this each frame or on window resize. Defaults to 0×0, which means
      * the renderer uses the last-known GL viewport dimensions.
-     * The viewport always fills the full area; manage aspect ratio via the camera projection.
      */
     public void setScreenViewport(int width, int height) {
         this.screenViewportW = width;
         this.screenViewportH = height;
     }
 
+    /**
+     * @param preserveAspect when true, the renderer computes a centered letterbox /
+     *                       pillarbox viewport that maintains the camera's projection
+     *                       aspect ratio within the screen area (default: true).
+     */
+    public void setScreenViewport(int width, int height, boolean preserveAspect) {
+        this.screenViewportW = width;
+        this.screenViewportH = height;
+        this.preserveScreenAspect = preserveAspect;
+    }
+
     /** @return the viewport width for the default framebuffer, or 0 if not set */
     public int getScreenViewportW() { return screenViewportW; }
     /** @return the viewport height for the default framebuffer, or 0 if not set */
     public int getScreenViewportH() { return screenViewportH; }
+    /** @return true when the renderer should letterbox/pillarbox to preserve camera aspect */
+    public boolean isPreserveScreenAspect() { return preserveScreenAspect; }
 
     /** Clears all submitted commands for the next frame */
     public void clear() {

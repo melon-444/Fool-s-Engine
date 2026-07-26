@@ -21,7 +21,6 @@ import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.api.rendering.resource.Camera;
 import com.melon.foolsEngine.api.rendering.resource.Light;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
-import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
 import com.melon.foolsEngine.core.ECS.basicComponents.*;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.PerspectiveProjection;
@@ -39,7 +38,7 @@ public class SceneCollector extends ClientSystem {
 
     private final SparseSet<CameraComponent> cameras;
     private final SparseSet<TransformComp> transforms;
-    private final SparseSet<LightComp> ecsLights;
+    private final SparseSet<LightComponent> ecsLights;
     private final SparseSet<RenderableComp> renderables;
     private final SparseSet<LightEnvComponent> lightEnvs;
     private final SparseSet<TextureManagerComponent> textureMnrs;
@@ -58,7 +57,7 @@ public class SceneCollector extends ClientSystem {
         super(engine);
         cameras = getSparseSet(CameraComponent.class);
         transforms = getSparseSet(TransformComp.class);
-        ecsLights = getSparseSet(LightComp.class);
+        ecsLights = getSparseSet(LightComponent.class);
         renderables = getSparseSet(RenderableComp.class);
         lightEnvs = getSparseSet(LightEnvComponent.class);
         textureMnrs = getSparseSet(TextureManagerComponent.class);
@@ -137,7 +136,7 @@ public class SceneCollector extends ClientSystem {
         for (int eid : current) {
             if (activeLights.containsKey(eid)) continue;
 
-            LightComp LightComp = ecsLights.getComponent(eid);
+            LightComponent LightComp = ecsLights.getComponent(eid);
             if (LightComp == null) continue;
 
             Light apiLight = convertToApiLight(LightComp);
@@ -154,7 +153,7 @@ public class SceneCollector extends ClientSystem {
         }
     }
 
-    private Light convertToApiLight(LightComp lightComp) {
+    private Light convertToApiLight(LightComponent lightComp) {
         return switch (lightComp.lightType) {
             case PARALLEL -> Light.directional(lightComp.color, lightComp.direction, lightComp.intensity);
             case POINT -> Light.point(lightComp.color, lightComp.position, lightComp.intensity);

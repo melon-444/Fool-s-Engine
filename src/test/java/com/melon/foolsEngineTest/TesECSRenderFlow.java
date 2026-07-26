@@ -11,7 +11,7 @@ import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.api.windows.WindowsManager;
-import com.melon.foolsEngine.core.ECS.basicComponents.LightComp;
+import com.melon.foolsEngine.core.ECS.basicComponents.LightComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.LightEnvComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.TextureManagerComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.TransformComp;
@@ -233,17 +233,17 @@ public class TesECSRenderFlow {
             if (input.isActionPressed(spawnDirLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 lightEntities.add(foolsEngine.entityFactory.createLightEntity(
-                        new LightComp(color, new Vector3f(lookDir))));
+                        new LightComponent(color, new Vector3f(lookDir))));
             }
             if (input.isActionPressed(spawnPointLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 lightEntities.add(foolsEngine.entityFactory.createLightEntity(
-                        new LightComp(color, new Vector3f(lookDir), new Vector3f(cameraPos))));
+                        new LightComponent(color, new Vector3f(lookDir), new Vector3f(cameraPos))));
             }
             if (input.isActionPressed(spawnSpotLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 lightEntities.add(foolsEngine.entityFactory.createLightEntity(
-                        new LightComp(color, new Vector3f(lookDir), new Vector3f(cameraPos), 10f, 10f)));
+                        new LightComponent(color, new Vector3f(lookDir), new Vector3f(cameraPos), 10f, 10f)));
             }
             if (input.isActionPressed(clearLights)) {
                 TESTLOGGER.info("ActualLightCounts: %d",scene.getLighting().getLights().size());
@@ -264,15 +264,15 @@ public class TesECSRenderFlow {
             }
             if (input.isActionPressed(spawnShadowDirLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
-                LightComp LightComp =
-                        new LightComp(color, new Vector3f(lookDir));
+                LightComponent LightComp =
+                        new LightComponent(color, new Vector3f(lookDir));
                 LightComp.castsShadow = true;
                 lightEntities.add(foolsEngine.entityFactory.createLightEntity(LightComp));
             }
             if (input.isActionPressed(spawnShadowSpotLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
-                LightComp LightComp =
-                        new LightComp(color, new Vector3f(lookDir),
+                LightComponent LightComp =
+                        new LightComponent(color, new Vector3f(lookDir),
                                 new Vector3f(cameraPos), 10f, 10f);
                 LightComp.castsShadow = true;
                 LightComp.shadowNear = SPOT_SHADOW_NEAR;

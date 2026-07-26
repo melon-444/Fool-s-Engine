@@ -4,7 +4,7 @@ import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.api.rendering.resource.Camera;
 import com.melon.foolsEngine.api.rendering.resource.Light;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
-import com.melon.foolsEngine.core.ECS.basicComponents.LightComp;
+import com.melon.foolsEngine.core.ECS.basicComponents.LightComponent;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.core.events.EventBus;
 import com.melon.foolsEngine.core.events.builtInEvents.LightAddedEvent;
@@ -19,16 +19,16 @@ import java.util.Set;
 
 public class LightCollector extends ClientSystem {
 
-    private final SparseSet<LightComp> ecsLights;
+    private final SparseSet<LightComponent> ecsLights;
     private final Map<Integer, Light> activeLights = new HashMap<>();
 
     {
-        requiredComponents.add(LightComp.class);
+        requiredComponents.add(LightComponent.class);
     }
 
     public LightCollector(FoolsEngine engine) {
         super(engine);
-        ecsLights = getSparseSet(LightComp.class);
+        ecsLights = getSparseSet(LightComponent.class);
     }
 
     @Override
@@ -64,7 +64,7 @@ public class LightCollector extends ClientSystem {
         for (int eid : current) {
             if (activeLights.containsKey(eid)) continue;
 
-            LightComp lc = ecsLights.getComponent(eid);
+            LightComponent lc = ecsLights.getComponent(eid);
             if (lc == null) continue;
 
             Light apiLight = switch (lc.lightType) {

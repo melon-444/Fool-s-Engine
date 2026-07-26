@@ -19,8 +19,7 @@ package com.melon.foolsEngine.core.ECS.basicComponents;
 import com.melon.foolsEngine.util.LightType;
 import org.joml.Vector3f;
 
-//TODO Complete spot light data structure
-public class LightComp extends Component{
+public class LightComponent extends Component{
     public Vector3f color;
     public Vector3f direction;
     public Vector3f position;
@@ -31,7 +30,7 @@ public class LightComp extends Component{
     public float shadowNear = 0.1f;
     public float intensity = 1.0f;
 
-    public LightComp(Vector3f color, Vector3f direction, Vector3f position, float innerTheta, float outerTheta) {
+    public LightComponent(Vector3f color, Vector3f direction, Vector3f position, float innerTheta, float outerTheta) {
         this.color = color;
         this.direction = direction;
         this.position = position;
@@ -40,14 +39,14 @@ public class LightComp extends Component{
         this.lightType = LightType.SPOT;
     }
 
-    public LightComp(Vector3f color, Vector3f direction, Vector3f position) {
+    public LightComponent(Vector3f color, Vector3f direction, Vector3f position) {
         this.color = color;
         this.direction = direction;
         this.position = position;
         this.lightType = LightType.POINT;
     }
 
-    public LightComp(Vector3f color, Vector3f direction) {
+    public LightComponent(Vector3f color, Vector3f direction) {
         this.color = color;
         this.direction = direction;
         this.lightType = LightType.PARALLEL;

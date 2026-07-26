@@ -21,7 +21,7 @@ import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.api.rendering.render.ShaderPass;
 import com.melon.foolsEngine.core.ECS.basicComponents.CameraComponent;
-import com.melon.foolsEngine.core.ECS.basicComponents.LightComp;
+import com.melon.foolsEngine.core.ECS.basicComponents.LightComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.LightEnvComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.RenderableComp;
 import com.melon.foolsEngine.core.ECS.basicComponents.RenderPassComponent;
@@ -65,7 +65,7 @@ public class EntityFactory {
     }
 
     /** Create a light entity with the given ECS Light component. */
-    public int createLightEntity(LightComp lightComp) {
+    public int createLightEntity(LightComponent lightComp) {
         final int entityID = Instance.entityManager.createEntity();
         Instance.entityManager.bindComponent(entityID, lightComp);
         Instance.LOGGER.debug("Light Created,ID:%d,%s", entityID, lightComp);
@@ -106,31 +106,5 @@ public class EntityFactory {
         Instance.entityManager.bindComponent(entityID, new TransformComp());
         Instance.entityManager.bindComponent(entityID, new RenderPassComponent(order, pass));
         return entityID;
-    }
-
-    /**
-     * @deprecated Use {@link #createCamera(Vector3f)} for ECS-managed cameras.
-     */
-    @Deprecated
-    public int createCamera(float yawDeg, float pitchDeg, Vector3f position) {
-        return createCamera(yawDeg, pitchDeg, position, true);
-    }
-
-    @Deprecated
-    public int createCamera(float yawDeg, float pitchDeg, Vector3f position, boolean activate) {
-        final int entityID = Instance.entityManager.createEntity();
-        Quaternionf orientation = orientationFromYawPitch(yawDeg, pitchDeg);
-        Instance.entityManager.bindComponent(entityID, new CameraComponent(Instance.FOV, Instance.Z_NEAR));
-        Instance.entityManager.bindComponent(entityID, new TransformComp(position, orientation));
-        return entityID;
-    }
-
-    private Quaternionf orientationFromYawPitch(float yawDeg, float pitchDeg) {
-        Quaternionf orientation = new Quaternionf();
-        orientation.rotateY((float) Math.toRadians(yawDeg));
-        Vector3f right = new Vector3f(1, 0, 0);
-        orientation.transform(right);
-        orientation.rotateAxis((float) Math.toRadians(pitchDeg), right.x, right.y, right.z);
-        return orientation;
     }
 }
