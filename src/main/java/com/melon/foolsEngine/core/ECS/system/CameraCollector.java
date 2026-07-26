@@ -3,7 +3,7 @@ package com.melon.foolsEngine.core.ECS.system;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.api.rendering.resource.Camera;
 import com.melon.foolsEngine.core.ECS.basicComponents.CameraComponent;
-import com.melon.foolsEngine.core.ECS.basicComponents.TransformComp;
+import com.melon.foolsEngine.core.ECS.basicComponents.TransformComponent;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.core.events.EventBus;
 import com.melon.foolsEngine.core.events.builtInEvents.MainCameraChangedEvent;
@@ -13,19 +13,19 @@ import org.joml.Matrix4f;
 public class CameraCollector extends ClientSystem {
 
     private final SparseSet<CameraComponent> cameras;
-    private final SparseSet<TransformComp> transforms;
+    private final SparseSet<TransformComponent> transforms;
     private final Matrix4f view = new Matrix4f();
     private final Matrix4f proj = new Matrix4f();
 
     {
         requiredComponents.add(CameraComponent.class);
-        requiredComponents.add(TransformComp.class);
+        requiredComponents.add(TransformComponent.class);
     }
 
     public CameraCollector(FoolsEngine engine) {
         super(engine);
         cameras = getSparseSet(CameraComponent.class);
-        transforms = getSparseSet(TransformComp.class);
+        transforms = getSparseSet(TransformComponent.class);
     }
 
     @Override
@@ -39,7 +39,7 @@ public class CameraCollector extends ClientSystem {
             CameraComponent cam = cameras.getComponent(e);
             if (cam == null || !cam.active || !cam.isMainCam) continue;
 
-            TransformComp t = transforms.getComponent(e);
+            TransformComponent t = transforms.getComponent(e);
             if (t == null) continue;
 
             view.identity().set(t.getMatrix().invert());

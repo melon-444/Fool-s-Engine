@@ -34,12 +34,38 @@ class GLRenderFrame implements RenderFrame {
     private int drawCallCounter;
     private float[] instanceBuffer = new float[0];
     private final float[] vpBuffer = new float[16];
+    private final float[] uniformMatrixBuffer = new float[16];
     private GLMesh fullscreenQuad;
     private final TextureBinder binder = new TextureBinder();
     private static final Logger RENDERLOGGER = new Logger("Render Debug");
 
-    private int lastVpW, lastVpH, lastVpX, lastVpY;
-    private boolean lastPassLetterbox;
+    /*
+     * Renderer-owned OpenGL state cache. Code outside this renderer must not
+     * mutate these states directly without invalidating the corresponding
+     * cache entry.
+     */
+    private boolean viewportKnown;
+    private int viewportX;
+    private int viewportY;
+    private int viewportW;
+    private int viewportH;
+
+    private boolean scissorEnabledKnown;
+    private boolean scissorEnabled;
+    private boolean scissorBoxKnown;
+    private int scissorX;
+    private int scissorY;
+    private int scissorW;
+    private int scissorH;
+
+    private boolean clearColorKnown;
+    private int clearColorRBits;
+    private int clearColorGBits;
+    private int clearColorBBits;
+    private int clearColorABits;
+
+    private boolean clearDepthKnown;
+    private double clearDepth;
 
     @Override
     public void init() {
@@ -49,6 +75,8 @@ class GLRenderFrame implements RenderFrame {
         glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
+        setScissorEnabled(false);
+        setClearDepth(0.0);
         init = true;
     }
     private void initTest() {
@@ -63,52 +91,73 @@ class GLRenderFrame implements RenderFrame {
         initTest();
         drawCallCounter = 0;
 
-        List<RenderCommand> commands = new ArrayList<>(scene.getCommands());
+        /*
+         * Window-system code may have changed GL_VIEWPORT since the previous
+         * frame (for example after a resize). Keep the cache frame-local:
+         * query at most once this frame, then reuse it across all passes.
+         */
+        viewportKnown = false;
 
-        this.lightEnv = scene.getLighting();
+        try {
+            List<RenderCommand> commands = new ArrayList<>(scene.getCommands());
 
-        TextureManager textureManager = scene.getTextureManager();
-        if (textureManager != null) {
-            textureManager.flushMipmaps();
-        }
+            this.lightEnv = scene.getLighting();
 
-        List<ShaderPass> passes = scene.getPasses();
-        if (passes.isEmpty() && !commands.isEmpty()) {
-            //hardcoded shadow pass
-            LightEnvironment lighting = this.lightEnv;
-            ShadowManager shadowManager = lighting != null ? lighting.getShadowManager() : null;
-            if (shadowManager != null) {
-                Camera mainCamera = scene.getCamera();
-                if (mainCamera != null) {
-                    Camera camCopy = new Camera(
-                            new org.joml.Matrix4f(mainCamera.view),
-                            new org.joml.Matrix4f(mainCamera.projection));
-                    for (Light light : lighting.getLights()) {
-                        if (!light.castsShadow()) continue;
-                        ShadowPassContext ctx = shadowManager.prepareShadow(light, camCopy);
-                        this.camera = ctx.shadowCamera();
-                        renderCommands(commands, ctx.target(), ctx.depthMaterial(), ctx.layer(), null);
-                    }
+            TextureManager textureManager = scene.getTextureManager();
+            if (textureManager != null) {
+                textureManager.flushMipmaps();
+            }
+
+            List<ShaderPass> passes = scene.getPasses();
+//            boolean hardcodedPass = passes.isEmpty() && !commands.isEmpty();
+//            if (hardcodedPass)
+//                hardcoded(scene,commands);
+//            else
+                for (ShaderPass pass : passes) {
+                    executePass(pass, scene, commands);
                 }
-            }
 
-            this.camera = scene.getCamera();
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            applyScreenViewport(scene, this.camera);
-            glClearColor(scene.getBgR(), scene.getBgG(), scene.getBgB(), scene.getBgA());
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            glClearDepth(0.0f);
-            renderCommands(commands, null, null, -1, null);
-        } else {
-            for (ShaderPass pass : passes) {
-                executePass(pass, scene, commands);
-            }
+        } finally {
+            // Do not leak a screen-space clipping rectangle to external rendering code.
+            setScissorEnabled(false);
         }
     }
 
+    @Deprecated
+    private void hardcoded(RenderScene scene,List<RenderCommand> commands) {
+        //hardcoded shadow pass
+        LightEnvironment lighting = this.lightEnv;
+        ShadowManager shadowManager = lighting != null ? lighting.getShadowManager() : null;
+        if (shadowManager != null) {
+            Camera mainCamera = scene.getCamera();
+            if (mainCamera != null) {
+                Camera camCopy = new Camera(
+                        new org.joml.Matrix4f(mainCamera.view),
+                        new org.joml.Matrix4f(mainCamera.projection));
+                for (Light light : lighting.getLights()) {
+                    if (!light.castsShadow()) continue;
+                    ShadowPassContext ctx = shadowManager.prepareShadow(light, camCopy);
+                    this.camera = ctx.shadowCamera();
+                    renderCommands(commands, ctx.target(), ctx.depthMaterial(), ctx.layer(), null);
+                }
+            }
+        }
+
+        this.camera = scene.getCamera();
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        applyScreenViewport(scene, this.camera);
+        setClearColor(scene.getBgR(), scene.getBgG(), scene.getBgB(), scene.getBgA());
+        setClearDepth(0.0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        renderCommands(commands, null, null, -1, null);
+    }
+
     private void executePass(ShaderPass pass, RenderScene scene, List<RenderCommand> commands) {
-        int[] savedViewport = new int[4];
-        glGetIntegerv(GL_VIEWPORT, savedViewport);
+        ensureViewportKnown();
+        int savedViewportX = viewportX;
+        int savedViewportY = viewportY;
+        int savedViewportW = viewportW;
+        int savedViewportH = viewportH;
 
         Camera passCam = pass.cameraOverride() != null ? pass.cameraOverride() : scene.getCamera();
         this.camera = passCam;
@@ -118,19 +167,20 @@ class GLRenderFrame implements RenderFrame {
         int layer = pass.arrayLayer();
 
         if (target != null) {
+            setScissorEnabled(false);
             target.bind();
             if (target.getLayers() > 1 && layer >= 0) {
                 target.attachLayer(layer);
             }
-            glViewport(0, 0, target.getWidth(), target.getHeight());
+            setViewport(0, 0, target.getWidth(), target.getHeight());
+            setClearDepth(0.0);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            glClearDepth(0.0f);
         } else {
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             applyScreenViewport(scene, passCam);
-            glClearColor(scene.getBgR(), scene.getBgG(), scene.getBgB(), scene.getBgA());
+            setClearColor(scene.getBgR(), scene.getBgG(), scene.getBgB(), scene.getBgA());
+            setClearDepth(0.0);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            glClearDepth(0.0f);
         }
 
         if (pass.isFullscreen()) {
@@ -143,7 +193,7 @@ class GLRenderFrame implements RenderFrame {
             target.unbind();
         }
 
-        glViewport(savedViewport[0], savedViewport[1], savedViewport[2], savedViewport[3]);
+        setViewport(savedViewportX, savedViewportY, savedViewportW, savedViewportH);
     }
 
     /**
@@ -152,23 +202,19 @@ class GLRenderFrame implements RenderFrame {
      * Falls back to the current GL viewport when the scene provides no dimensions.
      */
     private void applyScreenViewport(RenderScene scene, Camera cam) {
-        lastPassLetterbox = false;
-        lastVpW = lastVpH = lastVpX = lastVpY = 0;
-
         int vpW = scene.getScreenViewportW();
         int vpH = scene.getScreenViewportH();
 
         if (vpW <= 0 || vpH <= 0) {
-            int[] glVp = new int[4];
-            glGetIntegerv(GL_VIEWPORT, glVp);
-            vpW = glVp[2];
-            vpH = glVp[3];
+            ensureViewportKnown();
+            vpW = viewportW;
+            vpH = viewportH;
         }
         if (vpW <= 0 || vpH <= 0) return;
 
         if (!scene.isPreserveScreenAspect() || cam == null || cam.projection == null) {
-            glViewport(0, 0, vpW, vpH);
-            glScissor(0, 0, vpW, vpH);
+            setViewport(0, 0, vpW, vpH);
+            setScissor(0, 0, vpW, vpH);
             return;
         }
 
@@ -176,22 +222,127 @@ class GLRenderFrame implements RenderFrame {
         int vx, vy, vw, vh;
 
 
-            vh = (int) (vpW / projAspect);
-            vw = vpW;
-            vx = 0;
-            vy = (vpH - vh) / 2;
+        vh = (int) (vpW / projAspect);
+        vw = vpW;
+        vx = 0;
+        vy = (vpH - vh) / 2;
 
 
-        glScissor(0, 0, vpW, vpH);
-        glEnable(GL_SCISSOR_TEST);
-        glClearColor(0, 0, 0, 1);
+        setScissorEnabled(true);
+        setScissor(0, 0, vpW, vpH);
+        setClearColor(0, 0, 0, 1);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glViewport(vx, vy, vw, vh);
-        glScissor(vx, vy, vw, vh);
+        setViewport(vx, vy, vw, vh);
+        setScissor(vx, vy, vw, vh);
+    }
 
-        lastVpW = vw; lastVpH = vh; lastVpX = vx; lastVpY = vy;
-        lastPassLetterbox = vy > 0;
+    // ────────────────────── OpenGL state cache ──────────────────────
+
+    private void ensureViewportKnown() {
+        if (viewportKnown) return;
+
+        int[] viewport = new int[4];
+        glGetIntegerv(GL_VIEWPORT, viewport);
+        viewportX = viewport[0];
+        viewportY = viewport[1];
+        viewportW = viewport[2];
+        viewportH = viewport[3];
+        viewportKnown = true;
+    }
+
+    private void setViewport(int x, int y, int width, int height) {
+        if (viewportKnown
+                && viewportX == x
+                && viewportY == y
+                && viewportW == width
+                && viewportH == height) {
+            return;
+        }
+
+        glViewport(x, y, width, height);
+        viewportX = x;
+        viewportY = y;
+        viewportW = width;
+        viewportH = height;
+        viewportKnown = true;
+    }
+
+    private void setScissorEnabled(boolean enabled) {
+        if (scissorEnabledKnown && scissorEnabled == enabled) {
+            return;
+        }
+
+        if (enabled) {
+            glEnable(GL_SCISSOR_TEST);
+        } else {
+            glDisable(GL_SCISSOR_TEST);
+        }
+
+        scissorEnabled = enabled;
+        scissorEnabledKnown = true;
+    }
+
+    private void setScissor(int x, int y, int width, int height) {
+        if (scissorBoxKnown
+                && scissorX == x
+                && scissorY == y
+                && scissorW == width
+                && scissorH == height) {
+            return;
+        }
+
+        glScissor(x, y, width, height);
+        scissorX = x;
+        scissorY = y;
+        scissorW = width;
+        scissorH = height;
+        scissorBoxKnown = true;
+    }
+
+    private void setClearColor(float red, float green, float blue, float alpha) {
+        int redBits = Float.floatToIntBits(red);
+        int greenBits = Float.floatToIntBits(green);
+        int blueBits = Float.floatToIntBits(blue);
+        int alphaBits = Float.floatToIntBits(alpha);
+
+        if (clearColorKnown
+                && clearColorRBits == redBits
+                && clearColorGBits == greenBits
+                && clearColorBBits == blueBits
+                && clearColorABits == alphaBits) {
+            return;
+        }
+
+        glClearColor(red, green, blue, alpha);
+        clearColorRBits = redBits;
+        clearColorGBits = greenBits;
+        clearColorBBits = blueBits;
+        clearColorABits = alphaBits;
+        clearColorKnown = true;
+    }
+
+    private void setClearDepth(double depth) {
+        if (clearDepthKnown
+                && Double.doubleToLongBits(clearDepth) == Double.doubleToLongBits(depth)) {
+            return;
+        }
+
+        glClearDepth(depth);
+        clearDepth = depth;
+        clearDepthKnown = true;
+    }
+
+    /**
+     * Must be called after switching this renderer to another OpenGL context,
+     * or after external code mutates cached OpenGL state directly.
+     */
+    void invalidateStateCache() {
+        viewportKnown = false;
+        scissorEnabledKnown = false;
+        scissorBoxKnown = false;
+        clearColorKnown = false;
+        clearDepthKnown = false;
     }
 
     private void executeFullscreenPass(ShaderPass pass) {
@@ -228,8 +379,8 @@ class GLRenderFrame implements RenderFrame {
     private void createFullscreenQuad() {
         float[] vertices = {
                 -1, -1, 0,   0, 0,
-                 1, -1, 0,   1, 0,
-                 1,  1, 0,   1, 1,
+                1, -1, 0,   1, 0,
+                1,  1, 0,   1, 1,
                 -1,  1, 0,   0, 1,
         };
         int[] indices = {0, 1, 2, 2, 3, 0};
@@ -242,18 +393,26 @@ class GLRenderFrame implements RenderFrame {
     // ────────────────────── core draw ──────────────────────
 
     private void renderCommands(List<RenderCommand> commands, RenderTarget target,
-                                 Material overrideMaterial, int arrayLayer, ShaderPass pass) {
-        int[] savedViewport = null;
+                                Material overrideMaterial, int arrayLayer, ShaderPass pass) {
+        int savedViewportX = 0;
+        int savedViewportY = 0;
+        int savedViewportW = 0;
+        int savedViewportH = 0;
         if (target != null) {
-            savedViewport = new int[4];
-            glGetIntegerv(GL_VIEWPORT, savedViewport);
+            ensureViewportKnown();
+            savedViewportX = viewportX;
+            savedViewportY = viewportY;
+            savedViewportW = viewportW;
+            savedViewportH = viewportH;
+
+            setScissorEnabled(false);
             target.bind();
             if (target.getLayers() > 1 && arrayLayer >= 0) {
                 target.attachLayer(arrayLayer);
             }
-            glViewport(0, 0, target.getWidth(), target.getHeight());
+            setViewport(0, 0, target.getWidth(), target.getHeight());
+            setClearDepth(0.0);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            glClearDepth(0.0f);
         }
 
         Map<Long, List<RenderCommand>> batches = groupCommands(commands);
@@ -306,7 +465,7 @@ class GLRenderFrame implements RenderFrame {
 
         if (target != null) {
             target.unbind();
-            glViewport(savedViewport[0], savedViewport[1], savedViewport[2], savedViewport[3]);
+            setViewport(savedViewportX, savedViewportY, savedViewportW, savedViewportH);
         }
     }
 
@@ -322,7 +481,7 @@ class GLRenderFrame implements RenderFrame {
         } else if (value instanceof Vector4f v) {
             shader.setVec4(name, v.x, v.y, v.z, v.w);
         } else if (value instanceof Matrix4f m) {
-            shader.setMat4(name, m.get(new float[16]));
+            shader.setMat4(name, m.get(uniformMatrixBuffer));
         } else if (value instanceof Texture t) {
             TextureManager tm = t.belongsTo();
             if (tm != null) {

@@ -2,25 +2,25 @@ package com.melon.foolsEngine.core.ECS.system;
 
 import com.melon.foolsEngine.api.rendering.render.RenderCommand;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
-import com.melon.foolsEngine.core.ECS.basicComponents.RenderableComp;
-import com.melon.foolsEngine.core.ECS.basicComponents.TransformComp;
+import com.melon.foolsEngine.core.ECS.basicComponents.RenderableComponent;
+import com.melon.foolsEngine.core.ECS.basicComponents.TransformComponent;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.SparseSet;
 
 public class RenderableCollector extends ClientSystem {
 
-    private final SparseSet<TransformComp> transforms;
-    private final SparseSet<RenderableComp> renderables;
+    private final SparseSet<TransformComponent> transforms;
+    private final SparseSet<RenderableComponent> renderables;
 
     {
-        requiredComponents.add(TransformComp.class);
-        requiredComponents.add(RenderableComp.class);
+        requiredComponents.add(TransformComponent.class);
+        requiredComponents.add(RenderableComponent.class);
     }
 
     public RenderableCollector(FoolsEngine engine) {
         super(engine);
-        transforms = getSparseSet(TransformComp.class);
-        renderables = getSparseSet(RenderableComp.class);
+        transforms = getSparseSet(TransformComponent.class);
+        renderables = getSparseSet(RenderableComponent.class);
     }
 
     @Override
@@ -31,8 +31,8 @@ public class RenderableCollector extends ClientSystem {
     @Override
     public void update(float dt, RenderScene scene) {
         for (int e : entities) {
-            TransformComp t = transforms.getComponent(e);
-            RenderableComp r = renderables.getComponent(e);
+            TransformComponent t = transforms.getComponent(e);
+            RenderableComponent r = renderables.getComponent(e);
             if (t == null || r == null) continue;
             scene.submit(new RenderCommand(r.mesh, r.material, t.getMatrix()));
         }

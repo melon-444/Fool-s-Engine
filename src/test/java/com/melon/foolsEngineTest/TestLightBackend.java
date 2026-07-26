@@ -13,7 +13,7 @@ import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.api.windows.WindowsManager;
-import com.melon.foolsEngine.core.ECS.basicComponents.TransformComp;
+import com.melon.foolsEngine.core.ECS.basicComponents.TransformComponent;
 import com.melon.foolsEngine.core.EngineBoot;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.*;
@@ -56,8 +56,8 @@ public class TestLightBackend {
         depthShader.load(Path.of("src/main/resources/shader/depth/depth_vsh.glsl"), Path.of("src/main/resources/shader/depth/depth_fsh.glsl"));
         Material depthMaterial = new Material(depthShader);
 
-        TransformComp dragonTransform1 = new TransformComp(new Vector3f(0, 0, 5), new Quaternionf(), new Vector3f(0.1f, 0.1f, 0.1f));
-        TransformComp dragonTransform2 = new TransformComp(new Vector3f(0, 0, -5), new Quaternionf(), new Vector3f(0.1f, 0.1f, 0.1f));
+        TransformComponent dragonTransform1 = new TransformComponent(new Vector3f(0, 0, 5), new Quaternionf(), new Vector3f(0.1f, 0.1f, 0.1f));
+        TransformComponent dragonTransform2 = new TransformComponent(new Vector3f(0, 0, -5), new Quaternionf(), new Vector3f(0.1f, 0.1f, 0.1f));
 
         PerspectiveProjection proj = new PerspectiveProjection(foolsEngine.FOV, foolsEngine.aspect, foolsEngine.Z_NEAR);
         Vector3f cameraPos = new Vector3f(0, 0, -12);

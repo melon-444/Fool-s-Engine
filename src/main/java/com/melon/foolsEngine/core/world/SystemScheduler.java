@@ -139,9 +139,7 @@ public class SystemScheduler {
 
         ctx.makeCurrent();
 
-
         if (systemBus != null) systemBus.emitNow(new PreRenderEvent(sceneFront));
-
 
         frame.render(sceneFront);
 

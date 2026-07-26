@@ -37,9 +37,9 @@ import java.util.Set;
 public class SceneCollector extends ClientSystem {
 
     private final SparseSet<CameraComponent> cameras;
-    private final SparseSet<TransformComp> transforms;
+    private final SparseSet<TransformComponent> transforms;
     private final SparseSet<LightComponent> ecsLights;
-    private final SparseSet<RenderableComp> renderables;
+    private final SparseSet<RenderableComponent> renderables;
     private final SparseSet<LightEnvComponent> lightEnvs;
     private final SparseSet<TextureManagerComponent> textureMnrs;
     private final Map<Integer, Light> activeLights = new HashMap<>();
@@ -50,15 +50,15 @@ public class SceneCollector extends ClientSystem {
     private final Quaternionf conjugateTmp = new Quaternionf();
 
     {
-        requiredComponents.add(TransformComp.class);
+        requiredComponents.add(TransformComponent.class);
     }
 
     public SceneCollector(FoolsEngine engine) {
         super(engine);
         cameras = getSparseSet(CameraComponent.class);
-        transforms = getSparseSet(TransformComp.class);
+        transforms = getSparseSet(TransformComponent.class);
         ecsLights = getSparseSet(LightComponent.class);
-        renderables = getSparseSet(RenderableComp.class);
+        renderables = getSparseSet(RenderableComponent.class);
         lightEnvs = getSparseSet(LightEnvComponent.class);
         textureMnrs = getSparseSet(TextureManagerComponent.class);
     }
@@ -91,7 +91,7 @@ public class SceneCollector extends ClientSystem {
 
             deactivateOtherCam(e);
 
-            TransformComp t = transforms.getComponent(e);
+            TransformComponent t = transforms.getComponent(e);
             if (t == null) continue;
 
             view.identity().set(t.getMatrix().invert());
@@ -164,10 +164,10 @@ public class SceneCollector extends ClientSystem {
 
     private void collectRenderables(RenderScene scene) {
         for (int e : entities) {
-            RenderableComp r = renderables.getComponent(e);
+            RenderableComponent r = renderables.getComponent(e);
             if (r == null) continue;
 
-            TransformComp t = transforms.getComponent(e);
+            TransformComponent t = transforms.getComponent(e);
             if (t == null) continue;
 
             scene.submit(new RenderCommand(r.mesh, r.material, t.getMatrix()));

@@ -19,7 +19,7 @@ package com.melon.foolsEngine.core.ECS.basicComponents;
 import org.joml.*;
 
 
-public class TransformComp extends Component {
+public class TransformComponent extends Component {
 
     private final Vector3f position = new Vector3f();
     private final Quaternionf rotation = new Quaternionf();
@@ -29,20 +29,20 @@ public class TransformComp extends Component {
     private final Matrix4f matrix = new Matrix4f();
     private boolean dirty = true;
 
-    public TransformComp() {}
+    public TransformComponent() {}
 
-    public TransformComp(Vector3f position, Quaternionf rotation) {
+    public TransformComponent(Vector3f position, Quaternionf rotation) {
         this.getPosition().set(position);
         this.getRotation().set(rotation);
     }
 
-    public TransformComp(Vector3f position, Quaternionf rotation, Vector3f scale) {
+    public TransformComponent(Vector3f position, Quaternionf rotation, Vector3f scale) {
         this.getPosition().set(position);
         this.getRotation().set(rotation);
         this.getScale().set(scale);
     }
 
-    public TransformComp(Vector3f position) {
+    public TransformComponent(Vector3f position) {
         this.getPosition().set(position);
     }
 

@@ -19,11 +19,11 @@ package com.melon.foolsEngine.core.ECS.basicComponents;
 import com.melon.foolsEngine.api.rendering.resource.Material;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 
-public class RenderableComp extends Component{
+public class RenderableComponent extends Component{
     public Mesh mesh;
     public Material material;
 
-    public RenderableComp(Mesh mesh, Material material) {
+    public RenderableComponent(Mesh mesh, Material material) {
         this.mesh = mesh;
         this.material = material;
     }

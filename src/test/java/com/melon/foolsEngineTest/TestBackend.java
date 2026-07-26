@@ -8,7 +8,7 @@ import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.api.windows.WindowsManager;
-import com.melon.foolsEngine.core.ECS.basicComponents.TransformComp;
+import com.melon.foolsEngine.core.ECS.basicComponents.TransformComponent;
 import com.melon.foolsEngine.core.EngineBoot;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.ObjLoader;
@@ -63,7 +63,7 @@ public class TestBackend {
         material.set("textureSampler", texture);
 
         Vector3f position = new Vector3f(0.0f, -0.5f, 0);
-        TransformComp trans = new TransformComp(position, new Quaternionf(), new Vector3f(0.1f, 0.1f, 0.1f));
+        TransformComponent trans = new TransformComponent(position, new Quaternionf(), new Vector3f(0.1f, 0.1f, 0.1f));
 
         float distance = 200f;
         float size = distance * Math.tan(Math.toRadians(foolsEngine.FOV / 2)) / 100;

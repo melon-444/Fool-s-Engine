@@ -14,7 +14,7 @@ import com.melon.foolsEngine.api.windows.WindowsManager;
 import com.melon.foolsEngine.core.ECS.basicComponents.LightComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.LightEnvComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.TextureManagerComponent;
-import com.melon.foolsEngine.core.ECS.basicComponents.TransformComp;
+import com.melon.foolsEngine.core.ECS.basicComponents.TransformComponent;
 import com.melon.foolsEngine.core.EngineBoot;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.core.world.SystemScheduler;
@@ -76,18 +76,17 @@ public class TesECSRenderFlow {
         java.util.List<Integer> lightEntities = new java.util.ArrayList<>();
 
         Vector3f cameraPos = new Vector3f(0, 0, 12);
-        TransformComp cameraTransform = foolsEngine.entityFactory.createCamera(cameraPos);
+        TransformComponent cameraTransform = foolsEngine.entityFactory.createCamera(cameraPos);
 
         win.show();
         RenderFrame frame = foolsEngine.frame;
         foolsEngine.entityFactory.createShaderPass(0, ShaderPass.color(shader));
+        foolsEngine.entityFactory.createShaderPass(1, ShaderPass.color(depthShader));
 
         ImGuiContext imGuiContext = new ImGuiContext();
         imGuiContext.init(win.getID(), "#version 330");
         ImGuiRenderer imGuiRenderer = new ImGuiRenderer(imGuiContext);
         ImGuiDebugOverlay debugOverlay = new ImGuiDebugOverlay();
-
-
 
         int lightEnvEntity = foolsEngine.entityFactory.createLightEnvironment();
         LightEnvironment lightEnv = ((LightEnvComponent)foolsEngine.componentManager.getComponentMap().get(LightEnvComponent.class).get(lightEnvEntity)).env;

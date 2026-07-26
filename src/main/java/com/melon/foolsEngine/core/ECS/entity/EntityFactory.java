@@ -23,9 +23,9 @@ import com.melon.foolsEngine.api.rendering.render.ShaderPass;
 import com.melon.foolsEngine.core.ECS.basicComponents.CameraComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.LightComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.LightEnvComponent;
-import com.melon.foolsEngine.core.ECS.basicComponents.RenderableComp;
+import com.melon.foolsEngine.core.ECS.basicComponents.RenderableComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.RenderPassComponent;
-import com.melon.foolsEngine.core.ECS.basicComponents.TransformComp;
+import com.melon.foolsEngine.core.ECS.basicComponents.TransformComponent;
 import com.melon.foolsEngine.core.FoolsEngine;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -55,10 +55,10 @@ public class EntityFactory {
         if (rotation == null) rotation = new Quaternionf();
         if (position == null) position = new Vector3f();
 
-        Instance.entityManager.bindComponent(entityID, new TransformComp(position, rotation, scale));
+        Instance.entityManager.bindComponent(entityID, new TransformComponent(position, rotation, scale));
 
         if (mesh != null || material != null) {
-            Instance.entityManager.bindComponent(entityID, new RenderableComp(mesh, material));
+            Instance.entityManager.bindComponent(entityID, new RenderableComponent(mesh, material));
         }
 
         return entityID;
@@ -77,9 +77,9 @@ public class EntityFactory {
      * Consider it as a dot with a vector in the world(Input the normal transform to the return instead of its invert)
      * The Transform is bound to the entity — mutate it directly, then call markDirty().
      */
-    public TransformComp createCamera(Vector3f position) {
+    public TransformComponent createCamera(Vector3f position) {
         final int entityID = Instance.entityManager.createEntity();
-        TransformComp transform = new TransformComp(position);
+        TransformComponent transform = new TransformComponent(position);
         Instance.entityManager.bindComponent(entityID, transform);
         Instance.entityManager.bindComponent(entityID, new CameraComponent(Instance.FOV, Instance.Z_NEAR));
         return transform;
@@ -103,7 +103,6 @@ public class EntityFactory {
     /** Create an entity that adds a {@link ShaderPass} to the rendering pipeline. */
     public int createShaderPass(int order, ShaderPass pass) {
         final int entityID = Instance.entityManager.createEntity();
-        Instance.entityManager.bindComponent(entityID, new TransformComp());
         Instance.entityManager.bindComponent(entityID, new RenderPassComponent(order, pass));
         return entityID;
     }
