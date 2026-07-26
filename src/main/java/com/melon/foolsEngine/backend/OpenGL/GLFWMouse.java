@@ -73,6 +73,13 @@ class GLFWMouse implements InputDevice<Window> {
         scrollDeltaX = 0;
     }
 
+    @Override
+    public void flushDeltas() {
+        mousePositionDel.clear();
+        mousePosition.clear();
+        firstMouse = true;
+    }
+
     private Callback cb_button;
     private Callback cb_wheel;
     private Callback cb_position;

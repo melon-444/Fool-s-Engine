@@ -292,6 +292,7 @@ public class TesECSRenderFlow {
 
             if(input.isActionPressed(switchFullscreen)) {
                 win.setFullscreen(!win.isFullscreen());
+                input.getMouse().flushDeltas();//avoid camera jump
             }
 
             input.endFrame();

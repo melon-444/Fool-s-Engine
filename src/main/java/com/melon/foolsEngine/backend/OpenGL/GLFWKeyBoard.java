@@ -49,6 +49,10 @@ class GLFWKeyBoard implements InputDevice<Window> {
     public void endFrame() {
     }
 
+    @Override
+    public void flushDeltas() {
+    }
+
     private Callback cb_key;
     private Callback cb_char;
 

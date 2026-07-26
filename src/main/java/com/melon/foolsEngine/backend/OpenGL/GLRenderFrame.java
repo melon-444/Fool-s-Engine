@@ -144,9 +144,8 @@ class GLRenderFrame implements RenderFrame {
     }
 
     /**
-     * Applies a screen viewport, optionally letterbox/pillarbox to preserve the
-     * camera projection aspect ratio. Clears the pillarbox areas to black.
-     * Falls back to the current GL viewport dimensions when the scene provides none.
+     * Applies a full-screen viewport, falling back to the current GL viewport
+     * when the scene provides no explicit dimensions.
      */
     private void applyScreenViewport(RenderScene scene, Camera cam) {
         int vpW = scene.getScreenViewportW();
@@ -160,35 +159,8 @@ class GLRenderFrame implements RenderFrame {
         }
         if (vpW <= 0 || vpH <= 0) return;
 
-        if (!scene.isPreserveScreenAspect() || cam == null || cam.projection == null) {
-            glViewport(0, 0, vpW, vpH);
-            glScissor(0, 0, vpW, vpH);
-            return;
-        }
-
-        float projAspect = Math.abs(cam.projection.m11() / cam.projection.m00());
-        float screenAspect = (float) vpW / vpH;
-        int vx, vy, vw, vh;
-
-        if (projAspect > screenAspect) {
-            vh = (int) (vpW / projAspect);
-            vw = vpW;
-            vx = 0;
-            vy = (vpH - vh) / 2;
-        } else {
-            vw = (int) (vpH * projAspect);
-            vh = vpH;
-            vx = (vpW - vw) / 2;
-            vy = 0;
-        }
-
+        glViewport(0, 0, vpW, vpH);
         glScissor(0, 0, vpW, vpH);
-        glEnable(GL_SCISSOR_TEST);
-        glClearColor(0, 0, 0, 1);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        glViewport(vx, vy, vw, vh);
-        glScissor(vx, vy, vw, vh);
     }
 
     private void executeFullscreenPass(ShaderPass pass) {

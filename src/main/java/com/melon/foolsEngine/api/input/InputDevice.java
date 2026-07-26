@@ -46,4 +46,8 @@ public interface InputDevice<E> {
     void attachEnvironment(E env);
     /** Detaches and releases environment resources */
     void detachEnvironment();
+
+    /** Resets accumulated deltas and re-enables first-event suppression,
+     *  useful after window resize / fullscreen toggle to avoid spurious jumps. */
+    void flushDeltas();
 }
