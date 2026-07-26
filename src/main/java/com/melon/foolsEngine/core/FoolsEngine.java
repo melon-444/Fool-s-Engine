@@ -98,6 +98,9 @@ public class FoolsEngine {
         LOGGER.info("Boot complete");
     }
 
+    /**
+     * Update setting in files, currently they are merely useless.
+     */
     public void updateSettings() {
         aspect = (float) width / (float) height;
         FOV = 40.0f;

@@ -37,6 +37,8 @@ if (lwjglUseMaven) {
         runtimeOnly("org.lwjgl", "lwjgl-stb",      classifier = "natives-$lwjglNatives")
         runtimeOnly("org.lwjgl", "lwjgl-shaderc", classifier = "natives-$lwjglNatives")
         api("org.joml:joml:1.10.5")
+        implementation("org.ow2.asm:asm:9.10")
+        implementation("org.ow2.asm:asm-commons:9.10")
         compileOnly("io.github.spair:imgui-java-binding:$imguiVersion")
         compileOnly("io.github.spair:imgui-java-lwjgl3:$imguiVersion"){
             exclude(group = "org.lwjgl")
@@ -71,6 +73,8 @@ if (lwjglUseMaven) {
         runtimeOnly(files("${libs}lwjgl-opengl/lwjgl-opengl-natives-${lwjglNatives}.jar"))
         runtimeOnly(files("${libs}lwjgl-stb/lwjgl-stb-natives-${lwjglNatives}.jar"))
         runtimeOnly(files("${libs}lwjgl-shaderc/lwjgl-shaderc-natives-${lwjglNatives}.jar"))
+        implementation("org.ow2.asm:asm:9.10")
+        implementation("org.ow2.asm:asm-commons:9.10")
         api("org.joml:joml:1.10.5")
         compileOnly("io.github.spair:imgui-java-binding:$imguiVersion")
         compileOnly("io.github.spair:imgui-java-lwjgl3:$imguiVersion"){

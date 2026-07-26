@@ -104,6 +104,8 @@ public class SystemScheduler {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public void update() {
+        EventBus systemBus = EventBus.get("SystemBus");
+        if (systemBus != null) systemBus.process();
         long now = java.lang.System.nanoTime();
         long elapsed = now - lastFrameNs;
         lastFrameNs = now;
@@ -137,12 +139,14 @@ public class SystemScheduler {
 
         ctx.makeCurrent();
 
-        EventBus bus = EventBus.get("SystemBus");
-        if (bus != null) bus.emit(new PreRenderEvent(sceneFront));
+
+        if (systemBus != null) systemBus.emitNow(new PreRenderEvent(sceneFront));
+
 
         frame.render(sceneFront);
 
-        if (bus != null) bus.emit(new PostRenderEvent(sceneFront));
+        if (systemBus != null) systemBus.emitNow(new PostRenderEvent(sceneFront));
+
 
         if (additionalRenderTask != null)
             additionalRenderTask.run();

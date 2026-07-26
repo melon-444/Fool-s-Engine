@@ -22,6 +22,8 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Double-buffered event bus with hierarchical dispatch and annotation-aware registration.
@@ -49,21 +51,31 @@ public class EventBus {
      * @throws IllegalStateException if a bus with this id already exists.
      */
     public static EventBus create(String id) {
-        if (BUSES.containsKey(id))
-            throw new IllegalStateException("Duplicate EventBus id: " + id);
+        Objects.requireNonNull(id, "id");
+
         EventBus bus = new EventBus(id);
-        BUSES.put(id, bus);
+        EventBus existing = BUSES.putIfAbsent(id, bus);
+
+        if (existing != null) {
+            throw new IllegalStateException(
+                    "Duplicate EventBus id: " + id
+            );
+        }
         return bus;
     }
 
     // ── Instance ──
 
     private final String busId;
-    private final Map<Class<?>, Map<Method, Object>> listeners = new ConcurrentHashMap<>();
+    private final Map<Class<?>, CopyOnWriteArrayList<RegisteredListener>> listeners =
+            new ConcurrentHashMap<>();
+    private final Set<IdentityKey> registeredInstances =
+            ConcurrentHashMap.newKeySet();
 
     private final Queue<Event> queue0 = new ArrayDeque<>();
     private final Queue<Event> queue1 = new ArrayDeque<>();
-    private boolean front;
+    /** Represents state of queue1 */
+    private final AtomicBoolean front = new  AtomicBoolean(false);
 
     EventBus(String busId) {
         this.busId = busId;
@@ -87,7 +99,8 @@ public class EventBus {
     }
 
     /**
-     * Registers all instance {@code @SubscribeEvent} methods on {@code subscriber}
+     * Registers all instance {@code @SubscribeEvent} methods on
+     * {@code subscriber} (includes extended @SubscribeEvent methods)
      * onto the bus specified by the class's {@code @InstanceBusSubscriber} annotation.
      * Un-annotated classes default to {@code SystemBus}.
      * Idempotent: calling with the same instance again is a no-op.
@@ -102,21 +115,34 @@ public class EventBus {
     }
 
     private void addListenerImpl(Object subscriber) {
-        for (Map<Method, Object> map : listeners.values()) {
-            if (map.containsValue(subscriber)) return;
-        }
-        for (Method m : subscriber.getClass().getDeclaredMethods()) {
-            if (m.getAnnotation(com.melon.foolsEngine.core.annotation.SubscribeEvent.class) == null) continue;
-            if (Modifier.isStatic(m.getModifiers())) continue;
-            validateSubscribeMethod(m);
-            registerMethod(m, subscriber);
+        List<Method> methods = Arrays.stream(
+                        subscriber.getClass().getMethods()
+                )
+                .filter(method ->
+                        method.isAnnotationPresent(com.melon.foolsEngine.core.annotation.SubscribeEvent.class))
+                .filter(method ->
+                        !Modifier.isStatic(method.getModifiers()))
+                .peek(this::validateSubscribeMethod)
+                .toList();
+
+        synchronized (this) {
+            IdentityKey key = new IdentityKey(subscriber);
+
+            if (!registeredInstances.add(key)) {
+                return;
+            }
+
+            for (Method method : methods) {
+                registerMethod(method, subscriber);
+            }
         }
     }
 
     /** Removes all annotated-method listeners belonging to {@code subscriber}. */
     public void removeListener(Object subscriber) {
-        for (Map<Method, Object> map : listeners.values()) {
-            map.values().removeIf(v -> v == subscriber);
+        registeredInstances.remove(new IdentityKey(subscriber));
+        for (var listener : listeners.values()) {
+            listener.removeIf(v -> v == subscriber);
         }
     }
 
@@ -134,40 +160,83 @@ public class EventBus {
 
     private void registerMethod(Method m, Object target) {
         Class<?> eventType = m.getParameterTypes()[0];
-        listeners.computeIfAbsent(eventType, k -> new LinkedHashMap<>()).put(m, target);
+        listeners.computeIfAbsent(
+                eventType,
+                ignored -> new CopyOnWriteArrayList<>()
+        ).add(new RegisteredListener(m, target));
     }
 
     // ── Frame lifecycle ──
 
     /** Queues an event for dispatch in the next {@link #process()} call. */
     public void emit(Event event) {
-        (front ? queue1 : queue0).add(event);
-        process();
+        (front.get() ? queue1 : queue0).add(event);
+    }
+
+    /** Dispatches this event instantly. */
+    public void emitNow(Event event) {
+        dispatch(event);
     }
 
     /** Dispatches all queued events to registered listeners. */
-    private void process() {
-        Queue<Event> active = front ? queue0 : queue1;
+    public void process() {
+        Queue<Event> active = front.get() ? queue1 : queue0;
+        front.set(!front.get());
         while (!active.isEmpty()) {
             dispatch(active.poll());
         }
-        front = !front;
+
+    }
+
+    /**Dispatches events in all two queues untile all queues are empty*/
+    public void flush(int maxRounds) {
+        for (int round = 0; round < maxRounds; round++) {
+            if (queue0.isEmpty() && queue1.isEmpty()) return;
+            process();
+        }
+        throw new IllegalStateException(
+                "EventBus flush exceeded " + maxRounds
+                        + " rounds; listeners may be emitting recursively"
+        );
     }
     
     private <T extends Event> void dispatch(T event) {
         Class<?> type = event.getClass();
         while (type != null) {
-            Map<Method, Object> map = listeners.get(type);
-            if (map != null) {
-                for (var entry : map.entrySet()) {
+            CopyOnWriteArrayList<RegisteredListener> registeredListeners = listeners.get(type);
+            if (registeredListeners != null) {
+                for (var entry : registeredListeners) {
                     try {
-                        entry.getKey().invoke(entry.getValue(), event);
+                        entry.method.invoke(entry.target, event);
                     } catch (Exception e) {
-                        throw new RuntimeException("Event dispatch failed for " + entry.getKey(), e);
+                        throw new RuntimeException("Event dispatch failed for " + entry.method, e);
                     }
                 }
             }
             type = type.getSuperclass();
+        }
+    }
+    private record RegisteredListener(Method method, Object target) {}
+
+    private static final class IdentityKey {
+
+        private final Object value;
+        private final int hash;
+
+        private IdentityKey(Object value) {
+            this.value = value;
+            this.hash = System.identityHashCode(value);
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof IdentityKey key
+                    && value == key.value;
         }
     }
 }
