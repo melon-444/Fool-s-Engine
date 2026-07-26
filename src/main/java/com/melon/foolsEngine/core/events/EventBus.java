@@ -23,7 +23,6 @@ import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Double-buffered event bus with hierarchical dispatch and annotation-aware registration.
@@ -74,8 +73,11 @@ public class EventBus {
 
     private final Queue<Event> queue0 = new ArrayDeque<>();
     private final Queue<Event> queue1 = new ArrayDeque<>();
+
+    private final Object queueLock = new Object();
+    private final Object processLock = new Object();
     /** Represents state of queue1 */
-    private final AtomicBoolean front = new  AtomicBoolean(false);
+    private boolean Q1Write = false;
 
     EventBus(String busId) {
         this.busId = busId;
@@ -140,9 +142,18 @@ public class EventBus {
 
     /** Removes all annotated-method listeners belonging to {@code subscriber}. */
     public void removeListener(Object subscriber) {
-        registeredInstances.remove(new IdentityKey(subscriber));
-        for (var listener : listeners.values()) {
-            listener.removeIf(v -> v == subscriber);
+        Objects.requireNonNull(subscriber, "subscriber");
+
+        synchronized (this) {
+            registeredInstances.remove(new IdentityKey(subscriber));
+            for (var listenerList : listeners.values()) {
+                listenerList.removeIf(
+                        listener -> listener.target() == subscriber
+                );
+            }
+            listeners.entrySet().removeIf(
+                    entry -> entry.getValue().isEmpty()
+            );
         }
     }
 
@@ -170,7 +181,10 @@ public class EventBus {
 
     /** Queues an event for dispatch in the next {@link #process()} call. */
     public void emit(Event event) {
-        (front.get() ? queue1 : queue0).add(event);
+        Objects.requireNonNull(event, "event");
+        synchronized (queueLock) {
+            (Q1Write ? queue1 : queue0).add(event);
+        }
     }
 
     /** Dispatches this event instantly. */
@@ -180,8 +194,11 @@ public class EventBus {
 
     /** Dispatches all queued events to registered listeners. */
     public void process() {
-        Queue<Event> active = front.get() ? queue1 : queue0;
-        front.set(!front.get());
+        final Queue<Event> active;
+        synchronized (queueLock) {
+            active = Q1Write ? queue1 : queue0;
+            Q1Write =!Q1Write;
+        }
         while (!active.isEmpty()) {
             dispatch(active.poll());
         }
