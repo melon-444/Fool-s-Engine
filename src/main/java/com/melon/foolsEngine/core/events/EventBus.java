@@ -70,6 +70,8 @@ public class EventBus {
             new ConcurrentHashMap<>();
     private final Set<IdentityKey> registeredInstances =
             ConcurrentHashMap.newKeySet();
+    private final Set<Class<?>> registeredStaticClasses =
+            ConcurrentHashMap.newKeySet();
 
     private final Queue<Event> queue0 = new ArrayDeque<>();
     private final Queue<Event> queue1 = new ArrayDeque<>();
@@ -92,17 +94,41 @@ public class EventBus {
      * Called automatically for {@code @EventBusSubscriber} classes during class loading.
      */
     public void registerStaticSubscribers(Class<?> clazz) {
-        for (Method m : clazz.getDeclaredMethods()) {
-            if (m.getAnnotation(com.melon.foolsEngine.core.annotation.SubscribeEvent.class) == null) continue;
-            if (!Modifier.isStatic(m.getModifiers())) continue;
-            validateSubscribeMethod(m);
-            registerMethod(m, null);
+        Objects.requireNonNull(clazz, "clazz");
+
+        List<Method> methods = Arrays.stream(clazz.getDeclaredMethods())
+                .filter(method ->
+                        method.isAnnotationPresent(com.melon.foolsEngine.core.annotation.SubscribeEvent.class))
+                .filter(method ->
+                        Modifier.isStatic(method.getModifiers()))
+                .peek(this::validateSubscribeMethod)
+                .toList();
+
+        if (!registeredStaticClasses.add(clazz)) {
+            return;
+        }
+
+        try {
+            for (Method method : methods) {
+                registerMethod(method, null);
+            }
+        } catch (RuntimeException exception) {
+            registeredStaticClasses.remove(clazz);
+
+            for (var listenerList : listeners.values()) {
+                listenerList.removeIf(listener ->
+                        listener.target() == null
+                                && listener.method().getDeclaringClass() == clazz
+                );
+            }
+
+            throw exception;
         }
     }
 
     /**
      * Registers all instance {@code @SubscribeEvent} methods on
-     * {@code subscriber} (includes extended @SubscribeEvent methods)
+     * {@code subscriber} (includes inherited public @SubscribeEvent methods)
      * onto the bus specified by the class's {@code @InstanceBusSubscriber} annotation.
      * Un-annotated classes default to {@code SystemBus}.
      * Idempotent: calling with the same instance again is a no-op.
@@ -208,13 +234,19 @@ public class EventBus {
     /**Dispatches events in all two queues untile all queues are empty*/
     public void flush(int maxRounds) {
         for (int round = 0; round < maxRounds; round++) {
-            if (queue0.isEmpty() && queue1.isEmpty()) return;
+            if (!hasPendingEvents()) return;
             process();
         }
         throw new IllegalStateException(
                 "EventBus flush exceeded " + maxRounds
                         + " rounds; listeners may be emitting recursively"
         );
+    }
+
+    private boolean hasPendingEvents() {
+        synchronized (queueLock) {
+            return !queue0.isEmpty() || !queue1.isEmpty();
+        }
     }
     
     private <T extends Event> void dispatch(T event) {
