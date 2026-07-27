@@ -93,22 +93,12 @@ public class TesECSRenderFlow {
         RenderFrame frame = foolsEngine.frame;
         foolsEngine.entityFactory.createShaderPass(
                 0,
-                ShaderPass.core(depthShader)
-                        .colorOps(
-                                ShaderPass.LoadOp.DONT_CARE,
-                                ShaderPass.StoreOp.DONT_CARE)
-                        .depthOps(
-                                ShaderPass.LoadOp.CLEAR,
-                                ShaderPass.StoreOp.STORE)
-                        .build());
-        foolsEngine.entityFactory.createShaderPass(
-                1,
                 ShaderPass.core()
                         .colorOps(
                                 ShaderPass.LoadOp.CLEAR,
                                 ShaderPass.StoreOp.STORE)
                         .depthOps(
-                                ShaderPass.LoadOp.LOAD,
+                                ShaderPass.LoadOp.CLEAR,
                                 ShaderPass.StoreOp.STORE)
                         .build());
 
