@@ -49,7 +49,7 @@ import static java.lang.Math.*;
  *
  *   Light dirLight = lightEnv.enableDirLightShadow(baseLight, mainCamera);
  *   lightEnv.add(dirLight);
- *   // Shadow pass is handled automatically by frame.render(scene)
+ *   // Register ShadowPassCollector or submit a custom shadow pass.
  * }</pre>
  */
 public class ShadowManager {
@@ -141,7 +141,7 @@ public class ShadowManager {
      * Updates the light's shadow camera and light-space matrix, then returns a context
      * that the renderer uses to execute the shadow pass.
      * <p>
-     * Called each frame by the renderer, not by user code.
+     * Called each frame by a shadow pass collector or custom pipeline code.
      *
      * @param light the shadow-casting light
      * @param mainCamera the main scene camera (needed for directional shadow frustum fitting)

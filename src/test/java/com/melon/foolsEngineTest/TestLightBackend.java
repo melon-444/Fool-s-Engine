@@ -7,14 +7,18 @@ import com.melon.foolsEngine.api.rendering.render.RenderCommand;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
+import com.melon.foolsEngine.api.rendering.pipeline.ShaderPass;
+import com.melon.foolsEngine.api.rendering.pipeline.StandardPasses;
 import com.melon.foolsEngine.api.rendering.resource.*;
+import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowManager;
+import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowPassContext;
 import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
 import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.api.windows.WindowsManager;
 import com.melon.foolsEngine.core.ECS.basicComponents.TransformComponent;
-import com.melon.foolsEngine.core.EngineBoot;
+import com.melon.foolsEngine.core.bootstrap.EngineBoot;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.*;
 import com.melon.foolsEngine.util.imgui.ImGuiContext;
@@ -263,6 +267,17 @@ public class TestLightBackend {
             scene.setLighting(lightEnv);
             scene.setTextureManager(textureManager);
             scene.setBackGroundColor(lightEnv.getAmbient().x, lightEnv.getAmbient().y, lightEnv.getAmbient().z, 1.0f);
+
+            ShadowManager shadowManager = lightEnv.getShadowManager();
+            if (shadowManager != null) {
+                for (Light light : lightEnv.getLights()) {
+                    if (!light.castsShadow()) continue;
+                    ShadowPassContext context =
+                            shadowManager.prepareShadow(light, camera);
+                    scene.submitPass(StandardPasses.shadow(context).build());
+                }
+            }
+            scene.submitPass(ShaderPass.core().build());
 
             long renderStart = System.nanoTime();
             frame.render(scene);

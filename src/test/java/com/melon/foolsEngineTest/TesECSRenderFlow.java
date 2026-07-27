@@ -4,9 +4,11 @@ import com.melon.foolsEngine.api.input.*;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
+import com.melon.foolsEngine.api.rendering.pipeline.ShaderPass;
 import com.melon.foolsEngine.api.rendering.resource.*;
 import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
 import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
+import com.melon.foolsEngine.api.rendering.shader.BuiltinShaders;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.api.windows.WindowsManager;
@@ -14,8 +16,9 @@ import com.melon.foolsEngine.core.ECS.basicComponents.LightComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.LightEnvComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.TextureManagerComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.TransformComponent;
-import com.melon.foolsEngine.core.EngineBoot;
 import com.melon.foolsEngine.core.FoolsEngine;
+import com.melon.foolsEngine.core.ECS.system.ShadowPassCollector;
+import com.melon.foolsEngine.core.bootstrap.EngineBoot;
 import com.melon.foolsEngine.core.world.SystemScheduler;
 import com.melon.foolsEngine.util.*;
 import com.melon.foolsEngine.util.imgui.ImGuiContext;
@@ -44,6 +47,7 @@ public class TesECSRenderFlow {
 
     public static void run(String[] args) {
         foolsEngine = EngineBoot.create(20000000, 100, 2560, 1600, false, LogLevel.DEBUG);
+        foolsEngine.systemManager.registerSystem(ShadowPassCollector.class);
         WindowsManager manager = foolsEngine.serviceFactory.getWindowsManager();
         Window win = foolsEngine.mainWindow;
         win.setTitle("TesECSRenderFlow - ECS + SystemScheduler + Shadows");
@@ -52,9 +56,10 @@ public class TesECSRenderFlow {
         Mesh dragonMesh = foolsEngine.serviceFactory.getMesh();
         dragonMesh.upload(ObjLoader.loadMesh(Path.of("src/test/resources/shaders/model/dragon.obj")));
 
-        ShaderProgram[] builtinShaders = foolsEngine.loadBuiltinShaders();
-        ShaderProgram shader = builtinShaders[0];
-        ShaderProgram depthShader = builtinShaders[1];
+        BuiltinShaders builtinShaders =
+                BuiltinShaders.load(foolsEngine.serviceFactory);
+        ShaderProgram shader = builtinShaders.main();
+        ShaderProgram depthShader = builtinShaders.shadowDepth();
         Material depthMaterial = new Material(depthShader);
 
         Material material = new Material(shader);
@@ -88,10 +93,24 @@ public class TesECSRenderFlow {
         RenderFrame frame = foolsEngine.frame;
         foolsEngine.entityFactory.createShaderPass(
                 0,
-                FoolsEngine.StandardPasses.core(depthShader).build());
+                ShaderPass.core(depthShader)
+                        .colorOps(
+                                ShaderPass.LoadOp.DONT_CARE,
+                                ShaderPass.StoreOp.DONT_CARE)
+                        .depthOps(
+                                ShaderPass.LoadOp.CLEAR,
+                                ShaderPass.StoreOp.STORE)
+                        .build());
         foolsEngine.entityFactory.createShaderPass(
                 1,
-                FoolsEngine.StandardPasses.core().build());
+                ShaderPass.core()
+                        .colorOps(
+                                ShaderPass.LoadOp.CLEAR,
+                                ShaderPass.StoreOp.STORE)
+                        .depthOps(
+                                ShaderPass.LoadOp.LOAD,
+                                ShaderPass.StoreOp.STORE)
+                        .build());
 
 
         ImGuiContext imGuiContext = new ImGuiContext();

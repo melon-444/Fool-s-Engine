@@ -22,7 +22,6 @@ import com.melon.foolsEngine.core.ECS.system.ServerSystem;
 import com.melon.foolsEngine.core.ECS.system.System;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.core.events.EventBus;
-import com.melon.foolsEngine.core.events.builtInEvents.ShadowPassPreparedEvent;
 import com.melon.foolsEngine.core.events.builtInEvents.SystemRegisteredEvent;
 import com.melon.foolsEngine.util.Signature;
 import com.melon.foolsEngine.util.logger.Logger;

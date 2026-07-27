@@ -21,16 +21,19 @@ import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.core.ECS.system.ClientSystem;
 import com.melon.foolsEngine.core.ECS.system.ServerSystem;
+import com.melon.foolsEngine.core.annotation.InstanceBusSubscriber;
 import com.melon.foolsEngine.core.annotation.SubscribeEvent;
 import com.melon.foolsEngine.core.events.EventBus;
 import com.melon.foolsEngine.core.events.builtInEvents.PostRenderEvent;
 import com.melon.foolsEngine.core.events.builtInEvents.PreRenderEvent;
+import com.melon.foolsEngine.core.events.builtInEvents.SystemRegisteredEvent;
 import com.melon.foolsEngine.core.ECS.system.System;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+@InstanceBusSubscriber
 public class SystemScheduler {
 
     private static final long FIXED_DT_NS = 16_666_667L;
@@ -71,9 +74,14 @@ public class SystemScheduler {
         }
 
         scheduleSystem(systemManager);
+        EventBus.addListener(this);
     }
-    
+
     @SubscribeEvent
+    public void onSystemRegistered(SystemRegisteredEvent event) {
+        scheduleSystem(event.systemManager);
+    }
+
     public void scheduleSystem(SystemManager systemManager) {
         for(var system: systemManager.getRegisteredSystems().values()) {
             if (system instanceof ClientSystem clientSystem)

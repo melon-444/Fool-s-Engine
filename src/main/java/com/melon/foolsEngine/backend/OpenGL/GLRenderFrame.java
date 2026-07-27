@@ -5,8 +5,8 @@ import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.MeshData;
 import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
-import com.melon.foolsEngine.api.rendering.shader.PassInput;
-import com.melon.foolsEngine.api.rendering.shader.ShaderPass;
+import com.melon.foolsEngine.api.rendering.pipeline.PassInput;
+import com.melon.foolsEngine.api.rendering.pipeline.ShaderPass;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.rendering.resource.Camera;
 import com.melon.foolsEngine.api.rendering.resource.Material;
@@ -257,7 +257,7 @@ class GLRenderFrame implements RenderFrame {
 
         if (!scene.isPreserveScreenAspect() || cam == null || cam.projection == null) {
             setViewport(0, 0, vpW, vpH);
-            setScissor(0, 0, vpW, vpH);
+            setScissorEnabled(false);
             return;
         }
 

@@ -14,8 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package com.melon.foolsEngine.core;
+package com.melon.foolsEngine.core.bootstrap;
 
+import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.ConstructorInjector;
 import com.melon.foolsEngine.util.Distribution;
 import com.melon.foolsEngine.core.annotation.EventBus;
@@ -27,6 +28,7 @@ import com.melon.foolsEngine.util.logger.Logger;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
 
 public final class EngineBoot {
 
@@ -49,10 +51,49 @@ public final class EngineBoot {
             LOG.error("FoolsEngine class not found: %s", e.getMessage());
             throw new InternalError("FoolsEngine class not found");
         }
-        FoolsEngine engine = new FoolsEngine(maxEntities, maxComponents, width, height, isServer);
+        FoolsEngine engine = constructEngine(
+                maxEntities, maxComponents, width, height, isServer);
         engine.updateSettings();
         LOG.info("Engine ready | FOV=%.1f aspect=%.2f zNear=%.4f", engine.FOV, engine.aspect, engine.Z_NEAR);
         return engine;
+    }
+
+    private static FoolsEngine constructEngine(
+            int maxEntities,
+            int maxComponents,
+            int width,
+            int height,
+            boolean isServer
+    ) {
+        try {
+            var constructor = FoolsEngine.class.getDeclaredConstructor(
+                    int.class,
+                    int.class,
+                    int.class,
+                    int.class,
+                    boolean.class);
+            constructor.setAccessible(true);
+            return constructor.newInstance(
+                    maxEntities,
+                    maxComponents,
+                    width,
+                    height,
+                    isServer);
+        } catch (InvocationTargetException exception) {
+            Throwable cause = exception.getCause();
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            if (cause instanceof Error error) {
+                throw error;
+            }
+            throw new IllegalStateException(
+                    "FoolsEngine construction failed", cause);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException(
+                    "Unable to access the FoolsEngine bootstrap constructor",
+                    exception);
+        }
     }
 
     public static void validateSystems(FoolsEngine engine) {
