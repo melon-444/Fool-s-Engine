@@ -123,7 +123,6 @@ class GLRenderFrame implements RenderFrame {
     }
 
     private void executePass(ShaderPass pass, RenderScene scene, List<RenderCommand> commands) {
-        pass.validate();
         ensureViewportKnown();
         int savedViewportX = viewportX;
         int savedViewportY = viewportY;
@@ -157,6 +156,7 @@ class GLRenderFrame implements RenderFrame {
                     pass.colorLoadOp() == ShaderPass.LoadOp.CLEAR);
         }
 
+        invalidateLoadAttachments(pass, target);
         clearPassAttachments(pass, scene, target);
 
         if (pass.type() == ShaderPass.Type.POSTEFFECT) {
@@ -168,6 +168,8 @@ class GLRenderFrame implements RenderFrame {
                 renderCommands(commands, pass);
             }
         }
+
+        invalidateStoreAttachments(pass, target);
 
         if (target != null) {
             target.unbind();
@@ -196,6 +198,44 @@ class GLRenderFrame implements RenderFrame {
 
         if (mask != 0) {
             glClear(mask);
+        }
+    }
+
+    private void invalidateLoadAttachments(ShaderPass pass, RenderTarget target) {
+        invalidateAttachments(
+                pass.colorLoadOp() == ShaderPass.LoadOp.DONT_CARE,
+                pass.depthLoadOp() == ShaderPass.LoadOp.DONT_CARE,
+                target);
+    }
+
+    private void invalidateStoreAttachments(ShaderPass pass, RenderTarget target) {
+        invalidateAttachments(
+                pass.colorStoreOp() == ShaderPass.StoreOp.DONT_CARE,
+                pass.depthStoreOp() == ShaderPass.StoreOp.DONT_CARE,
+                target);
+    }
+
+    private void invalidateAttachments(
+            boolean discardColor, boolean discardDepth, RenderTarget target) {
+        boolean hasColor = target == null
+                || target.getType() == RenderTarget.TARGET_COLOR;
+        boolean invalidateColor = discardColor && hasColor;
+
+        if (!invalidateColor && !discardDepth) {
+            return;
+        }
+
+        int colorAttachment = target == null ? GL_COLOR : GL_COLOR_ATTACHMENT0;
+        int depthAttachment = target == null ? GL_DEPTH : GL_DEPTH_ATTACHMENT;
+
+        if (invalidateColor && discardDepth) {
+            glInvalidateFramebuffer(
+                    GL_FRAMEBUFFER,
+                    new int[]{colorAttachment, depthAttachment});
+        } else {
+            glInvalidateFramebuffer(
+                    GL_FRAMEBUFFER,
+                    new int[]{invalidateColor ? colorAttachment : depthAttachment});
         }
     }
 

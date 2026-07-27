@@ -4,7 +4,6 @@ import com.melon.foolsEngine.api.input.*;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
-import com.melon.foolsEngine.api.rendering.shader.ShaderPass;
 import com.melon.foolsEngine.api.rendering.resource.*;
 import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
 import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
@@ -87,8 +86,13 @@ public class TesECSRenderFlow {
 
         win.show();
         RenderFrame frame = foolsEngine.frame;
-        foolsEngine.entityFactory.createShaderPass(0, ShaderPass.color(shader));
-        //foolsEngine.entityFactory.createShaderPass(1, ShaderPass.color(depthShader));
+        foolsEngine.entityFactory.createShaderPass(
+                0,
+                FoolsEngine.StandardPasses.core(depthShader).build());
+        foolsEngine.entityFactory.createShaderPass(
+                1,
+                FoolsEngine.StandardPasses.core().build());
+
 
         ImGuiContext imGuiContext = new ImGuiContext();
         imGuiContext.init(win.getID(), "#version 330");
@@ -160,13 +164,13 @@ public class TesECSRenderFlow {
         input.bind(input.getMouse(), FoolsEngineKeyCode.MOUSE_RIGHT, switchMouseMode);
 
         float moveSpeed = 5.0f;
-            float lookSensitivity = 1.0f;
-            float yaw = 0;
-            float pitch = 0;
+        float lookSensitivity = 1.0f;
+        float yaw = 0;
+        float pitch = 0;
 
-            Vector3f worldUp = new Vector3f(0, 1, 0);
+        Vector3f worldUp = new Vector3f(0, 1, 0);
 
-            boolean renderDebug = false;
+        boolean renderDebug = false;
 
         java.util.Random rng = new java.util.Random();
 
@@ -186,10 +190,10 @@ public class TesECSRenderFlow {
                 float finalYaw = yaw;
                 float finalPitch = pitch;
                 scheduler.additionalRenderTask(() -> {
-                        imGuiRenderer.beginFrame();
-                        debugOverlay.render(scene, deltaTime, renderTimeMs,
-                                cameraPos, finalYaw, finalPitch, frame.getDrawCallCount());
-                        imGuiRenderer.endFrame();
+                    imGuiRenderer.beginFrame();
+                    debugOverlay.render(scene, deltaTime, renderTimeMs,
+                            cameraPos, finalYaw, finalPitch, frame.getDrawCallCount());
+                    imGuiRenderer.endFrame();
                 });
             }else{
                 scheduler.additionalRenderTask(() -> {});

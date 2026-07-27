@@ -21,6 +21,7 @@ import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.core.ECS.system.ClientSystem;
 import com.melon.foolsEngine.core.ECS.system.ServerSystem;
+import com.melon.foolsEngine.core.annotation.SubscribeEvent;
 import com.melon.foolsEngine.core.events.EventBus;
 import com.melon.foolsEngine.core.events.builtInEvents.PostRenderEvent;
 import com.melon.foolsEngine.core.events.builtInEvents.PreRenderEvent;
@@ -70,9 +71,9 @@ public class SystemScheduler {
         }
 
         scheduleSystem(systemManager);
-
     }
-
+    
+    @SubscribeEvent
     public void scheduleSystem(SystemManager systemManager) {
         for(var system: systemManager.getRegisteredSystems().values()) {
             if (system instanceof ClientSystem clientSystem)

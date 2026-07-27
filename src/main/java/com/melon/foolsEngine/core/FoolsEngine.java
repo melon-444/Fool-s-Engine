@@ -18,6 +18,8 @@ package com.melon.foolsEngine.core;
 
 import com.melon.foolsEngine.api.rendering.render.GraphicsContext;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
+import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowPassContext;
+import com.melon.foolsEngine.api.rendering.shader.ShaderPass;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.core.ECS.basicComponents.*;
@@ -55,6 +57,74 @@ public class FoolsEngine {
     public float Z_FAR = 1E10f;
 
     public Window mainWindow;
+
+    /**
+     * Optional, configurable templates for commonly used rendering passes.
+     *
+     * <p>These methods only create builders. They do not register systems,
+     * create ECS entities, or submit anything to a {@code RenderScene}.</p>
+     */
+    public static final class StandardPasses {
+
+        private StandardPasses() {
+        }
+
+        /** Main CORE pass using each command's material shader and parameters. */
+        public static ShaderPass.Builder core() {
+            return ShaderPass.core()
+                    .colorOps(
+                            ShaderPass.LoadOp.CLEAR,
+                            ShaderPass.StoreOp.STORE)
+                    .depthOps(
+                            ShaderPass.LoadOp.CLEAR,
+                            ShaderPass.StoreOp.STORE);
+        }
+
+        /** CORE pass using one pass shader and each command's material parameters. */
+        public static ShaderPass.Builder core(ShaderProgram shader) {
+            return ShaderPass.core(shader)
+                    .colorOps(
+                            ShaderPass.LoadOp.CLEAR,
+                            ShaderPass.StoreOp.STORE)
+                    .depthOps(
+                            ShaderPass.LoadOp.CLEAR,
+                            ShaderPass.StoreOp.STORE);
+        }
+
+        /** Fullscreen post-effect that preserves its color result. */
+        public static ShaderPass.Builder postEffect(ShaderProgram shader) {
+            return ShaderPass.postEffect(shader)
+                    .colorOps(
+                            ShaderPass.LoadOp.LOAD,
+                            ShaderPass.StoreOp.STORE)
+                    .depthOps(
+                            ShaderPass.LoadOp.DONT_CARE,
+                            ShaderPass.StoreOp.DONT_CARE);
+        }
+
+        /**
+         * Depth-only shadow pass for a context prepared by a ShadowManager.
+         * The caller remains responsible for deciding when and for which lights
+         * this pass is created and submitted.
+         */
+        public static ShaderPass.Builder shadow(ShadowPassContext context) {
+            if (context == null) {
+                throw new NullPointerException("context");
+            }
+            return ShaderPass.core()
+                    .output(context.target())
+                    .camera(context.shadowCamera())
+                    .overrideMaterial(context.depthMaterial())
+                    .arrayLayer(context.layer())
+                    .colorOps(
+                            ShaderPass.LoadOp.DONT_CARE,
+                            ShaderPass.StoreOp.DONT_CARE)
+                    .depthOps(
+                            ShaderPass.LoadOp.CLEAR,
+                            ShaderPass.StoreOp.STORE)
+                    .clearDepth(0.0);
+        }
+    }
 
     FoolsEngine(int maxEntities, int maxComponents, int windowWidth, int windowHeight, boolean isServer) {
         this.isServer = isServer;

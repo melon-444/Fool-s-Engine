@@ -21,6 +21,9 @@ import com.melon.foolsEngine.core.ECS.system.ClientSystem;
 import com.melon.foolsEngine.core.ECS.system.ServerSystem;
 import com.melon.foolsEngine.core.ECS.system.System;
 import com.melon.foolsEngine.core.FoolsEngine;
+import com.melon.foolsEngine.core.events.EventBus;
+import com.melon.foolsEngine.core.events.builtInEvents.ShadowPassPreparedEvent;
+import com.melon.foolsEngine.core.events.builtInEvents.SystemRegisteredEvent;
 import com.melon.foolsEngine.util.Signature;
 import com.melon.foolsEngine.util.logger.Logger;
 
@@ -82,9 +85,8 @@ public class SystemManager {
                 }
             }
 
-            if(Instance.systemScheduler!=null){
-                Instance.systemScheduler.scheduleSystem(this);
-            }
+            EventBus bus = EventBus.get("SystemBus");
+            if (bus != null) bus.emit(new SystemRegisteredEvent(this));
 
         } catch (Exception e) {
             LOG.error("Failed to register system %s: %s", systemClass.getSimpleName(), e.toString());

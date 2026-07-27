@@ -1,16 +1,9 @@
 package com.melon.foolsEngine.core.ECS.system;
 
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
-import com.melon.foolsEngine.api.rendering.shader.ShaderPass;
-import com.melon.foolsEngine.api.rendering.resource.Camera;
-import com.melon.foolsEngine.api.rendering.resource.Light;
-import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
-import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowManager;
-import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowPassContext;
 import com.melon.foolsEngine.core.ECS.basicComponents.RenderPassComponent;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.SparseSet;
-import org.joml.Matrix4f;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -36,10 +29,6 @@ public class RenderPassCollector extends ClientSystem {
 
     @Override
     public void update(float dt, RenderScene scene) {
-        scene.clearPasses();
-
-        generateShadowPasses(scene);
-
         List<RenderPassComponent> userPasses = new ArrayList<>();
         for (int e : entities) {
             RenderPassComponent pc = passComps.getComponent(e);
@@ -49,31 +38,6 @@ public class RenderPassCollector extends ClientSystem {
 
         for (RenderPassComponent pc : userPasses) {
             scene.submitPass(pc.pass);
-        }
-    }
-
-    private void generateShadowPasses(RenderScene scene) {
-        LightEnvironment lightEnv = scene.getLighting();
-        if (lightEnv == null) return;
-        ShadowManager sm = lightEnv.getShadowManager();
-        Camera mainCamera = scene.getCamera();
-        if (sm == null || mainCamera == null) return;
-
-        Camera camCopy = new Camera(
-                new Matrix4f(mainCamera.view),
-                new Matrix4f(mainCamera.projection));
-
-        for (Light light : lightEnv.getLights()) {
-            if (!light.castsShadow()) continue;
-            ShadowPassContext ctx = sm.prepareShadow(light, camCopy);
-            ShaderPass sp = ShaderPass.core()
-                    .output(ctx.target())
-                    .camera(ctx.shadowCamera())
-                    .overrideMaterial(ctx.depthMaterial())
-                    .arrayLayer(ctx.layer())
-                    .colorLoad(ShaderPass.LoadOp.LOAD)
-                    .clearDepth(0.0);
-            scene.submitPass(sp);
         }
     }
 }
