@@ -1,5 +1,6 @@
 plugins {
     id("java-library")
+    id ("com.diffplug.spotless") version("8.9.0")
 }
 
 group = "com.melon.foolsEngine"
@@ -10,6 +11,15 @@ java {
         languageVersion = JavaLanguageVersion.of(21)
     }
         withSourcesJar()
+}
+
+spotless {
+    java {
+        target ("src/**/*.java")
+        licenseHeaderFile(
+            rootProject.file("config/LICENSE_HEADER.txt"),
+        )
+    }
 }
 
 val lwjglNatives = project.properties["lwjglNatives"] as? String ?: "windows"
