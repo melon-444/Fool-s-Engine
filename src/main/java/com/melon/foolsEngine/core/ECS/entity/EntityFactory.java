@@ -91,14 +91,6 @@ public class EntityFactory {
         return entityID;
     }
 
-    /** @deprecated Use {@link #createLightEnvironment()} and get env from the returned entity ID. */
-    @Deprecated
-    public int createLightEnvironment(LightEnvironment env) {
-        final int entityID = Instance.entityManager.createEntity();
-        Instance.entityManager.bindComponent(entityID, new LightEnvComponent(env));
-        return entityID;
-    }
-
     /** Create an entity that adds a {@link ShaderPass} to the rendering pipeline. */
     public int createShaderPass(int order, ShaderPass pass) {
         final int entityID = Instance.entityManager.createEntity();

@@ -15,16 +15,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package com.melon.foolsEngine.util;
 
-import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
-import org.joml.Vector4f;
 
 /**
- * Frustum culling for reverse-Z infinite-far projection.
- * <p>
- * LEFT/RIGHT/BOTTOM/TOP use the homogeneous plane method (correct for any depth).
- * NEAR plane is built from NDC corner unprojection (world-space).
- * FAR plane is NOT tested -- the frustum is open-ended at the far side.
+ * Frustum intersection for a reverse-Z, zero-to-one,
+ * infinite-far projection.
+ *
+ * <p>The far plane is intentionally omitted.</p>
  */
 public final class RevZFrustumIntersection {
 
@@ -33,88 +30,169 @@ public final class RevZFrustumIntersection {
     public static final int INSIDE = 1;
 
     private static final int PLANE_COUNT = 5;
+    private static final float MIN_NORMAL_LENGTH_SQUARED = 1E-20f;
+
     private final float[] planes = new float[PLANE_COUNT * 4];
 
     private int culled;
     private int tested;
 
-    public int culledCount() { return culled; }
-    public int testedCount() { return tested; }
-    public void resetCounters() { culled = 0; tested = 0; }
+    public int culledCount() {
+        return culled;
+    }
 
+    public int testedCount() {
+        return tested;
+    }
+
+    public void resetCounters() {
+        culled = 0;
+        tested = 0;
+    }
+
+    /**
+     * Updates the frustum from projection * view.
+     *
+     * <p>Assumes OpenGL zero-to-one clip depth and reverse-Z.</p>
+     */
     public void setVp(Matrix4fc vp) {
-        float m00 = vp.m00(), m01 = vp.m01(), m02 = vp.m02(), m03 = vp.m03();
-        float m10 = vp.m10(), m11 = vp.m11(), m12 = vp.m12(), m13 = vp.m13();
-        float m20 = vp.m20(), m21 = vp.m21(), m22 = vp.m22(), m23 = vp.m23();
-        float m30 = vp.m30(), m31 = vp.m31(), m32 = vp.m32(), m33 = vp.m33();
+        // Left: clipW + clipX >= 0
+        setPlane(
+                0,
+                vp.m03() + vp.m00(),
+                vp.m13() + vp.m10(),
+                vp.m23() + vp.m20(),
+                vp.m33() + vp.m30()
+        );
 
-        // Left:   w + x ≥ 0  (Row4 + Row1)
-        p(0, m30 + m00, m31 + m01, m32 + m02, m33 + m03);
-        // Right:  w - x ≥ 0  (Row4 - Row1)
-        p(1, m30 - m00, m31 - m01, m32 - m02, m33 - m03);
-        // Bottom: w + y ≥ 0  (Row4 + Row2)
-        p(2, m30 + m10, m31 + m11, m32 + m12, m33 + m13);
-        // Top:    w - y ≥ 0  (Row4 - Row2)
-        p(3, m30 - m10, m31 - m11, m32 - m12, m33 - m13);
+        // Right: clipW - clipX >= 0
+        setPlane(
+                1,
+                vp.m03() - vp.m00(),
+                vp.m13() - vp.m10(),
+                vp.m23() - vp.m20(),
+                vp.m33() - vp.m30()
+        );
 
-        // Near: world-space plane built from NDC near corners (z=1)
-        float[][] nc = {
-            {-1, -1, 1, 1}, { 1, -1, 1, 1}, {-1,  1, 1, 1}, { 1,  1, 1, 1},
-        };
-        Matrix4f inv = new Matrix4f(vp).invert();
-        Vector4f t = new Vector4f();
-        float[][] ws = new float[4][3];
-        for (int i = 0; i < 4; i++) {
-            t.set(nc[i][0], nc[i][1], nc[i][2], nc[i][3]);
-            t.mul(inv);
-            float w = t.w;
-            float s = Math.abs(w) > 1e-30f ? 1f / w : 1f;
-            ws[i][0] = t.x * s; ws[i][1] = t.y * s; ws[i][2] = t.z * s;
+        // Bottom: clipW + clipY >= 0
+        setPlane(
+                2,
+                vp.m03() + vp.m01(),
+                vp.m13() + vp.m11(),
+                vp.m23() + vp.m21(),
+                vp.m33() + vp.m31()
+        );
+
+        // Top: clipW - clipY >= 0
+        setPlane(
+                3,
+                vp.m03() - vp.m01(),
+                vp.m13() - vp.m11(),
+                vp.m23() - vp.m21(),
+                vp.m33() - vp.m31()
+        );
+
+        /*
+         * Reverse-Z with GL_ZERO_TO_ONE:
+         *
+         * near: clipW - clipZ >= 0
+         * far:  clipZ >= 0
+         *
+         * The infinite far plane is omitted.
+         */
+        setPlane(
+                4,
+                vp.m03() - vp.m02(),
+                vp.m13() - vp.m12(),
+                vp.m23() - vp.m22(),
+                vp.m33() - vp.m32()
+        );
+    }
+
+    private void setPlane(
+            int index,
+            float nx,
+            float ny,
+            float nz,
+            float d
+    ) {
+        float lengthSquared = nx * nx + ny * ny + nz * nz;
+
+        if (!(lengthSquared > MIN_NORMAL_LENGTH_SQUARED)
+                || !Float.isFinite(lengthSquared)) {
+            throw new IllegalArgumentException(
+                    "Degenerate frustum plane: " + index
+            );
         }
-        nearPlane(4, ws[0], ws[2], ws[1]);
+
+        float inverseLength =
+                1.0f / (float) Math.sqrt(lengthSquared);
+
+        int base = index * 4;
+        planes[base]     = nx * inverseLength;
+        planes[base + 1] = ny * inverseLength;
+        planes[base + 2] = nz * inverseLength;
+        planes[base + 3] = d * inverseLength;
     }
 
-    /** Stores a homogeneous plane, normalised. */
-    private void p(int idx, float nx, float ny, float nz, float d) {
-        float len = (float) Math.sqrt(nx * nx + ny * ny + nz * nz);
-        if (len > 1e-30f) { nx /= len; ny /= len; nz /= len; d /= len; }
-        int i = idx * 4;
-        planes[i]     = nx;
-        planes[i + 1] = ny;
-        planes[i + 2] = nz;
-        planes[i + 3] = d;
-    }
-
-    /** Builds an inward-facing plane from 3 world-space corners (CCW from inside). */
-    private void nearPlane(int idx, float[] a, float[] b, float[] c) {
-        float bx = b[0] - a[0], by = b[1] - a[1], bz = b[2] - a[2];
-        float cx = c[0] - a[0], cy = c[1] - a[1], cz = c[2] - a[2];
-        float nx = by * cz - bz * cy;
-        float ny = bz * cx - bx * cz;
-        float nz = bx * cy - by * cx;
-        float len = (float) Math.sqrt(nx * nx + ny * ny + nz * nz);
-        if (len > 1e-30f) { nx /= len; ny /= len; nz /= len; }
-        int i = idx * 4;
-        planes[i]     = nx;
-        planes[i + 1] = ny;
-        planes[i + 2] = nz;
-        planes[i + 3] = -(nx * a[0] + ny * a[1] + nz * a[2]);
-    }
-
-    public int testAab(float minX, float minY, float minZ,
-                        float maxX, float maxY, float maxZ) {
+    public int testAab(
+            float minX,
+            float minY,
+            float minZ,
+            float maxX,
+            float maxY,
+            float maxZ
+    ) {
         tested++;
-        for (int i = 0; i < PLANE_COUNT; i++) {
-            int b = i * 4;
-            float nx = planes[b], ny = planes[b + 1], nz = planes[b + 2], d = planes[b + 3];
-            float px = nx > 0 ? maxX : minX;
-            float py = ny > 0 ? maxY : minY;
-            float pz = nz > 0 ? maxZ : minZ;
-            if (nx * px + ny * py + nz * pz + d < 0) {
+
+        boolean intersecting = false;
+
+        for (int plane = 0; plane < PLANE_COUNT; plane++) {
+            int base = plane * 4;
+
+            float nx = planes[base];
+            float ny = planes[base + 1];
+            float nz = planes[base + 2];
+            float d  = planes[base + 3];
+
+            /*
+             * Vertex farthest along the inward-facing normal.
+             * If this is outside, the entire AABB is outside.
+             */
+            float positiveX = nx >= 0.0f ? maxX : minX;
+            float positiveY = ny >= 0.0f ? maxY : minY;
+            float positiveZ = nz >= 0.0f ? maxZ : minZ;
+
+            float positiveDistance =
+                    nx * positiveX
+                            + ny * positiveY
+                            + nz * positiveZ
+                            + d;
+
+            if (positiveDistance < 0.0f) {
                 culled++;
                 return OUTSIDE;
             }
+
+            /*
+             * Vertex farthest opposite the inward-facing normal.
+             * If this is outside, the AABB crosses this plane.
+             */
+            float negativeX = nx >= 0.0f ? minX : maxX;
+            float negativeY = ny >= 0.0f ? minY : maxY;
+            float negativeZ = nz >= 0.0f ? minZ : maxZ;
+
+            float negativeDistance =
+                    nx * negativeX
+                            + ny * negativeY
+                            + nz * negativeZ
+                            + d;
+
+            if (negativeDistance < 0.0f) {
+                intersecting = true;
+            }
         }
-        return INSIDE;
+
+        return intersecting ? INTERSECT : INSIDE;
     }
 }

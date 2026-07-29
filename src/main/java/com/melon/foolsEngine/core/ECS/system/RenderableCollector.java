@@ -93,8 +93,7 @@ public class RenderableCollector extends ClientSystem {
             submitted++;
         }
 
-        if (hasFrustum && skipped > 0) {
-            log.trace("cull: %d/%d submitted, %d skipped", submitted, entities.size(), skipped);
-        }
+        if (hasFrustum && skipped > 0) log.trace("cull: %d/%d submitted, %d skipped", submitted, entities.size(), skipped);
+
     }
 }
