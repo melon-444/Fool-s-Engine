@@ -18,6 +18,7 @@ class GLMesh implements Mesh {
     private int ebo;
     private boolean uploaded = false;
     private MeshData meshData;
+    private float[] aabb;
 
     private int instanceVBO = 0;
     private boolean instanceConfigured = false;
@@ -62,6 +63,26 @@ class GLMesh implements Mesh {
 
         EventBus bus = EventBus.get("SystemBus");
         if (bus != null) bus.emit(new MeshUploadedEvent(this));
+        computeAABB(data);
+    }
+
+    private void computeAABB(MeshData data) {
+        float[] verts = data.vertices();
+        VertexLayout layout = data.layout();
+        int stride = layout.stride();
+        int posOff = 0;
+        for (VertexLayout.VertexAttribute attr : layout.attributes()) {
+            if (attr.location() == 0) { posOff = attr.offset(); break; }
+        }
+        if (stride == 0 || verts.length < posOff + 3) { aabb = null; return; }
+        float minX = Float.MAX_VALUE, minY = Float.MAX_VALUE, minZ = Float.MAX_VALUE;
+        float maxX = -Float.MAX_VALUE, maxY = -Float.MAX_VALUE, maxZ = -Float.MAX_VALUE;
+        for (int i = posOff; i + 2 < verts.length; i += stride) {
+            float x = verts[i], y = verts[i + 1], z = verts[i + 2];
+            if (x < minX) minX = x; if (y < minY) minY = y; if (z < minZ) minZ = z;
+            if (x > maxX) maxX = x; if (y > maxY) maxY = y; if (z > maxZ) maxZ = z;
+        }
+        aabb = new float[]{ minX, minY, minZ, maxX, maxY, maxZ };
     }
 
     @Override
@@ -94,6 +115,11 @@ class GLMesh implements Mesh {
     @Override
     public int indexCount() {
         return meshData.indices().length;
+    }
+
+    @Override
+    public float[] getAABB() {
+        return aabb;
     }
 
     void configureInstancedModelMatrix() {

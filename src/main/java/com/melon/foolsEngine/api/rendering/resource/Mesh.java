@@ -31,4 +31,6 @@ public interface Mesh {
     void unbind();
     /** @return the number of indices in the element buffer */
     int indexCount();
+    /** @return the axis-aligned bounding box as {minX, minY, minZ, maxX, maxY, maxZ}, or null if not computed */
+    float[] getAABB();
 }

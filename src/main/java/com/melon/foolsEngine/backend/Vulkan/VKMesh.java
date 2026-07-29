@@ -159,4 +159,5 @@ class VKMesh implements Mesh {
     @Override public void bind() {}
     @Override public void unbind() {}
     @Override public int indexCount() { return indexCount; }
+    @Override public float[] getAABB() { return null; }
 }

@@ -75,7 +75,7 @@ public class TesECSRenderFlow {
         Vector3f origin = new Vector3f(0, 0, 5);
         for (int i = 0; i < 10; i++) {
             for (int j = 0; j < 10; j++) {
-                for(int k=0;k<1;k++){
+                for(int k=0;k<10;k++){
                     Material mat = (i % 2 == 0) ? arrayMaterial : material;
                     Vector3f pos = new Vector3f(origin).add(3 * i, 5*k, 2 * j);
                     foolsEngine.entityFactory.createModelEntity(
