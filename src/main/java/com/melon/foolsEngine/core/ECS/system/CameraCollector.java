@@ -22,6 +22,7 @@ import com.melon.foolsEngine.core.ECS.basicComponents.TransformComponent;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.core.events.EventBus;
 import com.melon.foolsEngine.core.events.builtInEvents.MainCameraChangedEvent;
+import com.melon.foolsEngine.util.ProjectionType;
 import com.melon.foolsEngine.util.SparseSet;
 import org.joml.Matrix4f;
 
@@ -64,9 +65,16 @@ public class CameraCollector extends ClientSystem {
 
             view.identity().set(t.getMatrix().invert());
             proj.identity();
-            com.melon.foolsEngine.util.PerspectiveProjection persp =
-                    new com.melon.foolsEngine.util.PerspectiveProjection(cam.FOVy, INSTANCE.aspect, cam.near);
-            persp.get(proj);
+            if (cam.projectionType == ProjectionType.PERSPECTIVE) {
+                com.melon.foolsEngine.util.PerspectiveProjection persp =
+                        new com.melon.foolsEngine.util.PerspectiveProjection(cam.FOVy, INSTANCE.aspect, cam.near);
+                persp.get(proj);
+            } else if (cam.projectionType == ProjectionType.ORTHOGRAPHIC) {
+                com.melon.foolsEngine.util.OrthogonalProjection orth =
+                        new com.melon.foolsEngine.util.OrthogonalProjection(
+                                cam.orthoSize * INSTANCE.aspect, cam.orthoSize, cam.near, cam.far);
+                orth.get(proj);
+            } else throw new IllegalStateException("Unknown projection type");
             Camera camera = new Camera(new Matrix4f(view), new Matrix4f(proj));
             scene.setCamera(camera);
 

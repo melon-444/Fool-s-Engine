@@ -19,33 +19,43 @@ import com.melon.foolsEngine.util.ProjectionType;
 
 public class CameraComponent extends Component {
     public ProjectionType projectionType;
+    /** Field of view in degrees (perspective only). */
     public float FOVy;
     public float near;
-    //public float far; infinite
+    /** Far plane distance (orthographic only; perspective uses infinite far). */
+    public float far;
+    /** Vertical half-extent in world-space units (orthographic only). */
     public float orthoSize;
     public boolean active;
 
     /** When true, this camera is selected by CameraCollector as the scene's main view camera. */
     public boolean isMainCam = true;
 
-    public CameraComponent(float FOV, float near) {
-        this(FOV, near, 1f, true);
+    /** Perspective camera with default FOVy. */
+    public CameraComponent(float FOVy, float near) {
+        this(FOVy, near, true);
     }
 
-    public CameraComponent(float FOV, float near, float orthoSize) {
-        this(FOV, near,orthoSize, true);
-    }
-
-    public CameraComponent(float FOV, float near, float orthoSize, boolean active) {
-        this(FOV,near,orthoSize,active,ProjectionType.PERSPECTIVE);
-    }
-
-    public CameraComponent(float FOV, float near,  float orthoSize, boolean active, ProjectionType projectionType) {
-        this.FOVy = FOV;
+    /** Perspective camera. */
+    public CameraComponent(float FOVy, float near, boolean active) {
+        this.projectionType = ProjectionType.PERSPECTIVE;
+        this.FOVy = FOVy;
         this.near = near;
+        this.active = active;
+    }
+
+    /** Orthographic camera. */
+    public CameraComponent(float near, float far, ProjectionType marker, float orthoSize) {
+        this(near, far, marker, orthoSize, true);
+    }
+
+    /** Orthographic camera with active flag. */
+    public CameraComponent(float near, float far, ProjectionType marker, float orthoSize, boolean active) {
+        this.projectionType = ProjectionType.ORTHOGRAPHIC;
+        this.near = near;
+        this.far = far;
         this.orthoSize = orthoSize;
         this.active = active;
-        this.projectionType = projectionType;
     }
 }
 

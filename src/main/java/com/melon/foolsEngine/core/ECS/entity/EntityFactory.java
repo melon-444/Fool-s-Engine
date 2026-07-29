@@ -26,6 +26,7 @@ import com.melon.foolsEngine.core.ECS.basicComponents.RenderableComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.RenderPassComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.TransformComponent;
 import com.melon.foolsEngine.core.FoolsEngine;
+import com.melon.foolsEngine.util.ProjectionType;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -81,6 +82,16 @@ public class EntityFactory {
         TransformComponent transform = new TransformComponent(position);
         Instance.entityManager.bindComponent(entityID, transform);
         Instance.entityManager.bindComponent(entityID, new CameraComponent(Instance.FOV, Instance.Z_NEAR));
+        return transform;
+    }
+
+    /** Create an orthographic camera entity. orthoSize is the vertical half-extent in world units. */
+    public TransformComponent createOrthoCamera(Vector3f position, float orthoSize, float near, float far) {
+        final int entityID = Instance.entityManager.createEntity();
+        TransformComponent transform = new TransformComponent(position);
+        Instance.entityManager.bindComponent(entityID, transform);
+        Instance.entityManager.bindComponent(entityID,
+                new CameraComponent(near, far, ProjectionType.ORTHOGRAPHIC, orthoSize));
         return transform;
     }
 

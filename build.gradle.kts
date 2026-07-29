@@ -59,6 +59,7 @@ if (lwjglUseMaven) {
             exclude(group = "org.lwjgl")
         }
         testRuntimeOnly("io.github.spair:imgui-java-natives-$lwjglNatives:$imguiVersion")
+        testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
     }
 } else {
     repositories {
@@ -96,10 +97,15 @@ if (lwjglUseMaven) {
             exclude(group = "org.lwjgl")
         }
         testRuntimeOnly("io.github.spair:imgui-java-natives-$lwjglNatives:$imguiVersion")
+        testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
     }
 }
 
 val nmtJvmArgs = listOf("-XX:NativeMemoryTracking=detail")
+
+tasks.test {
+    useJUnitPlatform()
+}
 
 tasks.register<JavaExec>("runTestBackend") {
     dependsOn(tasks.compileTestJava)

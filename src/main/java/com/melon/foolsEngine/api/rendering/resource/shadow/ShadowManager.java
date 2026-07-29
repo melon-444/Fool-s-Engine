@@ -170,7 +170,7 @@ public class ShadowManager {
 
     /**
      * Rebuilds a directional light's shadow camera frustum from the main camera's view.
-     * Formerly part of {@link Light#buildDirLightShadowCam(Camera)}.
+     * Formerly part of {@link Light}(Deleted deprecated code).
      */
     private void updateDirShadowCamera(Light light, Camera mainCamera) {
         if (light.type != Light.DIRECTIONAL || light.shadowInfo == null
