@@ -29,6 +29,11 @@ public class RenderableCollector extends ClientSystem {
     }
 
     @Override
+    public boolean isPinned() {
+        return true;
+    }
+
+    @Override
     public void update(float dt, RenderScene scene) {
         for (int e : entities) {
             TransformComponent t = transforms.getComponent(e);

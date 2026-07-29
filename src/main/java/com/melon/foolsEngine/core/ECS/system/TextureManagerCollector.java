@@ -19,6 +19,11 @@ public class TextureManagerCollector extends ClientSystem {
     }
 
     @Override
+    public boolean isPinned() {
+        return true;
+    }
+
+    @Override
     public void update(float dt, RenderScene scene) {
         for (int e : entities) {
             TextureManagerComponent tm = textureMnrs.getComponent(e);

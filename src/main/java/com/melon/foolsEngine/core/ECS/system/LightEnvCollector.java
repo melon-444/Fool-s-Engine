@@ -19,6 +19,11 @@ public class LightEnvCollector extends ClientSystem {
     }
 
     @Override
+    public boolean isPinned() {
+        return true;
+    }
+
+    @Override
     public void update(float dt, RenderScene scene) {
         for (int e : entities) {
             LightEnvComponent le = lightEnvs.getComponent(e);

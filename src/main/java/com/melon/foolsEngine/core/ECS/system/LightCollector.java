@@ -37,6 +37,11 @@ public class LightCollector extends ClientSystem {
     }
 
     @Override
+    public boolean isPinned() {
+        return true;
+    }
+
+    @Override
     public void update(float dt, RenderScene scene) {
         LightEnvironment env = scene.getLighting();
         if (env == null) return;

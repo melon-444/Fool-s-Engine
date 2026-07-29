@@ -22,6 +22,11 @@ public class RenderPassCollector extends ClientSystem {
         return 4;
     }
 
+    @Override
+    public boolean isPinned() {
+        return true;
+    }
+
     public RenderPassCollector(FoolsEngine engine) {
         super(engine);
         passComps = getSparseSet(RenderPassComponent.class);

@@ -27,7 +27,9 @@ import com.melon.foolsEngine.core.events.EventBus;
 import com.melon.foolsEngine.core.events.builtInEvents.PostRenderEvent;
 import com.melon.foolsEngine.core.events.builtInEvents.PreRenderEvent;
 import com.melon.foolsEngine.core.events.builtInEvents.SystemRegisteredEvent;
+import com.melon.foolsEngine.core.events.builtInEvents.SystemUnregisteredEvent;
 import com.melon.foolsEngine.core.ECS.system.System;
+import com.melon.foolsEngine.util.logger.Logger;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -39,6 +41,7 @@ public class SystemScheduler {
     private static final long FIXED_DT_NS = 16_666_667L;
     private static final float FIXED_DT_S = FIXED_DT_NS * 1e-9f;
     private static final int MAX_FRAME_CATCHUP = 5;
+    private final Logger logger = new Logger("SysScheduler");
 
     private record ServerEntry(ServerSystem<?> system, Object ctx) {
     }
@@ -82,7 +85,13 @@ public class SystemScheduler {
         scheduleSystem(event.systemManager);
     }
 
-    public void scheduleSystem(SystemManager systemManager) {
+    @SubscribeEvent
+    public void onSystemUnregistered(SystemUnregisteredEvent event) {
+        clientSystems.removeIf(cs -> cs.getClass() == event.systemClass);
+        serverEntries.removeIf(se -> se.system.getClass() == event.systemClass);
+    }
+
+    private void scheduleSystem(SystemManager systemManager) {
         for(var system: systemManager.getRegisteredSystems().values()) {
             if (system instanceof ClientSystem clientSystem)
                 registerClient(clientSystem);
@@ -96,14 +105,18 @@ public class SystemScheduler {
     }
 
     private <Context> void registerServer(ServerSystem<?> system, Context ctx) {
-        if(!serverEntries.stream().anyMatch(serverEntry -> serverEntry.system == system))
+        if(!serverEntries.stream().anyMatch(serverEntry -> serverEntry.system == system)) {
             serverEntries.add(new ServerEntry(system, ctx));
+            logger.debug("new ServerSystem %s registered",system.toString());
+        }
         serverEntries.sort(Comparator.comparingInt(entry -> entry.system.priority()));
     }
 
     private void registerClient(ClientSystem system) {
-        if(!clientSystems.contains(system))
+        if(!clientSystems.contains(system)) {
             clientSystems.add(system);
+            logger.debug("new ClientSystem %s registered",system.toString());
+        }
         clientSystems.sort(Comparator.comparingInt(System::priority));
     }
 

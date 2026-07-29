@@ -76,5 +76,12 @@ public abstract class System<Context> {
         return 0;
     }
 
+    /**
+     * Pinned systems cannot be unregistered. Core collectors return true.
+     */
+    public boolean isPinned() {
+        return false;
+    }
+
     public abstract void update(float dt, Context ctx);
 }

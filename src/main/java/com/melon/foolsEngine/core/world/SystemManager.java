@@ -23,6 +23,7 @@ import com.melon.foolsEngine.core.ECS.system.System;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.core.events.EventBus;
 import com.melon.foolsEngine.core.events.builtInEvents.SystemRegisteredEvent;
+import com.melon.foolsEngine.core.events.builtInEvents.SystemUnregisteredEvent;
 import com.melon.foolsEngine.util.Signature;
 import com.melon.foolsEngine.util.logger.Logger;
 
@@ -91,6 +92,23 @@ public class SystemManager {
             LOG.error("Failed to register system %s: %s", systemClass.getSimpleName(), e.toString());
             throw new RuntimeException(e);
         }
+    }
+
+    public void unregisterSystem(Class<? extends System> systemClass) {
+        System system = systems.get(systemClass);
+        if (system == null) return;
+        if (system.isPinned()) {
+            throw new IllegalStateException(
+                "Cannot unregister pinned system: " + systemClass.getSimpleName());
+        }
+        systems.remove(systemClass);
+        signatures.remove(systemClass);
+        for (var entry : receiveComponent.entrySet()) {
+            entry.getValue().remove(systemClass);
+        }
+
+        EventBus bus = EventBus.get("SystemBus");
+        if (bus != null) bus.emit(new SystemUnregisteredEvent(systemClass));
     }
 
     private <T extends System> void setSignature(Class<T> systemClass, Signature signature) {

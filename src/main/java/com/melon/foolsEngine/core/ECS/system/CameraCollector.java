@@ -34,6 +34,11 @@ public class CameraCollector extends ClientSystem {
     }
 
     @Override
+    public boolean isPinned() {
+        return true;
+    }
+
+    @Override
     public void update(float dt, RenderScene scene) {
         for (int e : entities) {
             CameraComponent cam = cameras.getComponent(e);

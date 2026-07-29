@@ -25,6 +25,11 @@ public class MaterialCollector extends ClientSystem {
     }
 
     @Override
+    public boolean isPinned() {
+        return true;
+    }
+
+    @Override
     public void update(float dt, RenderScene scene) {
         // TODO: PBR — iterate materials, bind texture arrays, set per-material UBOs
         // TODO: material instance management (reuse vs per-entity material data)

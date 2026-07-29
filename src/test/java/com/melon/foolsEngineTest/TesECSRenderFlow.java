@@ -34,7 +34,7 @@ import java.nio.file.Path;
 public class TesECSRenderFlow {
     static FoolsEngine foolsEngine;
     private static final int SHADOW_MAP_SIZE = 8192;
-    private static final int MAX_SHADOW_LAYERS = 16;
+    private static final int MAX_SHADOW_LAYERS = 32;
     private static final float SPOT_SHADOW_NEAR = 0.1f;
 
     private static final Logger TESTLOGGER = new Logger();
@@ -47,7 +47,7 @@ public class TesECSRenderFlow {
 
     public static void run(String[] args) {
         foolsEngine = EngineBoot.create(20000000, 100, 2560, 1600, false, LogLevel.DEBUG);
-        foolsEngine.systemManager.registerSystem(ShadowPassCollector.class);
+
         WindowsManager manager = foolsEngine.serviceFactory.getWindowsManager();
         Window win = foolsEngine.mainWindow;
         win.setTitle("TesECSRenderFlow - ECS + SystemScheduler + Shadows");
@@ -108,6 +108,7 @@ public class TesECSRenderFlow {
         ImGuiRenderer imGuiRenderer = new ImGuiRenderer(imGuiContext);
         ImGuiDebugOverlay debugOverlay = new ImGuiDebugOverlay();
 
+        foolsEngine.systemManager.registerSystem(ShadowPassCollector.class);
         int lightEnvEntity = foolsEngine.entityFactory.createLightEnvironment();
         LightEnvironment lightEnv = ((LightEnvComponent)foolsEngine.componentManager.getComponentMap().get(LightEnvComponent.class).get(lightEnvEntity)).env;
         lightEnv.setAmbient(0.08f, 0.08f, 0.08f);
