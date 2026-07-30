@@ -56,15 +56,15 @@ public final class ConstructorInjector {
         try {
             reader = new ClassReader(classBytes);
         } catch (IllegalArgumentException exception) {
-            // 不是 ASM 支持的有效 class 文件
+            // Not a valid class file that ASM supported
             return classBytes;
         }
 
         /*
-         * 第一次读取：只检查类本身是否有目标注解。
+         * First read: only check if target class has target annotation
          *
-         * 不能只搜索常量池字符串，因为类可能只是引用了这个注解，
-         * 注解也可能出现在字段或方法上。
+         * Not just search the constant pool，cause the class might only referenced the annotation.
+         * The annotation might also appear at methods or fields.
          */
         AnnotationDetector detector = new AnnotationDetector();
 
@@ -80,16 +80,16 @@ public final class ConstructorInjector {
         }
 
         /*
-         * 这里只插入一段栈平衡代码：
+         * Insert a stack balanced code：
          *
          *   aload_0
          *   invokestatic EventBus.addListener(Object)
          *
-         * 不增加控制流分支，所以保留原 StackMap Frame 即可，
-         * 只让 ASM 重新计算 maxStack/maxLocals。
+         * Do not add control branch, so we can simply keep the original StackMap Frame,
+         * make ASM recalculate maxStack/maxLocals。
          *
-         * 这样还能避免 COMPUTE_FRAMES 在自定义 ClassLoader 环境下
-         * 调用 getCommonSuperClass() 时发生类加载问题。
+         * This also avoid COMPUTE_FRAMES at custom ClassLoader environment
+         * occurs class loading exception when invoke getCommonSuperClass().
          */
         ClassWriter writer = new ClassWriter(
                 reader,
@@ -128,11 +128,11 @@ public final class ConstructorInjector {
                     @Override
                     protected void onMethodEnter() {
                         /*
-                         * 对普通方法，onMethodEnter() 位于方法开头。
+                         * As for common methods，onMethodEnter() at the beginning of method itself.
                          *
-                         * 对构造器，AdviceAdapter 会跟踪 uninitializedThis，
-                         * 直到 super(...) 或 this(...) 调用完成后才执行这里，
-                         * 因而此时 aload_0 可以安全传递给普通静态方法。
+                         * As for constructor，AdviceAdapter will track uninitializedThis，
+                         * until super(...) or this(...) invoked so that here will be executed，
+                         * So at the  aload_0 can safely deliver to static methods.
                          */
                         loadThis();
                         invokeStatic(
@@ -145,8 +145,8 @@ public final class ConstructorInjector {
         };
 
         /*
-         * AdviceAdapter 需要展开的 Frame 来正确跟踪构造器中的
-         * uninitializedThis 状态。
+         * AdviceAdapter 需要展开的 Frame to correctly track the
+         * uninitializedThis state in the constructor.
          */
         reader.accept(injector, ClassReader.EXPAND_FRAMES);
 
@@ -167,8 +167,9 @@ public final class ConstructorInjector {
                 boolean visible
         ) {
             /*
-             * @Retention(RUNTIME) 对应 visible == true。
-             * 同时这只检查 class_info 的类级注解，不会误判方法和字段。
+             * @Retention(RUNTIME) refers to visible == true。
+             * Also this only check class level annotation of class_info,
+             * will not misjudge methods and fields.
              */
             if (visible && SUBSCRIBER_ANNOTATION.equals(descriptor)) {
                 subscriberAnnotation = true;
