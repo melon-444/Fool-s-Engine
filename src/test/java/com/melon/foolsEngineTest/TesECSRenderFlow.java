@@ -31,7 +31,11 @@ import com.melon.foolsEngine.core.ECS.basicComponents.*;
 import com.melon.foolsEngine.core.ECS.system.ServerSystem;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.core.ECS.system.ShadowPassCollector;
+import com.melon.foolsEngine.core.annotation.EventBusSubscriber;
+import com.melon.foolsEngine.core.annotation.SubscribeEvent;
 import com.melon.foolsEngine.core.bootstrap.EngineBoot;
+import com.melon.foolsEngine.core.events.Event;
+import com.melon.foolsEngine.core.events.EventBus;
 import com.melon.foolsEngine.core.world.SystemScheduler;
 import com.melon.foolsEngine.util.*;
 import com.melon.foolsEngine.util.imgui.ImGuiContext;
@@ -44,6 +48,7 @@ import org.joml.Math;
 
 import java.nio.file.Path;
 
+@EventBusSubscriber
 public class TesECSRenderFlow {
     static FoolsEngine foolsEngine;
     private static final int SHADOW_MAP_SIZE = 8192;
@@ -51,6 +56,13 @@ public class TesECSRenderFlow {
     private static final float SPOT_SHADOW_NEAR = 0.1f;
 
     private static final Logger TESTLOGGER = new Logger();
+
+    private static final class LookDirUpdateEvent extends Event {
+        public final Vector3f lookDir;
+        public LookDirUpdateEvent(Vector3f lookDir) {
+            this.lookDir = new  Vector3f(lookDir);
+        }
+    }
 
     private static final class CameraMovementSystem extends ServerSystem<Void> {
 
@@ -131,6 +143,8 @@ public class TesECSRenderFlow {
                     -(float) Math.cos(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch))
             ).normalize();
 
+            TesECSRenderFlow.lookDir.set(lookDir);
+
             right.set(lookDir).cross(worldUp).normalize();
 
             tmpMove.set(0);
@@ -157,6 +171,9 @@ public class TesECSRenderFlow {
         engineThread.setName("EngineMain");
         engineThread.start();
     }
+
+    private static Vector3f lookDir = new Vector3f(0.0f, 0.0f, 0.0f);
+
 
     public static void run(String[] args) {
         foolsEngine = EngineBoot.create(20000000, 100, 2560, 1600, false, LogLevel.DEBUG);
@@ -303,12 +320,10 @@ public class TesECSRenderFlow {
                 scheduler.additionalRenderTask(() -> {});
             }
 
-            Vector3f lookDir = new Vector3f(cameraTransform.getPosition()).negate().normalize();
-
             if (input.isActionDown(exit)) {
                 break;
             }
-
+            //TESTLOGGER.trace(lookDir.toString());
             if (input.isActionPressed(spawnDirLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 lightEntities.add(foolsEngine.entityFactory.createLightEntity(

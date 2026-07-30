@@ -31,5 +31,5 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 public @interface EventBusSubscriber {
     /** The {@link EventBus#id()} to register with. */
-    String id();
+    String id() default "SystemBus";
 }
