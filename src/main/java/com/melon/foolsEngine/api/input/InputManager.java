@@ -65,9 +65,9 @@ public class InputManager {
     }
 
     /**
-     * call this method at the start of the game frame loop
+     * call this method after glfw window polled events.
      */
-    public void beginFrame() {
+    public void updateFromPolledInputs() {
         inputDevices.forEach(InputDevice::beginFrame);
         state.clearSignalCache();
         for (InputDevice<?> inputDevice : inputDevices) {
@@ -103,9 +103,9 @@ public class InputManager {
     }
 
     /**
-     * call this method at the end of the game frame loop
+     * call this method at the end of the game loop
      */
-    public void endFrame() {
+    public void clearPolledInputs() {
         inputDevices.forEach(InputDevice::endFrame);
     }
 

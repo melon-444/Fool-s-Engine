@@ -63,7 +63,10 @@ public class CameraCollector extends ClientSystem {
             TransformComponent t = transforms.getComponent(e);
             if (t == null) continue;
 
-            view.identity().set(t.getMatrix().invert());
+            // Never invert TransformComponent's cached model matrix in place.
+            // Doing so makes the cached value alternate between model and view
+            // space on frames where the transform is not rebuilt.
+            view.set(t.getMatrix()).invert();
             proj.identity();
             if (cam.projectionType == ProjectionType.PERSPECTIVE) {
                 com.melon.foolsEngine.util.PerspectiveProjection persp =

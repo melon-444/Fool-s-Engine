@@ -167,7 +167,7 @@ public class TestLightBackend {
             float deltaTime = (currentTime - lastTime) / 1e9f;
             lastTime = currentTime;
 
-            input.beginFrame();
+            input.updateFromPolledInputs();
 
             Vector3f forward = new Vector3f(cameraTarget).sub(cameraPos).normalize();
             Vector3f right = new Vector3f(forward).cross(worldUp).normalize();
@@ -305,7 +305,7 @@ public class TestLightBackend {
                 imGuiRenderer.endFrame();
             }
 
-            input.endFrame();
+            input.clearPolledInputs();
             win.update();
 
             try {

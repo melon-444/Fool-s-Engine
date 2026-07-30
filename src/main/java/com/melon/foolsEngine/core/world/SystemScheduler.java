@@ -1,3 +1,18 @@
+// foolsEngine - A custom 3D game engine in Java
+// Copyright (C) 2026  melon_444
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package com.melon.foolsEngine.core.world;
 
 import com.melon.foolsEngine.api.rendering.render.GraphicsContext;
@@ -109,7 +124,7 @@ public class SystemScheduler {
         regOrder.putIfAbsent(system.getClass(), regSeq.getAndIncrement());
         serverEntries.add(new ServerEntry(system, ctx));
         serverPlanDirty = true;
-        logger.debug("new ServerSystem %s registered", system.getClass().getSimpleName());
+        logger.debug("new ServerSystem %s detected", system.getClass().getSimpleName());
     }
 
     private void registerClient(ClientSystem system) {
@@ -117,7 +132,7 @@ public class SystemScheduler {
         regOrder.putIfAbsent(system.getClass(), regSeq.getAndIncrement());
         clientSystems.add(system);
         sortClientSystems();
-        logger.debug("new ClientSystem %s registered", system.getClass().getSimpleName());
+        logger.debug("new ClientSystem %s detected", system.getClass().getSimpleName());
     }
 
     private void sortClientSystems() {
@@ -206,8 +221,6 @@ public class SystemScheduler {
     }
 
     // ── main update ──
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
     public void update() {
         EventBus systemBus = EventBus.get("SystemBus");
         if (systemBus != null) systemBus.process();
@@ -224,7 +237,7 @@ public class SystemScheduler {
             accumulatorNs -= FIXED_DT_NS;
         }
 
-        if (headless) return;
+        if (isHeadless()) return;
 
         float frameDt = elapsed * 1e-9f;
         for (ClientSystem cs : clientSystems) {

@@ -113,14 +113,17 @@ public class TesECSRenderFlow {
             Vector2f mouseDelta = win.getCursorMode() == CursorMode.DISABLED
                     ? input.getActionAxis2DDelta(lookDelta)
                     : new Vector2f(0.0f);
-            yaw   -= mouseDelta.x * LOOK_SENSITIVITY;
-            pitch -= mouseDelta.y * LOOK_SENSITIVITY;
-            pitch = Math.min(89.5f, Math.max(-89.5f, pitch));
+            boolean transformChanged = false;
+            if (mouseDelta.lengthSquared() > 0.0f) {
+                yaw   -= mouseDelta.x * LOOK_SENSITIVITY;
+                pitch -= mouseDelta.y * LOOK_SENSITIVITY;
+                pitch = Math.min(89.5f, Math.max(-89.5f, pitch));
 
-
-            ctx.getRotation().identity();
-            ctx.getRotation().rotateY(Math.toRadians(yaw));
-            ctx.getRotation().rotateX(Math.toRadians(pitch));
+                ctx.getRotation().identity();
+                ctx.getRotation().rotateY(Math.toRadians(yaw));
+                ctx.getRotation().rotateX(Math.toRadians(pitch));
+                transformChanged = true;
+            }
 
             lookDir.set(
                     -(float) Math.sin(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)),
@@ -141,6 +144,9 @@ public class TesECSRenderFlow {
             if (tmpMove.lengthSquared() > 1e-12f) {
                 tmpMove.normalize().mul(MOVE_SPEED * dt);
                 ctx.getPosition().add(tmpMove);
+                transformChanged = true;
+            }
+            if (transformChanged) {
                 ctx.markDirty();
             }
         }
@@ -271,21 +277,25 @@ public class TesECSRenderFlow {
         boolean renderDebug = false;
 
         java.util.Random rng = new java.util.Random();
+        long lastTime = System.nanoTime();
 
         while (!win.shouldClose()) {
+            long currentTime = System.nanoTime();
+            float deltaTime = (currentTime - lastTime) / 1e9f;
+            lastTime = currentTime;
 
-
-            float renderStart = System.nanoTime();
+            long updateStartNs = System.nanoTime();
             scheduler.update();
-            float renderTimeMs = (System.nanoTime() - renderStart) / 1e6f;
-
-            input.beginFrame();
+            long updateElapsedNs = System.nanoTime() - updateStartNs;
+            float updateTimeMs = updateElapsedNs / 1e6f;
+            foolsEngine.LOGGER.trace("renderStart:%d, renderTimeMs:%f",updateStartNs, updateTimeMs);
+            input.updateFromPolledInputs();
 
             if (renderDebug) {
                 scheduler.additionalRenderTask(() -> {
                     imGuiRenderer.beginFrame();
                     Vector3f cp = cameraTransform.getPosition();
-                    debugOverlay.render(scene, 0, renderTimeMs,
+                    debugOverlay.render(scene, deltaTime, updateTimeMs,
                             cp, 0, 0, frame.getDrawCallCount());
                     imGuiRenderer.endFrame();
                 });
@@ -364,7 +374,7 @@ public class TesECSRenderFlow {
                 input.getMouse().flushDeltas();
             }
 
-            input.endFrame();
+            input.clearPolledInputs();
         }
 
         shader.destroy();
