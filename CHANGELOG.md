@@ -1,5 +1,35 @@
 ## foolsEngine 更新日志
 
+### 0.1.4 — 2026-07-30
+
+#### 调度架构重构 — ClientSystem / ServerSystem 分离
+
+- **删除 `System.priority()`**：通用 System 基类不再携带调度策略
+- **`ClientSystem.collectionOrder()`**：客户端系统收集顺序（默认 0，低值先执行），同值按注册顺序
+- **`ServerSystem.dependencies()`**：服务端系统依赖声明，DAG 拓扑排序 → 分批并行，循环依赖检测
+- **`SystemScheduler` 重写**：Worker 线程池（`FoolsEngine-Logic-N`）+ ServerSystem DAG/Wave 调度 + ClientSystem 串行 + 执行计划缓存
+- **内置顺序**：`LightEnvCollector(0)` → `MaterialCollector(0)` → `CameraCollector(10)` → `LightCollector(20)` → `RenderableCollector(30)` → `RenderPassCollector(50)`
+
+#### 视锥剔除
+
+- **`RevZFrustumIntersection`**：reverse-Z + ZERO_TO_ONE 5 平面视锥（不含远平面）
+- **`Mesh.getAABB()`** / `GLMesh.computeAABB()`：包围盒计算
+- **`RenderableCollector` 集成**：`OUTSIDE` 跳过 `scene.submit()`
+
+#### 事件总线扩展（19 事件）
+
+- **`@InstanceBusSubscriber`**：ASM 字节码注入自动注册；`addListener` 静态路由 + 幂等
+- **`SystemManager.unregisterSystem()`** + `isPinned()` 守卫
+- **`SystemUnregisteredEvent`** → `SystemScheduler` 订阅解耦
+- 新增 10 事件：资源生命周期、阴影、窗口、系统注册/注销
+
+#### Other
+
+- **`CameraComponent` 重构** + `EntityFactory.createOrthoCamera()` + JUnit 5.10（16 tests）
+- **`InputDevice.flushDeltas()`**：全屏切换摄像机防跳
+- **`RenderScene.setScreenViewport()`**：letterbox/pillarbox 视口控制
+- **修复**：`-Xlint:deprecation` 误传 JVM arg
+
 ### 0.1.3 — 2026-07-25
 
 #### 可配置渲染管线（ShaderPass 系统）
@@ -393,6 +423,37 @@
 - 初始预览版本
 
 ## foolsEngine Changelog
+
+### 0.1.4 — 2026-07-30
+
+#### Scheduler Architecture Refactor — ClientSystem / ServerSystem Separation
+
+- **Removed `System.priority()`** — base System no longer carries scheduling policy; kept only entities, requiredComponents, context, FoolsEngine ref, and `update`
+- **`ClientSystem.collectionOrder()`** — collection ordering method (default 0, lower first); same-order systems sorted by registration sequence
+- **`ServerSystem.dependencies()`** — dependency declaration returning `Set<Class<? extends ServerSystem<?>>>`; DAG topological sort → batched parallel waves; cycle detection
+- **`SystemScheduler` rewritten** — worker thread pool (`FoolsEngine-Logic-N`) + DAG/Wave scheduling (topological sort, no-dep systems in same Wave, `Future.get()` per Wave, exception propagation + cancel) + ClientSystem serial on main thread + cached execution plan (dirty-flag rebuild)
+- **Built-in order**: `LightEnvCollector(0)` → `MaterialCollector(0)` → `CameraCollector(10)` → `LightCollector(20)` → `RenderableCollector(30)` → `RenderPassCollector(50)`
+
+#### Frustum Culling
+
+- **`RevZFrustumIntersection`** — reverse-Z + ZERO_TO_ONE 5-plane frustum (no far plane), homogeneous plane extraction for L/R/B/T, near from VP homogeneous formula
+- **`Mesh.getAABB()`** / `GLMesh.computeAABB()` — AABB computed from vertex data at upload time
+- **`RenderableCollector` integration** — `OUTSIDE` skips `scene.submit()`; `Vector3f` reuse avoids allocation
+
+#### Event Bus Extensions (19 events)
+
+- **`@InstanceBusSubscriber`** — ASM bytecode injection auto-registers non-static `@SubscribeEvent` methods; `addListener` static routing with idempotency
+- **`SystemManager.unregisterSystem()`** + `isPinned()` guard + `SystemUnregisteredEvent`
+- **`SystemScheduler` decoupled via event subscriptions**
+- 10 new events: resource lifecycle (Texture/Shader/Mesh), shadow (PassPrepared/LayerAlloc), WindowResized, SystemRegistered/Unregistered
+
+#### Other
+
+- **`CameraComponent` refactor** + `EntityFactory.createOrthoCamera()` + `ProjectionType` enum
+- **`InputDevice.flushDeltas()`** — fullscreen toggle camera-jump prevention
+- **`RenderScene.setScreenViewport()`** — letterbox/pillarbox viewport control with `glScissor`
+- **JUnit 5.10** — 16 tests across 3 classes
+- **Fix** — removed `-Xlint:deprecation` from JVM args (javac flag misapplied)
 
 ### 0.1.1 — 2026-07-24
 

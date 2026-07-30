@@ -47,8 +47,8 @@ public class LightCollector extends ClientSystem {
     }
 
     @Override
-    public int priority() {
-        return 2;
+    public int collectionOrder() {
+        return 20;
     }
 
     @Override

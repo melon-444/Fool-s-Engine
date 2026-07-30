@@ -41,8 +41,8 @@ public final class ShadowPassCollector extends ClientSystem {
     }
 
     @Override
-    public int priority() {
-        return 3;
+    public int collectionOrder() {
+        return 40;
     }
 
     @Override

@@ -25,6 +25,15 @@ public abstract class ClientSystem extends System<RenderScene> {
     public ClientSystem(FoolsEngine engine) {
         super(engine);
     }
+
+    /**
+     * Main-thread render collection order. Lower values execute first.
+     * Systems with the same order are sorted by registration sequence.
+     */
+    public int collectionOrder() {
+        return 0;
+    }
+
     @Override
     public void update(float dt, RenderScene scene){
         if (scene == null) scene = context;

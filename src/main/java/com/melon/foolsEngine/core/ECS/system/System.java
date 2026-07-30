@@ -66,16 +66,6 @@ public abstract class System<Context> {
     }
 
     /**
-     * Execution priority — lower runs first. Default 0.
-     * In order to choose the execute sequence in SystemScheduler.
-     * Override to declare ordering: e.g. SceneCollector=0 → PassCollector=1 → HUD=100.
-     * @return the priority level, lower first.
-     */
-    public int priority() {
-        return 0;
-    }
-
-    /**
      * Pinned systems cannot be unregistered. Core collectors return true.
      */
     public boolean isPinned() {

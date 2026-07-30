@@ -45,8 +45,8 @@ public class CameraCollector extends ClientSystem {
     }
 
     @Override
-    public int priority() {
-        return 1;
+    public int collectionOrder() {
+        return 10;
     }
 
     @Override

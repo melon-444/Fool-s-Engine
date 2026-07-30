@@ -19,11 +19,22 @@ import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.Distribution;
 import com.melon.foolsEngine.core.annotation.OnlyIn;
 
+import java.util.Set;
+
 @OnlyIn(Distribution.Dedicated_Server)
 public abstract class ServerSystem<Context> extends System<Context> {
     public ServerSystem(FoolsEngine engine,Context context) {
         super(engine,context);
     }
+
+    /**
+     * Server systems that must complete before this system can execute.
+     * The scheduler uses this to build a DAG and group into parallel waves.
+     */
+    public Set<Class<? extends ServerSystem<?>>> dependencies() {
+        return Set.of();
+    }
+
     @Override
     public void update(float dt, Context ctx){
         if (ctx == null) ctx = context;

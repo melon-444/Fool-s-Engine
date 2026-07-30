@@ -50,8 +50,8 @@ public class RenderableCollector extends ClientSystem {
     }
 
     @Override
-    public int priority() {
-        return 3;
+    public int collectionOrder() {
+        return 30;
     }
 
     @Override

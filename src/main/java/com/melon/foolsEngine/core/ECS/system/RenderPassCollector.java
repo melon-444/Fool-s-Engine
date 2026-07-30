@@ -33,8 +33,8 @@ public class RenderPassCollector extends ClientSystem {
     }
 
     @Override
-    public int priority() {
-        return 4;
+    public int collectionOrder() {
+        return 50;
     }
 
     @Override
