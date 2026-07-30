@@ -26,6 +26,7 @@ import com.melon.foolsEngine.core.events.builtInEvents.SystemUnregisteredEvent;
 import com.melon.foolsEngine.util.Signature;
 import com.melon.foolsEngine.util.logger.Logger;
 
+import java.lang.reflect.Constructor;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -54,14 +55,17 @@ public class SystemManager {
         Instance = engineInstance;
     }
 
-    public <T extends System<?>> void registerSystem(Class<T> systemClass) {
+    public <T extends System<?>> T registerSystem(Class<T> systemClass) {
         try {
             LOG.debug("Registering system %s", systemClass.getSimpleName());
             T system = null;
-            if (ClientSystem.class.isAssignableFrom(systemClass))
-                system = systemClass.getDeclaredConstructor(FoolsEngine.class).newInstance(Instance);
-            else if (ServerSystem.class.isAssignableFrom(systemClass))
-                system = systemClass.getDeclaredConstructor(FoolsEngine.class, Object.class).newInstance(Instance, null);
+            if (ClientSystem.class.isAssignableFrom(systemClass)) {
+                Constructor<T> ctor = systemClass.getDeclaredConstructor(FoolsEngine.class);
+                ctor.setAccessible(true);
+                system = ctor.newInstance(Instance);
+            } else if (ServerSystem.class.isAssignableFrom(systemClass)) {
+                system = constructServerSystem(systemClass);
+            }
 
             systems.put(systemClass, system);
             LOG.debug("Registered system: %s", systemClass.getSimpleName());
@@ -86,11 +90,32 @@ public class SystemManager {
 
             EventBus bus = EventBus.get("SystemBus");
             if (bus != null) bus.emit(new SystemRegisteredEvent(this));
-
+            return system;
         } catch (Exception e) {
             LOG.error("Failed to register system %s: %s", systemClass.getSimpleName(), e.toString());
             throw new RuntimeException(e);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T extends System<?>> T constructServerSystem(Class<T> systemClass) throws Exception {
+        Constructor<T> best = null;
+        for (Constructor<?> c : systemClass.getDeclaredConstructors()) {
+            Class<?>[] params = c.getParameterTypes();
+            if (params.length == 0) continue;
+            if (!FoolsEngine.class.isAssignableFrom(params[0])) continue;
+            if (best == null || params.length < best.getParameterCount()) {
+                best = (Constructor<T>) c;
+            }
+        }
+        if (best == null) {
+            throw new NoSuchMethodException(systemClass.getName() + ".(FoolsEngine, ...)");
+        }
+        best.setAccessible(true);
+        Class<?>[] params = best.getParameterTypes();
+        Object[] args = new Object[params.length];
+        args[0] = Instance;
+        return best.newInstance(args);
     }
 
     public void unregisterSystem(Class<? extends System> systemClass) {

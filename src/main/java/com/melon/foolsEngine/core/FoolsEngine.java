@@ -23,6 +23,9 @@ import com.melon.foolsEngine.core.annotation.EventBus;
 import com.melon.foolsEngine.core.world.*;
 import com.melon.foolsEngine.util.logger.Logger;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 @EventBus(id="SystemBus")
 public class FoolsEngine {
     public final EntityManager entityManager;
@@ -51,6 +54,20 @@ public class FoolsEngine {
     public float Z_FAR = 1E10f;
 
     public Window mainWindow;
+
+    private final Map<Class<?>, Object> services = new ConcurrentHashMap<>();
+
+    /** Registers an engine-wide service accessible via {@link #getService(Class)}. */
+    public <T> T registerService(Class<T> type, T instance) {
+        services.put(type, instance);
+        return instance;
+    }
+
+    /** Returns the registered service of the given type, or null. */
+    @SuppressWarnings("unchecked")
+    public <T> T getService(Class<T> type) {
+        return (T) services.get(type);
+    }
 
     FoolsEngine(int maxEntities, int maxComponents, int windowWidth, int windowHeight, boolean isServer) {
         this.isServer = isServer;

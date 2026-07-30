@@ -27,10 +27,8 @@ import com.melon.foolsEngine.api.rendering.shader.BuiltinShaders;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.api.windows.WindowsManager;
-import com.melon.foolsEngine.core.ECS.basicComponents.LightComponent;
-import com.melon.foolsEngine.core.ECS.basicComponents.LightEnvComponent;
-import com.melon.foolsEngine.core.ECS.basicComponents.TextureManagerComponent;
-import com.melon.foolsEngine.core.ECS.basicComponents.TransformComponent;
+import com.melon.foolsEngine.core.ECS.basicComponents.*;
+import com.melon.foolsEngine.core.ECS.system.ServerSystem;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.core.ECS.system.ShadowPassCollector;
 import com.melon.foolsEngine.core.bootstrap.EngineBoot;
@@ -53,6 +51,100 @@ public class TesECSRenderFlow {
     private static final float SPOT_SHADOW_NEAR = 0.1f;
 
     private static final Logger TESTLOGGER = new Logger();
+
+    private static final class CameraMovementSystem extends ServerSystem<Void> {
+
+        private final Window win = INSTANCE.mainWindow;
+        private final InputManager input;
+        private final Action moveForward   = () -> SignalType.BUTTON;
+        private final Action moveBackward  = () -> SignalType.BUTTON;
+        private final Action moveLeft      = () -> SignalType.BUTTON;
+        private final Action moveRight     = () -> SignalType.BUTTON;
+        private final Action moveUp        = () -> SignalType.BUTTON;
+        private final Action moveDown      = () -> SignalType.BUTTON;
+        private final Action lookDelta     = () -> SignalType.AXIS_2DDel;
+
+        private final SparseSet<TransformComponent> camTrans;
+        private final SparseSet<CameraComponent> cameras;
+
+        private float yaw;
+        private float pitch;
+
+        private static final float MOVE_SPEED = 5.0f;
+        private static final float LOOK_SENSITIVITY = 1.0f;
+
+        private final Vector3f worldUp   = new Vector3f(0, 1, 0);
+        private final Vector3f lookDir   = new Vector3f();
+        private final Vector3f right     = new Vector3f();
+        private final Vector3f tmpMove   = new Vector3f();
+
+        {
+            requiredComponents.add(CameraComponent.class);
+            requiredComponents.add(TransformComponent.class);
+        }
+
+        CameraMovementSystem(FoolsEngine engine) {
+            super(engine, null);
+            input = getService(InputManager.class);
+            cameras = getSparseSet(CameraComponent.class);
+            camTrans = getSparseSet(TransformComponent.class);
+            input.bind(input.getKeyboard(), FoolsEngineKeyCode.W,      moveForward);
+            input.bind(input.getKeyboard(), FoolsEngineKeyCode.S,      moveBackward);
+            input.bind(input.getKeyboard(), FoolsEngineKeyCode.A,      moveLeft);
+            input.bind(input.getKeyboard(), FoolsEngineKeyCode.D,      moveRight);
+            input.bind(input.getKeyboard(), FoolsEngineKeyCode.SPACE,       moveUp);
+            input.bind(input.getKeyboard(), FoolsEngineKeyCode.LEFT_SHIFT,  moveDown);
+            input.bind(input.getMouse(),    FoolsEngineKeyCode.CURSOR, lookDelta);
+        }
+
+        @Override
+        public void update(float dt, Void unused) {
+            TransformComponent ctx = null;
+            for(int entity:entities){
+                CameraComponent camera = cameras.get(entity);
+                TransformComponent trans = camTrans.get(entity);
+                if(camera.isMainCam) {
+                    ctx = trans;
+                    break;
+                }
+            }
+            if(ctx == null) throw new NullPointerException("TransformComponent is null.");
+
+            Vector2f mouseDelta = win.getCursorMode() == CursorMode.DISABLED
+                    ? input.getActionAxis2DDelta(lookDelta)
+                    : new Vector2f(0.0f);
+            yaw   -= mouseDelta.x * LOOK_SENSITIVITY;
+            pitch -= mouseDelta.y * LOOK_SENSITIVITY;
+            pitch = Math.min(89.5f, Math.max(-89.5f, pitch));
+
+
+            ctx.getRotation().identity();
+            ctx.getRotation().rotateY(Math.toRadians(yaw));
+            ctx.getRotation().rotateX(Math.toRadians(pitch));
+
+            lookDir.set(
+                    -(float) Math.sin(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)),
+                    Math.sin(Math.toRadians(pitch)),
+                    -(float) Math.cos(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch))
+            ).normalize();
+
+            right.set(lookDir).cross(worldUp).normalize();
+
+            tmpMove.set(0);
+            if (input.isActionDown(moveForward))  tmpMove.add(lookDir);
+            if (input.isActionDown(moveBackward)) tmpMove.sub(lookDir);
+            if (input.isActionDown(moveRight))    tmpMove.add(right);
+            if (input.isActionDown(moveLeft))     tmpMove.sub(right);
+            if (input.isActionDown(moveUp))       tmpMove.add(worldUp);
+            if (input.isActionDown(moveDown))     tmpMove.sub(worldUp);
+
+            if (tmpMove.lengthSquared() > 1e-12f) {
+                tmpMove.normalize().mul(MOVE_SPEED * dt);
+                ctx.getPosition().add(tmpMove);
+                ctx.markDirty();
+            }
+        }
+    }
 
     public static void main(String[] args) {
         Thread engineThread = new Thread(() -> {run(args);});
@@ -144,13 +236,6 @@ public class TesECSRenderFlow {
         InputManager input = foolsEngine.serviceFactory.createInputManager(win);
         win.setCursorMode(CursorMode.DISABLED);
 
-        Action moveForward = () -> SignalType.BUTTON;
-        Action moveBackward = () -> SignalType.BUTTON;
-        Action moveLeft = () -> SignalType.BUTTON;
-        Action moveRight = () -> SignalType.BUTTON;
-        Action moveUp = () -> SignalType.BUTTON;
-        Action moveDown = () -> SignalType.BUTTON;
-        Action lookDelta = () -> SignalType.AXIS_2DDel;
         Action spawnDirLight = () -> SignalType.BUTTON;
         Action spawnPointLight = () -> SignalType.BUTTON;
         Action spawnSpotLight = () -> SignalType.BUTTON;
@@ -163,13 +248,6 @@ public class TesECSRenderFlow {
         Action switchMouseMode = () -> SignalType.BUTTON;
         Action switchDebugWindow = () -> SignalType.BUTTON;
         Action switchFullscreen = () -> SignalType.BUTTON;
-
-        input.bind(input.getKeyboard(), FoolsEngineKeyCode.W, moveForward);
-        input.bind(input.getKeyboard(), FoolsEngineKeyCode.S, moveBackward);
-        input.bind(input.getKeyboard(), FoolsEngineKeyCode.A, moveLeft);
-        input.bind(input.getKeyboard(), FoolsEngineKeyCode.D, moveRight);
-        input.bind(input.getKeyboard(), FoolsEngineKeyCode.SPACE, moveUp);
-        input.bind(input.getKeyboard(), FoolsEngineKeyCode.LEFT_SHIFT, moveDown);
 
         input.bind(input.getKeyboard(), FoolsEngineKeyCode.J, ambientUp);
         input.bind(input.getKeyboard(), FoolsEngineKeyCode.K, ambientDown);
@@ -185,85 +263,41 @@ public class TesECSRenderFlow {
         input.bind(input.getKeyboard(), FoolsEngineKeyCode.C, switchDebugWindow);
         input.bind(input.getKeyboard(), FoolsEngineKeyCode.F11, switchFullscreen);
 
-        input.bind(input.getMouse(), FoolsEngineKeyCode.CURSOR, lookDelta);
         input.bind(input.getMouse(), FoolsEngineKeyCode.MOUSE_RIGHT, switchMouseMode);
 
-        float moveSpeed = 5.0f;
-        float lookSensitivity = 1.0f;
-        float yaw = 0;
-        float pitch = 0;
-
-        Vector3f worldUp = new Vector3f(0, 1, 0);
+        foolsEngine.registerService(InputManager.class, input);
+        foolsEngine.systemManager.registerSystem(CameraMovementSystem.class);
 
         boolean renderDebug = false;
 
         java.util.Random rng = new java.util.Random();
 
-        long lastTime = System.nanoTime();
-
         while (!win.shouldClose()) {
-            long currentTime = System.nanoTime();
-            float deltaTime = (currentTime - lastTime) / 1e9f;
-            lastTime = currentTime;
 
 
             float renderStart = System.nanoTime();
             scheduler.update();
             float renderTimeMs = (System.nanoTime() - renderStart) / 1e6f;
 
-            if (renderDebug) {
-                float finalYaw = yaw;
-                float finalPitch = pitch;
-                scheduler.additionalRenderTask(() -> {
-                    imGuiRenderer.beginFrame();
-                    debugOverlay.render(scene, deltaTime, renderTimeMs,
-                            cameraPos, finalYaw, finalPitch, frame.getDrawCallCount());
-                    imGuiRenderer.endFrame();
-                });
-            }else{
-                scheduler.additionalRenderTask(() -> {});
-            }
             input.beginFrame();
 
-            Vector3f lookDir = new Vector3f(
-                    -(float)Math.sin(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)),
-                    Math.sin(Math.toRadians(pitch)),
-                    -(float)Math.cos(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch))
-            ).normalize();
-            Vector3f right = new Vector3f(lookDir).cross(worldUp).normalize();
+            if (renderDebug) {
+                scheduler.additionalRenderTask(() -> {
+                    imGuiRenderer.beginFrame();
+                    Vector3f cp = cameraTransform.getPosition();
+                    debugOverlay.render(scene, 0, renderTimeMs,
+                            cp, 0, 0, frame.getDrawCallCount());
+                    imGuiRenderer.endFrame();
+                });
+            } else {
+                scheduler.additionalRenderTask(() -> {});
+            }
 
-            if (input.isActionDown(moveForward)) {
-                cameraPos.add(new Vector3f(lookDir).mul(moveSpeed * 0.016f));
-            }
-            if (input.isActionDown(moveBackward)) {
-                cameraPos.sub(new Vector3f(lookDir).mul(moveSpeed * 0.016f));
-            }
-            if (input.isActionDown(moveRight)) {
-                cameraPos.add(new Vector3f(right).mul(moveSpeed * 0.016f));
-            }
-            if (input.isActionDown(moveLeft)) {
-                cameraPos.sub(new Vector3f(right).mul(moveSpeed * 0.016f));
-            }
-            if (input.isActionDown(moveUp)) {
-                cameraPos.add(new Vector3f(worldUp).mul(moveSpeed * 0.016f));
-            }
-            if (input.isActionDown(moveDown)) {
-                cameraPos.sub(new Vector3f(worldUp).mul(moveSpeed * 0.016f));
-            }
+            Vector3f lookDir = new Vector3f(cameraTransform.getPosition()).negate().normalize();
+
             if (input.isActionDown(exit)) {
                 break;
             }
-
-            Vector2f mouseDelta = win.getCursorMode() == CursorMode.DISABLED ? input.getActionAxis2DDelta(lookDelta) : new Vector2f(0.0f);
-            yaw -= mouseDelta.x * lookSensitivity;
-            pitch -= mouseDelta.y * lookSensitivity;
-            pitch = Math.min(89.5f, Math.max(-89.5f, pitch));
-
-
-            cameraTransform.getRotation().identity();
-            cameraTransform.getRotation().rotateY(Math.toRadians(yaw));
-            cameraTransform.getRotation().rotateX(Math.toRadians(pitch));
-            cameraTransform.position(cameraPos);// mark dirty at the same time
 
             if (input.isActionPressed(spawnDirLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
@@ -273,17 +307,17 @@ public class TesECSRenderFlow {
             if (input.isActionPressed(spawnPointLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 lightEntities.add(foolsEngine.entityFactory.createLightEntity(
-                        new LightComponent(color, new Vector3f(lookDir), new Vector3f(cameraPos))));
+                        new LightComponent(color, new Vector3f(lookDir),
+                                new Vector3f(cameraTransform.getPosition()))));
             }
             if (input.isActionPressed(spawnSpotLight)) {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 lightEntities.add(foolsEngine.entityFactory.createLightEntity(
-                        new LightComponent(color, new Vector3f(lookDir), new Vector3f(cameraPos), 10f, 10f)));
+                        new LightComponent(color, new Vector3f(lookDir),
+                                new Vector3f(cameraTransform.getPosition()), 10f, 10f)));
             }
             if (input.isActionPressed(clearLights)) {
-                TESTLOGGER.info("ActualLightCounts: %d",scene.getLighting().getLights().size());
                 for (int eid : lightEntities) {
-                    TESTLOGGER.info("clearLight: %d",eid);
                     foolsEngine.entityManager.destroyEntity(eid);
                 }
                 lightEntities.clear();
@@ -308,7 +342,7 @@ public class TesECSRenderFlow {
                 Vector3f color = new Vector3f(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
                 LightComponent LightComp =
                         new LightComponent(color, new Vector3f(lookDir),
-                                new Vector3f(cameraPos), 10f, 10f);
+                                new Vector3f(cameraTransform.getPosition()), 10f, 10f);
                 LightComp.castsShadow = true;
                 LightComp.shadowNear = SPOT_SHADOW_NEAR;
                 LightComp.intensity = 2.0f;
@@ -325,9 +359,9 @@ public class TesECSRenderFlow {
                 renderDebug = !renderDebug;
             }
 
-            if(input.isActionPressed(switchFullscreen)) {
+            if (input.isActionPressed(switchFullscreen)) {
                 win.setFullscreen(!win.isFullscreen());
-                input.getMouse().flushDeltas();//avoid camera jump
+                input.getMouse().flushDeltas();
             }
 
             input.endFrame();

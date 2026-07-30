@@ -53,6 +53,11 @@ public abstract class System<Context> {
         return (SparseSet<T>) INSTANCE.componentManager.getComponentMap().get(clazz);
     }
 
+    /** Returns an engine-wide service registered via {@code FoolsEngine.registerService()}. */
+    protected <T> T getService(Class<T> type) {
+        return INSTANCE.getService(type);
+    }
+
     public Signature genSignatureFromRequired(ComponentManager componentManager, int maxComponents) {
         Signature sig = new Signature(maxComponents);
         for (Class<? extends Component> componentType : requiredComponents) {
