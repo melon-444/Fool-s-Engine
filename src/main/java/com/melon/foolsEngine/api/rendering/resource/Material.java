@@ -39,12 +39,28 @@ import java.util.Map;
 public class Material{
     private final ShaderProgram shader;
     private final Map<String, Object> params = new HashMap<>();
+    private boolean transparent = false;
 
     /**
      * @param shader the shader program this material binds to
      */
     public Material(ShaderProgram shader) {
         this.shader = shader;
+    }
+
+    /**
+     * Marks this material as transparent. Transparent materials are drawn by a
+     * CORE pass with a non-{@code OPAQUE} blend mode (back-to-front), while
+     * opaque materials are drawn by the regular opaque pass.
+     * @param transparent true to treat the material as transparent
+     */
+    public void setTransparent(boolean transparent) {
+        this.transparent = transparent;
+    }
+
+    /** @return true when this material should be rendered in a blended pass */
+    public boolean isTransparent() {
+        return transparent;
     }
 
     /** @return the shader program used by this material */

@@ -143,6 +143,15 @@ tasks.register<JavaExec>("runTesECSRenderFlow") {
     jvmArgs(nmtJvmArgs)
 }
 
+tasks.register<JavaExec>("runTestTransparentBackend") {
+    dependsOn(tasks.compileTestJava)
+    group = "test with nmt"
+    description = "Runs TestTransparentBackend (alpha-blended transparent pass) with NativeMemoryTracking=detail"
+    mainClass.set("com.melon.foolsEngineTest.TestTransparentBackend")
+    classpath = sourceSets["test"].runtimeClasspath
+    jvmArgs(nmtJvmArgs)
+}
+
 tasks.register("runAllTests") {
     dependsOn("runTestBackend", "runTestInputBackend", "runTestLightBackend", "runTesECSRenderFlow")
     group = "test with nmt"

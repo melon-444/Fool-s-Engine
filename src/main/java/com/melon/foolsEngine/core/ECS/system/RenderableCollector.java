@@ -18,21 +18,33 @@ package com.melon.foolsEngine.core.ECS.system;
 import com.melon.foolsEngine.api.rendering.render.RenderCommand;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.api.rendering.resource.Camera;
-import com.melon.foolsEngine.api.rendering.resource.Mesh;
+import com.melon.foolsEngine.api.rendering.resource.Light;
+import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.core.ECS.basicComponents.RenderableComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.TransformComponent;
 import com.melon.foolsEngine.core.FoolsEngine;
+import com.melon.foolsEngine.util.Octree;
 import com.melon.foolsEngine.util.RevZFrustumIntersection;
 import com.melon.foolsEngine.util.SparseSet;
 import com.melon.foolsEngine.util.logger.Logger;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 public class RenderableCollector extends ClientSystem {
 
     private final SparseSet<TransformComponent> transforms;
     private final SparseSet<RenderableComponent> renderables;
     private final RevZFrustumIntersection frustum = new RevZFrustumIntersection();
+    private final RevZFrustumIntersection shadowFrustum = new RevZFrustumIntersection();
+    private final Octree octree = new Octree();
+    private final List<Octree.Item> items = new ArrayList<>();
+    private final Set<Integer> candidates = new HashSet<>();
+    private final Set<Integer> uncullable = new HashSet<>();
     private final Vector3f worldMin = new Vector3f();
     private final Vector3f worldMax = new Vector3f();
     private final Matrix4f vp = new Matrix4f();
@@ -62,38 +74,74 @@ public class RenderableCollector extends ClientSystem {
     @Override
     public void update(float dt, RenderScene scene) {
         Camera camera = scene.getCamera();
-        boolean hasFrustum = false;
-        if (camera != null) {
-            camera.vp().get(vp);
-            frustum.setVp(vp);
-            hasFrustum = true;
+
+        List<Camera> shadowCameras = null;
+        LightEnvironment lighting = scene.getLighting();
+        if (lighting != null) {
+            for (Light light : lighting.getLights()) {
+                if (light.castsShadow() && light.shadowInfo.shadowCamera() != null) {
+                    if (shadowCameras == null) shadowCameras = new ArrayList<>();
+                    shadowCameras.add(light.shadowInfo.shadowCamera());
+                }
+            }
         }
 
-        int submitted = 0, skipped = 0;
+        if (camera == null) {
+            for (int e : entities) {
+                TransformComponent t = transforms.getComponent(e);
+                RenderableComponent r = renderables.getComponent(e);
+                if (t == null || r == null) continue;
+                scene.submit(new RenderCommand(r.mesh, r.material, t.getMatrix()));
+            }
+            return;
+        }
 
+        // Broad phase: collect world-space AABBs and build an octree over them.
+        items.clear();
+        uncullable.clear();
         for (int e : entities) {
             TransformComponent t = transforms.getComponent(e);
             RenderableComponent r = renderables.getComponent(e);
             if (t == null || r == null) continue;
 
-            Mesh mesh = r.mesh;
-            float[] aabb = mesh.getAABB();
-            if (aabb != null && hasFrustum) {
-                worldMin.set(aabb[0], aabb[1], aabb[2]);
-                worldMax.set(aabb[3], aabb[4], aabb[5]);
-                t.getMatrix().transformAab(worldMin, worldMax, worldMin, worldMax);
-                if (frustum.testAab(worldMin.x, worldMin.y, worldMin.z,
-                                     worldMax.x, worldMax.y, worldMax.z) == RevZFrustumIntersection.OUTSIDE) {
-                    skipped++;
-                    continue;
-                }
+            float[] aabb = r.mesh.getAABB();
+            if (aabb == null) {
+                uncullable.add(e);
+                continue;
             }
+            worldMin.set(aabb[0], aabb[1], aabb[2]);
+            worldMax.set(aabb[3], aabb[4], aabb[5]);
+            t.getMatrix().transformAab(worldMin, worldMax, worldMin, worldMax);
+            items.add(new Octree.Item(e, worldMin.x, worldMin.y, worldMin.z,
+                    worldMax.x, worldMax.y, worldMax.z));
+        }
 
-            scene.submit(new RenderCommand(mesh, r.material, t.getMatrix()));
+        octree.build(items);
+
+        // Query the union of the main frustum and every shadow frustum so that
+        // objects only visible to a shadow map are not culled.
+        candidates.clear();
+        frustum.setVp(camera.vp().get(vp));
+        octree.query(frustum, candidates);
+        if (shadowCameras != null) {
+            for (Camera shadowCam : shadowCameras) {
+                shadowFrustum.setVp(shadowCam.vp().get(vp));
+                octree.query(shadowFrustum, candidates);
+            }
+        }
+
+        int submitted = 0;
+        for (int e : entities) {
+            if (!candidates.contains(e) && !uncullable.contains(e)) continue;
+            TransformComponent t = transforms.getComponent(e);
+            RenderableComponent r = renderables.getComponent(e);
+            if (t == null || r == null) continue;
+            scene.submit(new RenderCommand(r.mesh, r.material, t.getMatrix()));
             submitted++;
         }
 
-        if (hasFrustum && skipped > 0) log.trace("cull: %d/%d submitted, %d skipped", submitted, entities.size(), skipped);
-
+        if (submitted < entities.size()) {
+            log.trace("cull: %d/%d submitted", submitted, entities.size());
+        }
     }
 }

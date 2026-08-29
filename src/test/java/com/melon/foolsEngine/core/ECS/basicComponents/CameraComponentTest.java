@@ -43,7 +43,7 @@ class CameraComponentTest {
 
     @Test
     void orthographicConstructorDefaults() {
-        CameraComponent c = new CameraComponent(0.1f, 100f, ProjectionType.ORTHOGRAPHIC, 10f);
+        CameraComponent c = new CameraComponent(0.1f, 100f, 10f);
         assertEquals(ProjectionType.ORTHOGRAPHIC, c.projectionType);
         assertEquals(0.1f, c.near);
         assertEquals(100f, c.far);
@@ -53,7 +53,7 @@ class CameraComponentTest {
 
     @Test
     void orthographicConstructorWithActive() {
-        CameraComponent c = new CameraComponent(0.5f, 50f, ProjectionType.ORTHOGRAPHIC, 5f, false);
+        CameraComponent c = new CameraComponent(0.5f, 50f, 5f, false);
         assertEquals(ProjectionType.ORTHOGRAPHIC, c.projectionType);
         assertEquals(0.5f, c.near);
         assertEquals(50f, c.far);

@@ -91,7 +91,7 @@ public class EntityFactory {
         TransformComponent transform = new TransformComponent(position);
         Instance.entityManager.bindComponent(entityID, transform);
         Instance.entityManager.bindComponent(entityID,
-                new CameraComponent(near, far, ProjectionType.ORTHOGRAPHIC, orthoSize));
+                new CameraComponent(near, far, orthoSize));
         return transform;
     }
 

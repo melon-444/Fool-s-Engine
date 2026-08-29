@@ -83,6 +83,18 @@ class GLRenderFrame implements RenderFrame {
     private boolean depthTestEnabledKnown;
     private boolean depthTestEnabled;
 
+    private boolean blendEnabledKnown;
+    private boolean blendEnabled;
+    private boolean blendFuncKnown;
+    private int blendSrc;
+    private int blendDst;
+
+    private boolean depthMaskKnown;
+    private boolean depthMaskEnabled;
+
+    private final Matrix4f cameraPosMatrix = new Matrix4f();
+    private final Vector3f cameraPos = new Vector3f();
+
     @Override
     public void init() {
         if (init) { return; }
@@ -134,6 +146,7 @@ class GLRenderFrame implements RenderFrame {
             setScissorEnabled(false);
             // Keep the renderer's documented default for external rendering hooks.
             setDepthTestEnabled(true);
+            setBlendState(ShaderPass.BlendMode.OPAQUE);
         }
     }
 
@@ -179,6 +192,7 @@ class GLRenderFrame implements RenderFrame {
             executePostEffectPass(pass);
         } else {
             setDepthTestEnabled(true);
+            setBlendState(pass.blendMode());
             if (!commands.isEmpty()) {
                 renderCommands(commands, pass);
             }
@@ -408,6 +422,62 @@ class GLRenderFrame implements RenderFrame {
         depthTestEnabledKnown = true;
     }
 
+    private void setBlendEnabled(boolean enabled) {
+        if (blendEnabledKnown && blendEnabled == enabled) {
+            return;
+        }
+
+        if (enabled) {
+            glEnable(GL_BLEND);
+        } else {
+            glDisable(GL_BLEND);
+        }
+
+        blendEnabled = enabled;
+        blendEnabledKnown = true;
+    }
+
+    private void setBlendFunc(int src, int dst) {
+        if (blendFuncKnown && blendSrc == src && blendDst == dst) {
+            return;
+        }
+
+        glBlendFunc(src, dst);
+        blendSrc = src;
+        blendDst = dst;
+        blendFuncKnown = true;
+    }
+
+    private void setDepthMask(boolean enabled) {
+        if (depthMaskKnown && depthMaskEnabled == enabled) {
+            return;
+        }
+
+        glDepthMask(enabled);
+        depthMaskEnabled = enabled;
+        depthMaskKnown = true;
+    }
+
+    /** Applies the GL state required by a CORE pass's blend mode. */
+    private void setBlendState(ShaderPass.BlendMode mode) {
+        switch (mode) {
+            case OPAQUE -> {
+                setBlendEnabled(false);
+                setDepthMask(true);
+            }
+            case ALPHA_BLEND -> {
+                setDepthMask(false);
+                setBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                setBlendEnabled(true);
+            }
+            case ADDITIVE -> {
+                setDepthMask(false);
+                setBlendFunc(GL_ONE, GL_ONE);
+                setBlendEnabled(true);
+            }
+        }
+    }
+
     /**
      * Must be called after switching this renderer to another OpenGL context,
      * or after external code mutates cached OpenGL state directly.
@@ -419,6 +489,9 @@ class GLRenderFrame implements RenderFrame {
         clearColorKnown = false;
         clearDepthKnown = false;
         depthTestEnabledKnown = false;
+        blendEnabledKnown = false;
+        blendFuncKnown = false;
+        depthMaskKnown = false;
     }
 
     private void executePostEffectPass(ShaderPass pass) {
@@ -479,57 +552,122 @@ class GLRenderFrame implements RenderFrame {
     // ────────────────────── core draw ──────────────────────
 
     private void renderCommands(List<RenderCommand> commands, ShaderPass pass) {
+        if (pass.blendMode() == ShaderPass.BlendMode.OPAQUE) {
+            renderOpaque(commands, pass);
+        } else {
+            renderTransparent(commands, pass);
+        }
+    }
+
+    private void renderOpaque(List<RenderCommand> commands, ShaderPass pass) {
         Map<BatchKey, List<RenderCommand>> batches = groupCommands(commands, pass);
         drawCallCounter += batches.size();
 
         for (Map.Entry<BatchKey, List<RenderCommand>> batch : batches.entrySet()) {
             BatchKey key = batch.getKey();
-            List<RenderCommand> cmds = batch.getValue();
-            RenderCommand first = cmds.getFirst();
-            Mesh mesh = first.mesh();
-            Material material = key.material;
-            ShaderProgram shader = key.shader;
+            drawInstance(key.mesh, key.material, key.shader, batch.getValue(), pass);
+        }
+    }
 
-            GLMesh glMesh = (GLMesh) mesh;
-            glMesh.configureInstancedModelMatrix();
+    private void renderTransparent(List<RenderCommand> commands, ShaderPass pass) {
+        computeCameraPosition();
 
-            int instanceCount = cmds.size();
-            int floatCount = instanceCount * 16;
-            if (instanceBuffer.length < floatCount)
-                instanceBuffer = new float[floatCount];
-            for (int i = 0; i < instanceCount; i++) {
-                cmds.get(i).transform().get(instanceBuffer, i * 16);
+        List<TransparentCommand> transparent = new ArrayList<>();
+        for (RenderCommand c : commands) {
+            if (c.material().isTransparent()) {
+                transparent.add(new TransparentCommand(c, distanceSq(c)));
             }
+        }
+        transparent.sort((a, b) -> Float.compare(b.distanceSq, a.distanceSq));
+        drawCallCounter += transparent.size();
 
-            glMesh.bind();
-            glMesh.uploadInstanceData(instanceBuffer);
-
-            shader.bind();
-            shader.setInt("textureLayer", -1);
-            if (pass.materialMode() != ShaderPass.MaterialMode.OVERRIDE_MATERIAL
-                    && lightEnv != null) {
-                bindShadowArrayTexture();
-                lightEnv.apply(shader);
-            }
-            //texture and Light
-            binder.reset();
-            for (String pkey : material.params().keySet()) {
-                Object param = material.params().get(pkey);
-                bindUniformValue(shader, pkey, param);
-            }
-
-            if (pass != null) {
-                for (var e : pass.uniforms().entrySet()) {
-                    bindUniformValue(shader, e.getKey(), e.getValue());
+        for (TransparentCommand tc : transparent) {
+            RenderCommand c = tc.command;
+            Material material;
+            ShaderProgram shader;
+            switch (pass.materialMode()) {
+                case COMMAND_MATERIAL -> {
+                    material = c.material();
+                    shader = material.shader();
                 }
+                case PASS_SHADER -> {
+                    material = c.material();
+                    shader = pass.shader();
+                }
+                case OVERRIDE_MATERIAL -> {
+                    material = pass.overrideMaterial();
+                    shader = material.shader();
+                }
+                default -> throw new IllegalStateException(
+                        "Unsupported material mode: " + pass.materialMode());
             }
+            drawInstance(c.mesh(), material, shader, List.of(c), pass);
+        }
+    }
 
-            camera.vp().get(vpBuffer);
-            shader.setMat4("vp", vpBuffer);
+    private void drawInstance(Mesh mesh, Material material, ShaderProgram shader,
+                              List<RenderCommand> cmds, ShaderPass pass) {
+        GLMesh glMesh = (GLMesh) mesh;
+        glMesh.configureInstancedModelMatrix();
 
-            glDrawElementsInstanced(GL_TRIANGLES, mesh.indexCount(), GL_UNSIGNED_INT, 0, instanceCount);
-            shader.unbind();
-            glMesh.unbind();
+        int instanceCount = cmds.size();
+        int floatCount = instanceCount * 16;
+        if (instanceBuffer.length < floatCount)
+            instanceBuffer = new float[floatCount];
+        for (int i = 0; i < instanceCount; i++) {
+            cmds.get(i).transform().get(instanceBuffer, i * 16);
+        }
+
+        glMesh.bind();
+        glMesh.uploadInstanceData(instanceBuffer);
+
+        shader.bind();
+        shader.setInt("textureLayer", -1);
+        shader.setFloat("alpha", 1.0f);
+        if (pass.materialMode() != ShaderPass.MaterialMode.OVERRIDE_MATERIAL
+                && lightEnv != null) {
+            bindShadowArrayTexture();
+            lightEnv.apply(shader);
+        }
+        //texture and Light
+        binder.reset();
+        for (String pkey : material.params().keySet()) {
+            Object param = material.params().get(pkey);
+            bindUniformValue(shader, pkey, param);
+        }
+
+        for (var e : pass.uniforms().entrySet()) {
+            bindUniformValue(shader, e.getKey(), e.getValue());
+        }
+
+        camera.vp().get(vpBuffer);
+        shader.setMat4("vp", vpBuffer);
+
+        glDrawElementsInstanced(GL_TRIANGLES, mesh.indexCount(), GL_UNSIGNED_INT, 0, instanceCount);
+        shader.unbind();
+        glMesh.unbind();
+    }
+
+    private void computeCameraPosition() {
+        camera.view.invert(cameraPosMatrix);
+        cameraPosMatrix.getTranslation(cameraPos);
+    }
+
+    private float distanceSq(RenderCommand c) {
+        float dx = c.transform().m30() - cameraPos.x;
+        float dy = c.transform().m31() - cameraPos.y;
+        float dz = c.transform().m32() - cameraPos.z;
+        return dx * dx + dy * dy + dz * dz;
+    }
+
+    /** A transparent command annotated with its precomputed camera distance. */
+    private static final class TransparentCommand {
+        final RenderCommand command;
+        final float distanceSq;
+
+        TransparentCommand(RenderCommand command, float distanceSq) {
+            this.command = command;
+            this.distanceSq = distanceSq;
         }
     }
 
@@ -642,6 +780,9 @@ class GLRenderFrame implements RenderFrame {
             List<RenderCommand> commands, ShaderPass pass) {
         Map<BatchKey, List<RenderCommand>> batches = new LinkedHashMap<>();
         for (RenderCommand c : commands) {
+            if (c.material().isTransparent()) {
+                continue;
+            }
             Material material;
             ShaderProgram shader;
 

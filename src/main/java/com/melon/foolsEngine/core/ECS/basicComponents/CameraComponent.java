@@ -45,12 +45,12 @@ public class CameraComponent extends Component {
     }
 
     /** Orthographic camera. */
-    public CameraComponent(float near, float far, ProjectionType marker, float orthoSize) {
-        this(near, far, marker, orthoSize, true);
+    public CameraComponent(float near, float far, float orthoSize) {
+        this(near, far, orthoSize, true);
     }
 
     /** Orthographic camera with active flag. */
-    public CameraComponent(float near, float far, ProjectionType marker, float orthoSize, boolean active) {
+    public CameraComponent(float near, float far, float orthoSize, boolean active) {
         this.projectionType = ProjectionType.ORTHOGRAPHIC;
         this.near = near;
         this.far = far;

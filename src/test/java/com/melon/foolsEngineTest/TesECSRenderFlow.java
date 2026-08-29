@@ -174,7 +174,6 @@ public class TesECSRenderFlow {
 
     private static Vector3f lookDir = new Vector3f(0.0f, 0.0f, 0.0f);
 
-
     public static void run(String[] args) {
         foolsEngine = EngineBoot.create(20000000, 100, 2560, 1600, false, LogLevel.DEBUG);
 

@@ -55,6 +55,24 @@ public final class ShaderPass {
         OVERRIDE_MATERIAL
     }
 
+    /**
+     * Alpha-blending behavior of a CORE pass.
+     *
+     * <p>An {@link #OPAQUE OPAQUE} pass draws only non-transparent render
+     * commands with depth writes enabled. Any other mode enables GL blending,
+     * disables depth writes (depth stays read-only) and draws only commands
+     * whose {@link Material#isTransparent()} is true, sorted back-to-front by
+     * camera distance.</p>
+     */
+    public enum BlendMode {
+        /** No blending, depth writes enabled. */
+        OPAQUE,
+        /** Standard alpha blending: {@code src*alpha + dst*(1-alpha)}. */
+        ALPHA_BLEND,
+        /** Additive blending: {@code src + dst} (glows, fire, particles). */
+        ADDITIVE
+    }
+
     /** Required state of an attachment at the beginning of a pass. */
     public enum LoadOp {
         /** Preserve and use the previous contents. */
@@ -75,6 +93,7 @@ public final class ShaderPass {
 
     private final Type type;
     private final MaterialMode materialMode;
+    private final BlendMode blendMode;
     private final ShaderProgram shader;
     private final RenderTarget output;
     private final List<PassInput> inputs;
@@ -97,6 +116,7 @@ public final class ShaderPass {
     private ShaderPass(Builder builder) {
         this.type = builder.type;
         this.materialMode = builder.materialMode;
+        this.blendMode = builder.blendMode;
         this.shader = builder.shader;
         this.output = builder.output;
         this.inputs = List.copyOf(builder.inputs);
@@ -150,6 +170,7 @@ public final class ShaderPass {
 
     public Type type() { return type; }
     public MaterialMode materialMode() { return materialMode; }
+    public BlendMode blendMode() { return blendMode; }
     public ShaderProgram shader() { return shader; }
     public RenderTarget output() { return output; }
     public boolean isFullscreen() { return type == Type.POSTEFFECT; }
@@ -174,6 +195,7 @@ public final class ShaderPass {
 
         private final Type type;
         private MaterialMode materialMode;
+        private BlendMode blendMode = BlendMode.OPAQUE;
         private final ShaderProgram shader;
         private RenderTarget output;
         private final List<PassInput> inputs = new ArrayList<>();
@@ -250,6 +272,33 @@ public final class ShaderPass {
         public Builder materialMode(MaterialMode mode) {
             this.materialMode = Objects.requireNonNull(mode, "mode");
             return this;
+        }
+
+        /**
+         * Select the alpha-blending behavior of this CORE pass.
+         *
+         * <p>For non-{@link BlendMode#OPAQUE OPAQUE} modes the default color
+         * and depth load operations become {@link LoadOp#LOAD} so the pass
+         * composites over earlier passes; override with {@link #colorOps} or
+         * {@link #depthOps} if a different behavior is required.</p>
+         */
+        public Builder blend(BlendMode mode) {
+            this.blendMode = Objects.requireNonNull(mode, "mode");
+            if (mode != BlendMode.OPAQUE && type == Type.CORE) {
+                if (colorLoadOp == LoadOp.CLEAR) colorLoadOp = LoadOp.LOAD;
+                if (depthLoadOp == LoadOp.CLEAR) depthLoadOp = LoadOp.LOAD;
+            }
+            return this;
+        }
+
+        /** Convenience alias for {@link #blend(BlendMode)} with {@link BlendMode#ALPHA_BLEND}. */
+        public Builder transparent() {
+            return blend(BlendMode.ALPHA_BLEND);
+        }
+
+        /** Convenience alias for {@link #blend(BlendMode)} with {@link BlendMode#ADDITIVE}. */
+        public Builder additive() {
+            return blend(BlendMode.ADDITIVE);
         }
 
         /** Select a texture-array layer on the output target. */
@@ -330,6 +379,10 @@ public final class ShaderPass {
                         || overrideMaterial != null) {
                     throw new IllegalStateException(
                             "POSTEFFECT pass cannot select a material mode");
+                }
+                if (blendMode != BlendMode.OPAQUE) {
+                    throw new IllegalStateException(
+                            "POSTEFFECT pass does not support blending");
                 }
             } else {
                 if (materialMode == MaterialMode.PASS_SHADER && shader == null) {
