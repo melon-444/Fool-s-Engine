@@ -18,7 +18,7 @@ package com.melon.foolsEngine.core.ECS.entity;
 import com.melon.foolsEngine.api.rendering.resource.Material;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
-import com.melon.foolsEngine.api.rendering.pipeline.ShaderPass;
+import com.melon.foolsEngine.api.rendering.shader.ShaderPass;
 import com.melon.foolsEngine.core.ECS.basicComponents.CameraComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.LightComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.LightEnvComponent;

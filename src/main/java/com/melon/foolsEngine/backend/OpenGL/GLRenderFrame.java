@@ -20,8 +20,8 @@ import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.MeshData;
 import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
-import com.melon.foolsEngine.api.rendering.pipeline.PassInput;
-import com.melon.foolsEngine.api.rendering.pipeline.ShaderPass;
+import com.melon.foolsEngine.api.rendering.shader.PassInput;
+import com.melon.foolsEngine.api.rendering.shader.ShaderPass;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.rendering.resource.Camera;
 import com.melon.foolsEngine.api.rendering.resource.Material;
@@ -555,7 +555,7 @@ class GLRenderFrame implements RenderFrame {
         if (pass.blendMode() == ShaderPass.BlendMode.OPAQUE) {
             renderOpaque(commands, pass);
         } else {
-            renderTransparent(commands, pass);
+            renderBlended(commands, pass);
         }
     }
 
@@ -569,20 +569,20 @@ class GLRenderFrame implements RenderFrame {
         }
     }
 
-    private void renderTransparent(List<RenderCommand> commands, ShaderPass pass) {
+    private void renderBlended(List<RenderCommand> commands, ShaderPass pass) {
         computeCameraPosition();
 
-        List<TransparentCommand> transparent = new ArrayList<>();
+        List<BlendedCommand> blended = new ArrayList<>();
         for (RenderCommand c : commands) {
-            if (c.material().isTransparent()) {
-                transparent.add(new TransparentCommand(c, distanceSq(c)));
+            if (c.material().queue() == pass.queue()) {
+                blended.add(new BlendedCommand(c, distanceSq(c)));
             }
         }
-        transparent.sort((a, b) -> Float.compare(b.distanceSq, a.distanceSq));
-        drawCallCounter += transparent.size();
+        blended.sort((a, b) -> Float.compare(b.distanceSq, a.distanceSq));
+        drawCallCounter += blended.size();
 
-        for (TransparentCommand tc : transparent) {
-            RenderCommand c = tc.command;
+        for (BlendedCommand bc : blended) {
+            RenderCommand c = bc.command;
             Material material;
             ShaderProgram shader;
             switch (pass.materialMode()) {
@@ -660,12 +660,12 @@ class GLRenderFrame implements RenderFrame {
         return dx * dx + dy * dy + dz * dz;
     }
 
-    /** A transparent command annotated with its precomputed camera distance. */
-    private static final class TransparentCommand {
+    /** A blended command annotated with its precomputed camera distance. */
+    private static final class BlendedCommand {
         final RenderCommand command;
         final float distanceSq;
 
-        TransparentCommand(RenderCommand command, float distanceSq) {
+        BlendedCommand(RenderCommand command, float distanceSq) {
             this.command = command;
             this.distanceSq = distanceSq;
         }
@@ -780,7 +780,7 @@ class GLRenderFrame implements RenderFrame {
             List<RenderCommand> commands, ShaderPass pass) {
         Map<BatchKey, List<RenderCommand>> batches = new LinkedHashMap<>();
         for (RenderCommand c : commands) {
-            if (c.material().isTransparent()) {
+            if (c.material().queue() != pass.queue()) {
                 continue;
             }
             Material material;

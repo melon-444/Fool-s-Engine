@@ -19,7 +19,7 @@ import com.melon.foolsEngine.api.input.*;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
-import com.melon.foolsEngine.api.rendering.pipeline.ShaderPass;
+import com.melon.foolsEngine.api.rendering.shader.ShaderPass;
 import com.melon.foolsEngine.api.rendering.resource.*;
 import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
 import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;

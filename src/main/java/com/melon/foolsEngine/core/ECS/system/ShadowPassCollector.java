@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package com.melon.foolsEngine.core.ECS.system;
 
-import com.melon.foolsEngine.api.rendering.pipeline.StandardPasses;
+import com.melon.foolsEngine.api.rendering.shader.StandardPasses;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.api.rendering.resource.Camera;
 import com.melon.foolsEngine.api.rendering.resource.Light;

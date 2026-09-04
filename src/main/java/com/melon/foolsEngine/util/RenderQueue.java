@@ -13,17 +13,21 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-package com.melon.foolsEngine.api.rendering.pipeline;
-
-import com.melon.foolsEngine.api.rendering.render.RenderTarget;
+package com.melon.foolsEngine.util;
 
 /**
- * Binds a {@link RenderTarget} as a texture input to a {@link ShaderPass} sampler.
- * Used for post-process passes that read the output of preceding passes.
+ * The render queue a {@link com.melon.foolsEngine.api.rendering.resource.Material}
+ * belongs to.
+ *
+ * <p>A material selects its own pipeline by declaring a queue. A CORE
+ * {@link com.melon.foolsEngine.api.rendering.shader.ShaderPass} declares the
+ * queue it renders; the renderer only submits commands whose material queue
+ * matches the pass's queue. This is the dependency direction: materials pick
+ * their pass, not the other way around.</p>
  */
-public record PassInput(RenderTarget texture, String samplerName) {
-    public PassInput {
-        if (texture == null) throw new NullPointerException("texture must not be null");
-        if (samplerName == null || samplerName.isBlank()) throw new NullPointerException("samplerName must not be blank");
-    }
+public enum RenderQueue {
+    /** Default opaque geometry. Drawn first with depth writes enabled. */
+    OPAQUE,
+    /** Transparent / blended geometry. Drawn after OPAQUE, back-to-front. */
+    TRANSPARENT
 }

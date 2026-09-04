@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package com.melon.foolsEngine.core.ECS.basicComponents;
 
-import com.melon.foolsEngine.api.rendering.pipeline.ShaderPass;
+import com.melon.foolsEngine.api.rendering.shader.ShaderPass;
 
 /**
  * ECS component wrapping a {@link ShaderPass} for ordered pipeline construction.

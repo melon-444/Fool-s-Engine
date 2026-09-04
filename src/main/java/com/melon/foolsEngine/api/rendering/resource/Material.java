@@ -17,6 +17,7 @@ package com.melon.foolsEngine.api.rendering.resource;
 
 import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
+import com.melon.foolsEngine.util.RenderQueue;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
@@ -39,7 +40,7 @@ import java.util.Map;
 public class Material{
     private final ShaderProgram shader;
     private final Map<String, Object> params = new HashMap<>();
-    private boolean transparent = false;
+    private RenderQueue queue = RenderQueue.OPAQUE;
 
     /**
      * @param shader the shader program this material binds to
@@ -49,18 +50,17 @@ public class Material{
     }
 
     /**
-     * Marks this material as transparent. Transparent materials are drawn by a
-     * CORE pass with a non-{@code OPAQUE} blend mode (back-to-front), while
-     * opaque materials are drawn by the regular opaque pass.
-     * @param transparent true to treat the material as transparent
+     * Declares which render queue this material belongs to. A CORE
+     * {@code ShaderPass} with a matching {@code queue()} renders this material.
+     * Defaults to {@link RenderQueue#OPAQUE}.
      */
-    public void setTransparent(boolean transparent) {
-        this.transparent = transparent;
+    public void setQueue(RenderQueue queue) {
+        this.queue = queue;
     }
 
-    /** @return true when this material should be rendered in a blended pass */
-    public boolean isTransparent() {
-        return transparent;
+    /** @return the render queue this material selects (default {@link RenderQueue#OPAQUE}) */
+    public RenderQueue queue() {
+        return queue;
     }
 
     /** @return the shader program used by this material */

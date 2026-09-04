@@ -18,7 +18,7 @@ package com.melon.foolsEngine.api.rendering.render;
 import com.melon.foolsEngine.api.rendering.resource.Camera;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
-import com.melon.foolsEngine.api.rendering.pipeline.ShaderPass;
+import com.melon.foolsEngine.api.rendering.shader.ShaderPass;
 
 import java.util.ArrayList;
 import java.util.Collections;

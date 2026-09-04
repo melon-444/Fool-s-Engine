@@ -21,13 +21,14 @@ import com.melon.foolsEngine.api.input.InputManager;
 import com.melon.foolsEngine.api.rendering.render.RenderCommand;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
-import com.melon.foolsEngine.api.rendering.pipeline.ShaderPass;
 import com.melon.foolsEngine.api.rendering.resource.Camera;
 import com.melon.foolsEngine.api.rendering.resource.Light;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.api.rendering.resource.Material;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
+import com.melon.foolsEngine.api.rendering.shader.ShaderPass;
+import com.melon.foolsEngine.util.RenderQueue;
 import com.melon.foolsEngine.api.rendering.shader.BuiltinShaders;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.Window;
@@ -80,7 +81,7 @@ public class TestTransparentBackend {
         Material glass = new Material(shader);
         glass.set("textureSampler", texture);
         glass.set("alpha", 0.35f);
-        glass.setTransparent(true);
+        glass.setQueue(RenderQueue.TRANSPARENT);
 
         LightEnvironment lightEnv = new LightEnvironment();
         lightEnv.setAmbient(0.15f, 0.15f, 0.15f);
