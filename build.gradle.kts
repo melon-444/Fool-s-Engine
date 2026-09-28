@@ -103,6 +103,11 @@ if (lwjglUseMaven) {
 
 val nmtJvmArgs = listOf("-XX:NativeMemoryTracking=detail")
 
+// Snake3D demo game — lives in a separate (gitignored) folder, compiled with the
+// test source set so it reuses the engine's full classpath (LWJGL natives, JOML).
+sourceSets["test"].java.srcDir("games/snake3d/src/main/java")
+sourceSets["test"].resources.srcDir("games/snake3d/src/main/resources")
+
 tasks.test {
     useJUnitPlatform()
 }
@@ -148,6 +153,15 @@ tasks.register<JavaExec>("runTestTransparentBackend") {
     group = "test with nmt"
     description = "Runs TestTransparentBackend (alpha-blended transparent pass) with NativeMemoryTracking=detail"
     mainClass.set("com.melon.foolsEngineTest.TestTransparentBackend")
+    classpath = sourceSets["test"].runtimeClasspath
+    jvmArgs(nmtJvmArgs)
+}
+
+tasks.register<JavaExec>("runSnakeGame") {
+    dependsOn(tasks.compileTestJava)
+    group = "game"
+    description = "Runs Snake3D - a small closed-loop demo game (generated meshes, flat colors)"
+    mainClass.set("com.melon.snake3d.SnakeGame")
     classpath = sourceSets["test"].runtimeClasspath
     jvmArgs(nmtJvmArgs)
 }
