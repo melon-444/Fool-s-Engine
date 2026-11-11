@@ -19,6 +19,8 @@ import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.core.events.EventBus;
 import com.melon.foolsEngine.core.events.builtInEvents.ShaderDestroyedEvent;
 import com.melon.foolsEngine.core.events.builtInEvents.ShaderLoadedEvent;
+import com.melon.foolsEngine.exception.ResourceException;
+import com.melon.foolsEngine.exception.ShaderException;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -60,8 +62,9 @@ class GLShaderProgram implements ShaderProgram {
                 fragmentShaderSource.append(line).append("\n");
             }
         } catch (IOException e) {
-            System.err.println("Failed to load shader file:\n " + e.getMessage());
-            System.exit(-1);
+            throw new ResourceException(
+                    "Failed to load shader file: " + vertexShaderPath
+                            + " / " + fragmentShaderPath, e);
         }
         compileAndLink(vertexShaderSource, fragmentShaderSource);
     }
@@ -74,8 +77,9 @@ class GLShaderProgram implements ShaderProgram {
             readResource(vertexResource, vSrc);
             readResource(fragmentResource, fSrc);
         } catch (IOException e) {
-            System.err.println("Failed to load shader resource: " + e.getMessage());
-            System.exit(-1);
+            throw new ResourceException(
+                    "Failed to load shader resource: " + vertexResource
+                            + " / " + fragmentResource, e);
         }
         compileAndLink(vSrc, fSrc);
     }
@@ -112,6 +116,12 @@ class GLShaderProgram implements ShaderProgram {
         glAttachShader(programID, vertexShaderID);
         glAttachShader(programID, fragmentShaderID);
         glLinkProgram(programID);
+        if (glGetProgrami(programID, GL_LINK_STATUS) == GL_FALSE) {
+            String log = glGetProgramInfoLog(programID);
+            glDeleteProgram(programID);
+            programID = 0;
+            throw new ShaderException("Failed to link shader program: " + log);
+        }
         glValidateProgram(programID);
 
         EventBus bus = EventBus.get("SystemBus");
@@ -120,8 +130,10 @@ class GLShaderProgram implements ShaderProgram {
 
     private void checkCompileStatus(int shaderID,int type) {
         if (glGetShaderi(shaderID, GL_COMPILE_STATUS) == GL_FALSE) {
-            System.err.println("Failed to compile" + (type == GL_VERTEX_SHADER ? " vert" : " frag") + " shader: " + glGetShaderInfoLog(shaderID));
-            System.exit(-1);
+            String kind = type == GL_VERTEX_SHADER ? "vertex" : "fragment";
+            String log = glGetShaderInfoLog(shaderID);
+            glDeleteShader(shaderID);
+            throw new ShaderException("Failed to compile " + kind + " shader: " + log);
         }
     }
 

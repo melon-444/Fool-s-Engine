@@ -65,4 +65,6 @@ public interface APIFactory {
      * @param maxLayers maximum number of texture layers
      */
     TextureManager createTextureManager(int width, int height, int maxLayers);
+
+    String implementVendor();
 }

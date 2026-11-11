@@ -93,4 +93,9 @@ public class VKInternalFactory extends InternalFactoryStub {
     protected TextureManager textureManager(int width, int height, int maxLayers) {
         return new VKTextureManager(width, height, maxLayers);
     }
+
+    @Override
+    protected String Vendor() {
+        return "Vulkan";
+    }
 }

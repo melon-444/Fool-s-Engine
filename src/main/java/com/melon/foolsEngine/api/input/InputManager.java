@@ -60,6 +60,14 @@ public class InputManager {
         return null;
     }
 
+    /**
+     * Binds {@code action} to {@code id} on {@code inputDevice}.
+     *
+     * <p>One {@link Action} maps to exactly one key: re-binding an action moves
+     * it off its previous key instead of adding a second trigger. To drive one
+     * behaviour from several keys, register one action per key and OR them at
+     * the call site. See {@link ActionMapping#bind} for the full rationale.</p>
+     */
     public void bind(InputDevice<?> inputDevice, FoolsEngineKeyCode id, Action action) {
         map.bind(inputDevice, id, action);
     }

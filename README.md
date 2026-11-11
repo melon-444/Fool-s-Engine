@@ -283,6 +283,8 @@ ImGuiHelper ──guard──→ ImGuiInternal                         (only loa
 - **LightEnvironment owns ShadowManager**: shadow layers are per-light allocations. `clear()` auto-resets layers, preventing the user from forgetting `shadowManager.reset()`.
 - **ImGuiHelper lazy-loading**: Core engine never statically imports `imgui.ImGui`. A `Class.forName` guard + private inner class ensures the JVM never loads ImGui classes unless imgui-java is on the classpath.
 - **InputManager via Factory**: `createInputManager(win)` with generic `<E>` — api/test layers never reference concrete `GLFWKeyBoard`/`GLFWMouse` types.
+- **One action, one key**: `ActionMapping.bind` moves an action off its previous key (single source of truth; O(1) lookup both ways; no orphaned bindings). To drive one behaviour from several keys, register one `Action` per key and OR them (`isActionDown(a) || isActionDown(b)`).
+- **Exceptions over `System.exit`**: engine failures throw subclasses of `com.melon.foolsEngine.exception.FoolsEngineException` (`ShaderException`, `ResourceException`, `InitializationException`) so callers can catch, log, and recover.
 - **System priority over registration order**: `priority()` method decouples execution ordering from `registerSystem` call sequence.
 - **Passes via Scene, not Frame**: `scene.submitPass()` with double-buffer swap — passes are per-frame like commands, not persistent state.
 - **Annotation-driven EventBus**: `@EventBus`/`@EventBusSubscriber`/`@SubscribeEvent` — zero-lambda, method-only, auto-discovered at class-load time.

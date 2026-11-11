@@ -50,6 +50,7 @@ public abstract class InternalFactoryStub implements APIFactory {
     protected abstract RenderTarget renderTarget(int width, int height, int type);
     protected abstract <E> InputManager inputManager(E env);
     protected abstract TextureManager textureManager(int width, int height, int maxLayers);
+    protected abstract String Vendor();
 
     protected RenderTarget renderTarget(int width, int height, int type, int layers) {
         return renderTarget(width, height, type);
@@ -57,6 +58,7 @@ public abstract class InternalFactoryStub implements APIFactory {
 
     private static InternalFactoryStub OpenGLINSTANCE;
     private static InternalFactoryStub VulkanINSTANCE;
+    private static InternalFactoryStub CustomINSTANCE;
 
     public static APIFactory OpenGLINSTANCE() {
         if (OpenGLINSTANCE == null)
@@ -81,6 +83,62 @@ public abstract class InternalFactoryStub implements APIFactory {
         if (OpenGLINSTANCE != null)
             throw new IllegalStateException("Factory already initialized");
         OpenGLINSTANCE = instance;
+    }
+
+    /**
+     * Inject a Custom Implement of API layer.
+     * @param instance implement instance
+     * @param vendor Vendor of the implement
+     */
+    public static void InjectCustom(APIFactory instance,String vendor) {
+        if(CustomINSTANCE!=null)
+            throw new IllegalStateException("Factory already initialized");
+        CustomINSTANCE = new InternalFactoryStub() {
+            @Override
+            protected WindowsManager windowsManager() {
+                return instance.getWindowsManager();
+            }
+
+            @Override
+            protected RenderFrame renderFrame() {
+                return instance.getRenderFrame();
+            }
+
+            @Override
+            protected ShaderProgram shaderProgram() {
+                return instance.getShaderProgram();
+            }
+
+            @Override
+            protected Texture texture() {
+                return instance.getTexture();
+            }
+
+            @Override
+            protected Mesh mesh() {
+                return instance.getMesh();
+            }
+
+            @Override
+            protected RenderTarget renderTarget(int width, int height, int type) {
+                return instance.createRenderTarget(width, height, type);
+            }
+
+            @Override
+            protected <E> InputManager inputManager(E env) {
+                return instance.createInputManager(env);
+            }
+
+            @Override
+            protected TextureManager textureManager(int width, int height, int maxLayers) {
+                return instance.createTextureManager(width, height, maxLayers);
+            }
+
+            @Override
+            protected String Vendor() {
+                return vendor;
+            }
+        };
     }
 
     @Override
@@ -121,5 +179,10 @@ public abstract class InternalFactoryStub implements APIFactory {
     @Override
     public TextureManager createTextureManager(int width, int height, int maxLayers) {
         return textureManager(width, height, maxLayers);
+    }
+
+    @Override
+    public String implementVendor() {
+        return Vendor();
     }
 }

@@ -1,4 +1,4 @@
-package com.melon.snake3d;
+ package com.melon.snake3d;
 
 import com.melon.foolsEngine.api.input.Action;
 import com.melon.foolsEngine.api.input.FoolsEngineKeyCode;
@@ -78,8 +78,8 @@ public class SnakeGame {
 
         ShaderProgram flat = engine.serviceFactory.getShaderProgram();
         flat.load(
-                Path.of("games/snake3d/src/main/resources/shaders/flat_vsh.glsl"),
-                Path.of("games/snake3d/src/main/resources/shaders/flat_fsh.glsl"));
+                Path.of("games/snake3d/src/main/resources/shaders/.glsl"),
+                Path.of("games/snake3d/src/main/resources/shaders/flflat_vshat_fsh.glsl"));
 
         ShaderProgram portal = engine.serviceFactory.getShaderProgram();
         portal.load(
@@ -126,10 +126,10 @@ public class SnakeGame {
         InputManager input = engine.serviceFactory.createInputManager(win);
         win.setCursorMode(CursorMode.DISABLED);
 
-        Action north = () -> SignalType.BUTTON;
-        Action south = () -> SignalType.BUTTON;
-        Action west = () -> SignalType.BUTTON;
-        Action east = () -> SignalType.BUTTON;
+        Action keyW = () -> SignalType.BUTTON;
+        Action keyS = () -> SignalType.BUTTON;
+        Action keyA = () -> SignalType.BUTTON;
+        Action keyD = () -> SignalType.BUTTON;
         Action goUp = () -> SignalType.BUTTON;
         Action goDown = () -> SignalType.BUTTON;
         Action restart = () -> SignalType.BUTTON;
@@ -142,10 +142,10 @@ public class SnakeGame {
         Action zoom = () -> SignalType.AXIS_1DDel;
         Action toggleCursor = () -> SignalType.BUTTON;
 
-        input.bind(input.getKeyboard(), FoolsEngineKeyCode.W, north);
-        input.bind(input.getKeyboard(), FoolsEngineKeyCode.S, south);
-        input.bind(input.getKeyboard(), FoolsEngineKeyCode.A, west);
-        input.bind(input.getKeyboard(), FoolsEngineKeyCode.D, east);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.W, keyW);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.S, keyS);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.A, keyA);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.D, keyD);
         input.bind(input.getKeyboard(), FoolsEngineKeyCode.Q, goUp);
         input.bind(input.getKeyboard(), FoolsEngineKeyCode.E, goDown);
         input.bind(input.getKeyboard(), FoolsEngineKeyCode.R, restart);
@@ -186,38 +186,6 @@ public class SnakeGame {
                 camTarget.set(headWorld(snake, 0f));
             }
 
-            if (input.isActionPressed(north)) {
-                snake.setDirection(Snake.Dir.NORTH);
-            }
-            if (input.isActionPressed(south)) {
-                snake.setDirection(Snake.Dir.SOUTH);
-            }
-            if (input.isActionPressed(west)) {
-                snake.setDirection(Snake.Dir.WEST);
-            }
-            if (input.isActionPressed(east)) {
-                snake.setDirection(Snake.Dir.EAST);
-            }
-            if (input.isActionPressed(goUp)) {
-                snake.setDirection(Snake.Dir.UP);
-            }
-            if (input.isActionPressed(goDown)) {
-                snake.setDirection(Snake.Dir.DOWN);
-            }
-
-            if (input.isActionPressed(moreFood)) {
-                snake.setFoodCount(snake.foodCount() + 1);
-            }
-            if (input.isActionPressed(lessFood)) {
-                snake.setFoodCount(snake.foodCount() - 1);
-            }
-            if (input.isActionPressed(faster)) {
-                baseInterval = Math.max(0.03f, baseInterval - 0.02f);
-            }
-            if (input.isActionPressed(slower)) {
-                baseInterval = Math.min(0.60f, baseInterval + 0.02f);
-            }
-
             if (input.isActionPressed(toggleCursor)) {
                 if (win.getCursorMode() == CursorMode.DISABLED) {
                     win.setCursorMode(CursorMode.NORMAL);
@@ -238,6 +206,45 @@ public class SnakeGame {
                     : new Vector2f(0f, 0f);
             yaw -= md.x * LOOK_SENSITIVITY;
             pitch = Math.min(89f, Math.max(-89f, pitch - md.y * LOOK_SENSITIVITY));
+
+            // WASD is camera-relative: W is the camera's horizontal facing,
+            // quantized into four 90-degree sectors split at the diagonals.
+            Snake.Dir forward = cameraForward(yaw);
+            Snake.Dir back = opposite(forward);
+            Snake.Dir right = dirFromXZ(-forward.dz, forward.dx);
+            Snake.Dir left = dirFromXZ(forward.dz, -forward.dx);
+
+            if (input.isActionPressed(keyW)) {
+                snake.setDirection(forward);
+            }
+            if (input.isActionPressed(keyS)) {
+                snake.setDirection(back);
+            }
+            if (input.isActionPressed(keyA)) {
+                snake.setDirection(left);
+            }
+            if (input.isActionPressed(keyD)) {
+                snake.setDirection(right);
+            }
+            if (input.isActionPressed(goUp)) {
+                snake.setDirection(Snake.Dir.UP);
+            }
+            if (input.isActionPressed(goDown)) {
+                snake.setDirection(Snake.Dir.DOWN);
+            }
+
+            if (input.isActionPressed(moreFood)) {
+                snake.setFoodCount(snake.foodCount() + 1);
+            }
+            if (input.isActionPressed(lessFood)) {
+                snake.setFoodCount(snake.foodCount() - 1);
+            }
+            if (input.isActionPressed(faster)) {
+                baseInterval = Math.max(0.03f, baseInterval - 0.02f);
+            }
+            if (input.isActionPressed(slower)) {
+                baseInterval = Math.min(0.60f, baseInterval + 0.02f);
+            }
 
             float tickInterval = Math.max(0.03f, baseInterval - snake.score() * 0.004f);
             if (snake.isAlive()) {
@@ -473,7 +480,7 @@ public class SnakeGame {
     private static Material swirlMaterial(ShaderProgram swirlShader) {
         Material mat = new Material(swirlShader);
         mat.set("uColor", new Vector3f(0.70f, 0.40f, 1.00f));
-        mat.set("uIntensity", 1.0f);
+        mat.set("uIntensity", 3.0f);
         mat.setQueue(RenderQueue.TRANSPARENT);
         return mat;
     }
@@ -501,7 +508,9 @@ public class SnakeGame {
         } else if (ty < 0) {
             m.rotateX((float) Math.PI);
         }
-        return m.scale(scale, scale, 1f);
+        // The quad lies in its local XZ plane, so both in-plane axes (X and Z)
+        // must scale equally; the Y (normal) axis is irrelevant.
+        return m.scale(scale, 1f, scale);
     }
 
     private static Vector3f headWorld(Snake snake, float t) {
@@ -528,6 +537,48 @@ public class SnakeGame {
             best = Math.min(best, dx * dx + dy * dy + dz * dz);
         }
         return (float) Math.sqrt(best);
+    }
+
+    /**
+     * The camera's horizontal facing (the direction from the camera toward the
+     * head), quantized to the nearest of the four horizontal grid directions.
+     * The four 90-degree sectors are split at the NW/NE/SW/SE diagonals.
+     */
+    private static Snake.Dir cameraForward(float yaw) {
+        float fx = -(float) Math.sin(Math.toRadians(yaw));
+        float fz = -(float) Math.cos(Math.toRadians(yaw));
+        float phi = (float) Math.toDegrees(Math.atan2(fx, -fz));
+        if (phi >= -45f && phi < 45f) {
+            return Snake.Dir.NORTH;
+        }
+        if (phi >= 45f && phi < 135f) {
+            return Snake.Dir.EAST;
+        }
+        if (phi >= 135f || phi < -135f) {
+            return Snake.Dir.SOUTH;
+        }
+        return Snake.Dir.WEST;
+    }
+
+    private static Snake.Dir dirFromXZ(int dx, int dz) {
+        if (dz == -1) {
+            return Snake.Dir.NORTH;
+        }
+        if (dz == 1) {
+            return Snake.Dir.SOUTH;
+        }
+        return dx == 1 ? Snake.Dir.EAST : Snake.Dir.WEST;
+    }
+
+    private static Snake.Dir opposite(Snake.Dir d) {
+        return switch (d) {
+            case NORTH -> Snake.Dir.SOUTH;
+            case SOUTH -> Snake.Dir.NORTH;
+            case WEST -> Snake.Dir.EAST;
+            case EAST -> Snake.Dir.WEST;
+            case UP -> Snake.Dir.DOWN;
+            case DOWN -> Snake.Dir.UP;
+        };
     }
 
     private static float lerp(float a, float b, float t) {

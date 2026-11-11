@@ -15,8 +15,8 @@
 
 | 按键 | 功能 |
 |---|---|
-| W / S / A / D | 水平转向（前/后/左/右） |
-| Q / E | 上升 / 下降 |
+| W / S / A / D | 相机相对转向（W = 摄像机朝向，S/A/D 为反向/左/右） |
+| Q / E | 上升 / 下降（世界坐标，固定） |
 | 鼠标移动 | 旋转视角（环绕中心跟随蛇头，带平滑） |
 | 鼠标滚轮 | 拉近 / 拉远摄像机 |
 | 鼠标右键 | 切换光标模式（锁定 / 释放） |
@@ -33,7 +33,9 @@
 
 蛇身在两格之间平滑插值滑动；穿越立方体某一面时通过发光传送门绕到对侧，并在穿越点触发着色器生成的漩涡粒子特效（漩涡面与行进方向垂直，蛇身离开后自动消失）。
 
-轨道摄像机的环绕中心平滑跟随蛇头（穿越边界的跳变会被平滑掉），滚轮控制远近。整块空间铺满一层半透明网格框架，默认很暗；只有蛇头周围约 1/5 地图边长的球体范围内，网格边框才会变亮（着色器按到蛇头的距离计算）。
+轨道摄像机的环绕中心平滑跟随蛇头（穿越边界的跳变会被平滑掉），滚轮控制远近。WASD 为**相机相对**：W 指向摄像机从自身到蛇头的水平朝向，并按 45° 对角线把圆周切成四个 90° 扇区，取最接近的一个水平方向；S/A/D 分别是它的反向/左/右。Q/E 仍沿世界 Y 轴升降。
+
+整块空间铺满一层半透明网格框架，默认很暗；只有蛇头周围约 1/5 地图边长的球体范围内，网格边框才会变亮（着色器按到蛇头的距离计算）。
 
 ## 素材需求
 
@@ -65,8 +67,8 @@ A tiny 3D Snake demo on foolsEngine, proving a closed gameplay loop. The map is 
 
 | Key | Action |
 |---|---|
-| W / S / A / D | Move horizontally (forward/back/left/right) |
-| Q / E | Move up / down |
+| W / S / A / D | Camera-relative move (W = camera facing; S/A/D = back/left/right) |
+| Q / E | Move up / down (world axes, fixed) |
 | Mouse | Orbit the camera (center smoothly follows the head) |
 | Scroll wheel | Zoom in / out |
 | Right mouse | Toggle cursor mode (locked / free) |
@@ -83,7 +85,9 @@ Eat red cube → grow + score + speed up → hit yourself → game over → pres
 
 The snake glides smoothly between grid cells. Crossing a face of the cube wraps to the opposite face through a glowing portal, which erupts with a shader-driven swirl oriented perpendicular to travel; the swirl disappears once the snake leaves.
 
-The orbit camera's center smoothly follows the head (softening the wrap jump) and the scroll wheel zooms. A translucent grid fills the whole cube but stays dark except within ~1/5 of the map size around the head, where the grid edges light up (distance computed in the shader).
+The orbit camera's center smoothly follows the head (softening the wrap jump) and the scroll wheel zooms. WASD is **camera-relative**: W points along the camera's horizontal facing (from the camera toward the head), snapped into four 90-degree sectors split at the 45-degree diagonals; S/A/D are back/left/right of it. Q/E still move along the world Y axis.
+
+A translucent grid fills the whole cube but stays dark except within ~1/5 of the map size around the head, where the grid edges light up (distance computed in the shader).
 
 ## Asset requirements
 

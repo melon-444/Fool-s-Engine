@@ -283,6 +283,8 @@ ImGuiHelper ──守卫──→ ImGuiInternal                         （仅 i
 - **LightEnvironment 持有 ShadowManager**：阴影层按光源分配，`clear()` 自动重置层，避免用户忘记调用 `shadowManager.reset()`。
 - **ImGuiHelper 惰性加载**：核心引擎绝不静态导入 `imgui.ImGui`。通过 `Class.forName` 守卫 + 私有内部类保证 JVM 仅在 imgui-java 处于 classpath 时才加载 ImGui 相关类。
 - **通过 Factory 创建 InputManager**：`createInputManager(win)` 使用泛型 `<E>`——api/test 层绝不引用具体的 `GLFWKeyBoard`/`GLFWMouse` 类型。
+- **一键一绑（one action, one key）**：`ActionMapping.bind` 会把 action 从旧按键解绑（单一事实来源；双向 O(1) 查找；无孤立绑定）。要让多个按键触发同一行为，就为每个按键各注册一个 `Action` 再取或（`isActionDown(a) || isActionDown(b)`）。
+- **用异常代替 `System.exit`**：引擎失败时抛出 `com.melon.foolsEngine.exception.FoolsEngineException` 的子类（`ShaderException`、`ResourceException`、`InitializationException`），便于调用方捕获、记录与恢复。
 - **System priority 取代注册顺序**：`priority()` 方法解耦执行顺序与 `registerSystem` 调用先后。
 - **Pass 走 Scene 不走 Frame**：`scene.submitPass()` 配合双缓冲 swap——Pass 如同 RenderCommand 一样是每帧重建的临时数据。
 - **注解驱动 EventBus**：`@EventBus`/`@EventBusSubscriber`/`@SubscribeEvent`——零 lambda、纯方法、类加载时自动发现。

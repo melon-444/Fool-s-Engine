@@ -13,17 +13,17 @@ void main() {
     float r = length(p);
     float a = atan(p.y, p.x);
 
-    // Two spiral arms that spin over time and twist with radius.
-    float arms = 2.0;
-    float twist = 6.0;
+    // n spiral arms that spin over time and twist with radius.
+    float arms = 4.0;
+    float twist = 12.0;
     float spiral = sin(arms * a + uTime * 4.0 + twist * r);
-    float armsMask = pow(max(spiral, 0.0), 2.0);
+    float armsMask = pow(max(spiral, 0.4), 1.5);
 
     // Concentric rings that streak outward -> reads as orbiting particles.
-    float rings = sin(r * 45.0 - uTime * 7.0);
-    float ringMask = pow(0.5 + 0.5 * rings, 6.0);
+    float rings = sin(r * 40.0 - uTime * 7.0);
+    float ringMask = pow(0.5 + 0.5 * rings, 2.0);
 
-    float glow = armsMask * (0.25 + 0.75 * ringMask);
+    float glow = armsMask * (0.4 + 0.85 * ringMask);
     glow *= 1.0 - smoothstep(0.0, 1.0, r);
     glow *= uIntensity;
 

@@ -91,4 +91,9 @@ public class GLInternalFactory extends InternalFactoryStub {
     protected TextureManager textureManager(int width, int height, int maxLayers) {
         return new GLTextureManager(width, height, maxLayers);
     }
+
+    @Override
+    protected String Vendor() {
+        return "OpenGL";
+    }
 }
