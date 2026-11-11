@@ -17,7 +17,7 @@ package com.melon.foolsEngine.api.rendering.resource;
 
 /**
  * A GPU-resident mesh with vertex and index buffers.
- * Obtain an instance via {@link com.melon.foolsEngine.core.world.ServiceFactory#getMesh()}.
+ * Obtain an instance via {@link com.melon.foolsEngine.api.APIFactory#getMesh()}.
  */
 public interface Mesh {
     /** Uploads mesh data to the GPU */

@@ -15,6 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package com.melon.foolsEngine.core;
 
+import com.melon.foolsEngine.api.APIFactory;
+import com.melon.foolsEngine.api.InternalFactoryStub;
 import com.melon.foolsEngine.api.rendering.render.GraphicsContext;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.windows.Window;
@@ -34,7 +36,7 @@ public class FoolsEngine {
     public final SystemManager systemManager;
     public final EntityFactory factory;
     public final RenderFrame frame;
-    public final ServiceFactory serviceFactory;
+    public final APIFactory serviceFactory;
     public final SystemScheduler systemScheduler;
     public final boolean isServer;
 
@@ -73,7 +75,7 @@ public class FoolsEngine {
         this.isServer = isServer;
         LOGGER.info("Booting FoolsEngine | entities=%d components=%d mode=%s", maxEntities, maxComponents,
                 isServer ? "SERVER" : "CLIENT");
-        this.serviceFactory = new ServiceFactory();
+        this.serviceFactory = InternalFactoryStub.defaultInstance();
         this.MAX_ENTITIES = maxEntities;
         this.MAX_COMPONENTS = maxComponents;
         this.entityManager = new EntityManager(this);

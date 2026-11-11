@@ -19,7 +19,7 @@ package com.melon.foolsEngine.api.rendering.render;
  * An off-screen render target (FBO).
  * Supports color and depth-only types, with optional layered rendering for texture arrays.
  * <p>
- * Create via {@link com.melon.foolsEngine.core.world.ServiceFactory#createRenderTarget(int, int, int)}:
+ * Create via {@link com.melon.foolsEngine.api.APIFactory#createRenderTarget(int, int, int)}:
  * <pre>{@code
  *   RenderTarget rt = factory.createRenderTarget(1024, 1024, RenderTarget.TARGET_DEPTH, 16);
  * }</pre>
@@ -60,7 +60,7 @@ public interface RenderTarget {
     /** @return the height in pixels */
     int getHeight();
 
-    /** @return the OpenGL texture ID */
+    /** @return a backend-local image identifier; valid only for this target lifetime and owning backend */
     int getTextureId();
 
     /** @return {@link #TARGET_COLOR} or {@link #TARGET_DEPTH} */

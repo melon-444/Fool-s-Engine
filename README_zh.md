@@ -191,7 +191,7 @@ src/main/java/com/melon/foolsEngine/
       system/                   # LightEnvCollector, CameraCollector, LightCollector, RenderableCollector, RenderPassCollector 等
     events/                     # EventBus + builtInEvents (EntityCreated, LightAdded, PreRender 等)
     annotation/                 # @EventBus, @EventBusSubscriber, @SubscribeEvent, @OnlyIn
-    world/                      # Entity/Component/System 管理器, ServiceFactory, SystemScheduler
+    world/                      # Entity/Component/System 管理器, APIFactory, SystemScheduler
 
    util/                         # Projection, CursorMode, ObjLoader, Signature, SparseSet 等
      Logger.java                 # 内置日志（TRACE → ERROR）
@@ -256,7 +256,7 @@ frame.render(RenderScene)
 ### 后端抽象
 
 ```
-ServiceFactory → InternalFactoryStub → GLInternalFactory（OpenGL）
+APIFactory ← InternalFactoryStub → GLInternalFactory（OpenGL）
                                       → VKInternalFactory（Vulkan）
 ```
 

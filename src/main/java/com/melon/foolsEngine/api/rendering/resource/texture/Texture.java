@@ -22,7 +22,7 @@ import java.nio.file.Path;
  * <p>
  * There are two sources of {@code Texture} instances:
  * <ul>
- *   <li>{@link com.melon.foolsEngine.core.world.ServiceFactory#getTexture()} — a standalone
+ *   <li>{@link com.melon.foolsEngine.api.APIFactory#getTexture()} — a standalone
  *       {@code GL_TEXTURE_2D} that binds to a unique texture unit slot.</li>
  *   <li>{@link TextureManager#upload(Path)} — a slice of a {@code GL_TEXTURE_2D_ARRAY}
  *       owned by a manager. The renderer detects array textures via

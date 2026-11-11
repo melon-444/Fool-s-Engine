@@ -19,7 +19,7 @@ import java.nio.file.Path;
 
 /**
  * A compiled and linked GPU shader program.
- * Obtain an instance via {@link com.melon.foolsEngine.core.world.ServiceFactory#getShaderProgram()}.
+ * Obtain an instance via {@link com.melon.foolsEngine.api.APIFactory#getShaderProgram()}.
  */
 public interface ShaderProgram {
     /**

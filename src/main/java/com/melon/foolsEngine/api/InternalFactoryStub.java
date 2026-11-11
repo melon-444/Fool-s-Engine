@@ -29,19 +29,6 @@ public abstract class InternalFactoryStub implements APIFactory {
 
     private static final Logger FLOG = new Logger("APIFactory");
 
-    static {
-        try {
-            Class.forName("com.melon.foolsEngine.backend.OpenGL.GLInternalFactory");
-        } catch (ClassNotFoundException e) {
-            throw new InternalError(e);
-        }
-        try {
-            Class.forName("com.melon.foolsEngine.backend.Vulkan.VKInternalFactory");
-        } catch (ClassNotFoundException e) {
-            // Vulkan backend not available on classpath — OK
-        }
-    }
-
     protected abstract WindowsManager windowsManager();
     protected abstract RenderFrame renderFrame();
     protected abstract ShaderProgram shaderProgram();
@@ -58,15 +45,19 @@ public abstract class InternalFactoryStub implements APIFactory {
 
     private static InternalFactoryStub OpenGLINSTANCE;
     private static InternalFactoryStub VulkanINSTANCE;
-    private static InternalFactoryStub CustomINSTANCE;
+    private static volatile APIFactory CustomINSTANCE;
 
     public static APIFactory OpenGLINSTANCE() {
+        try { Class.forName("com.melon.foolsEngine.backend.OpenGL.GLInternalFactory"); }
+        catch (ClassNotFoundException e) { throw new IllegalStateException("Backend unavailable", e); }
         if (OpenGLINSTANCE == null)
             throw new IllegalStateException("Factory not initialized");
         return OpenGLINSTANCE;
     }
 
     public static APIFactory VulkanINSTANCE() {
+        try { Class.forName("com.melon.foolsEngine.backend.Vulkan.VKInternalFactory"); }
+        catch (ClassNotFoundException e) { throw new IllegalStateException("Backend unavailable", e); }
         if (VulkanINSTANCE == null)
             throw new IllegalStateException("Factory not initialized");
         FLOG.warn("Vulkan instance is experimental and not stable at all, prefer to use OpenGL instance instead.");
@@ -88,57 +79,23 @@ public abstract class InternalFactoryStub implements APIFactory {
     /**
      * Inject a Custom Implement of API layer.
      * @param instance implement instance
-     * @param vendor Vendor of the implement
      */
-    public static void InjectCustom(APIFactory instance,String vendor) {
-        if(CustomINSTANCE!=null)
-            throw new IllegalStateException("Factory already initialized");
-        CustomINSTANCE = new InternalFactoryStub() {
-            @Override
-            protected WindowsManager windowsManager() {
-                return instance.getWindowsManager();
-            }
+    public static synchronized void InjectCustom(APIFactory instance) {
+        java.util.Objects.requireNonNull(instance, "instance");
+        if (CustomINSTANCE != null)
+            throw new IllegalStateException("Custom factory already initialized");
+        CustomINSTANCE = instance;
+    }
 
-            @Override
-            protected RenderFrame renderFrame() {
-                return instance.getRenderFrame();
-            }
+    public static APIFactory CustomINSTANCE() {
+        APIFactory instance = CustomINSTANCE;
+        if (instance == null) throw new IllegalStateException("Custom factory not initialized");
+        return instance;
+    }
 
-            @Override
-            protected ShaderProgram shaderProgram() {
-                return instance.getShaderProgram();
-            }
-
-            @Override
-            protected Texture texture() {
-                return instance.getTexture();
-            }
-
-            @Override
-            protected Mesh mesh() {
-                return instance.getMesh();
-            }
-
-            @Override
-            protected RenderTarget renderTarget(int width, int height, int type) {
-                return instance.createRenderTarget(width, height, type);
-            }
-
-            @Override
-            protected <E> InputManager inputManager(E env) {
-                return instance.createInputManager(env);
-            }
-
-            @Override
-            protected TextureManager textureManager(int width, int height, int maxLayers) {
-                return instance.createTextureManager(width, height, maxLayers);
-            }
-
-            @Override
-            protected String Vendor() {
-                return vendor;
-            }
-        };
+    public static APIFactory defaultInstance() {
+        APIFactory instance = CustomINSTANCE;
+        return instance != null ? instance : OpenGLINSTANCE();
     }
 
     @Override
