@@ -46,7 +46,7 @@ import java.util.List;
  *   tm.destroy();       // delete entire array and all GPU resources
  * }</pre>
  */
-public interface TextureManager {
+public interface TextureManager extends AutoCloseable {
 
     /** Fixed texture unit for the array sampler (shadow array occupies slot 8). */
     int TEXTURE_ARRAY_SLOT = 9;
@@ -106,11 +106,12 @@ public interface TextureManager {
      * Returns a static 1x1 white placeholder texture on layer 0.
      * Safe to use without calling {@link #upload(Path)} first; the renderer can fall
      * back to this when no texture has been assigned to a material.
+     * The placeholder is borrowed and stays valid until this manager is closed.
      */
     Texture getPlaceholder();
 
     /**
-     * Releases a layer and clears it from the GPU array, making it available for future
+     * Releases the current occupant of a layer and clears it from the GPU array, making it available for future
      * {@link #upload(Path)} calls. If the layer held a {@link Texture} with an associated
      * {@link LoadedImage}, the image is freed.
      *
@@ -161,7 +162,9 @@ public interface TextureManager {
      * on the GPU so that stale references cannot render old data. The texture's
      * {@link LoadedImage} is freed if present.
      * <p>
-     * Equivalent to calling {@link Texture#destroy()} on the texture.
+     * An already released or replaced handle has no effect. A texture owned
+     * by another manager is rejected.
+     * @throws IllegalArgumentException if the texture does not belong to this manager
      */
     void free(Texture texture);
 
@@ -171,4 +174,10 @@ public interface TextureManager {
      * After this call, the manager must not be used.
      */
     void destroy();
+
+    /** Releases the array and invalidates its handles. Safe to call multiple times. */
+    @Override
+    default void close() {
+        destroy();
+    }
 }

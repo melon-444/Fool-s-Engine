@@ -26,7 +26,7 @@ class AudioSystemTest {
                 fail("Loading a clip must leave the caller's stream open");
             }
         };
-        APIFactory factory = InternalFactoryStub.APIBuilder().OpenGL().JavaSound().create();
+        APIFactory factory = APIBuilder.builder().OpenGL().JavaSound().create();
         assertTrue(factory.supportsAudio());
         try (var audio = factory.createAudioSystem(); var other = factory.createAudioSystem()) {
             AudioClip clip = audio.load(input);
@@ -40,13 +40,24 @@ class AudioSystemTest {
 
     @Test
     void builderRequiresGraphicsAndLeavesAudioOptional() {
-        assertThrows(IllegalStateException.class, () -> InternalFactoryStub.APIBuilder().JavaSound().create());
-        assertThrows(IllegalStateException.class, () -> InternalFactoryStub.APIBuilder().OpenGL().Vulkan());
-        assertThrows(IllegalStateException.class, () -> InternalFactoryStub.APIBuilder().JavaSound().JavaSound());
-        assertThrows(UnsupportedOperationException.class, () -> InternalFactoryStub.APIBuilder().Vulkan().create());
+        assertThrows(IllegalStateException.class, () -> APIBuilder.builder().JavaSound().create());
+        assertThrows(IllegalStateException.class, () -> APIBuilder.builder().OpenGL().Vulkan());
+        assertThrows(IllegalStateException.class, () -> APIBuilder.builder().JavaSound().JavaSound());
+        assertThrows(UnsupportedOperationException.class, () -> APIBuilder.builder().Vulkan().create());
 
-        APIFactory factory = InternalFactoryStub.APIBuilder().OpenGL().create();
+        APIFactory factory = APIBuilder.builder().OpenGL().create();
         assertFalse(factory.supportsAudio());
         assertThrows(UnsupportedOperationException.class, factory::createAudioSystem);
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    void legacyOpenGlStillProvidesDefaultAudio() {
+        APIFactory factory = InternalFactoryStub.OpenGLINSTANCE();
+        assertSame(factory, InternalFactoryStub.OpenGLINSTANCE());
+        assertTrue(factory.supportsAudio());
+        try (var audio = factory.createAudioSystem()) {
+            assertNotNull(audio);
+        }
     }
 }

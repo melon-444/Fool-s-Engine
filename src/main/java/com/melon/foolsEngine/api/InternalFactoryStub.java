@@ -24,9 +24,9 @@ import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
 import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.WindowsManager;
+import com.melon.foolsEngine.backend.JavaSound.JavaSoundAudioSystem;
+import com.melon.foolsEngine.backend.OpenGL.GLInternalFactory;
 import com.melon.foolsEngine.util.logger.Logger;
-import java.util.Objects;
-import java.util.function.Supplier;
 
 public abstract class InternalFactoryStub implements APIFactory {
 
@@ -49,27 +49,10 @@ public abstract class InternalFactoryStub implements APIFactory {
     private static InternalFactoryStub OpenGLINSTANCE;
     private static InternalFactoryStub VulkanINSTANCE;
     private static volatile APIFactory CustomINSTANCE;
-    private static volatile Supplier<? extends AudioSystem> javaSoundProvider;
-
+    /** @deprecated Use {@link APIBuilder#builder()} directly. */
+    @Deprecated
     public static APIBuilder APIBuilder() {
-        return new APIBuilder();
-    }
-
-    /** Internal registration hook called by the Java Sound backend during class initialization. */
-    public static synchronized void registerJavaSound(Supplier<? extends AudioSystem> provider) {
-        if (javaSoundProvider != null) {
-            throw new IllegalStateException("Java Sound backend already registered");
-        }
-        javaSoundProvider = Objects.requireNonNull(provider, "provider");
-    }
-
-    static Supplier<? extends AudioSystem> javaSoundProvider() {
-        try {
-            Class.forName("com.melon.foolsEngine.backend.JavaSound.JavaSoundAudioSystem");
-        } catch (ClassNotFoundException e) {
-            throw new IllegalStateException("Java Sound backend unavailable", e);
-        }
-        return Objects.requireNonNull(javaSoundProvider, "Java Sound backend did not register");
+        return APIBuilder.builder();
     }
 
     @Deprecated
@@ -77,11 +60,10 @@ public abstract class InternalFactoryStub implements APIFactory {
         return openGLFactory();
     }
 
-    static APIFactory openGLFactory() {
-        try { Class.forName("com.melon.foolsEngine.backend.OpenGL.GLInternalFactory"); }
-        catch (ClassNotFoundException e) { throw new IllegalStateException("Backend unavailable", e); }
-        if (OpenGLINSTANCE == null)
-            throw new IllegalStateException("Factory not initialized");
+    private static synchronized APIFactory openGLFactory() {
+        if (OpenGLINSTANCE == null) {
+            OpenGLINSTANCE = GLInternalFactory.create();
+        }
         return OpenGLINSTANCE;
     }
 
@@ -101,7 +83,7 @@ public abstract class InternalFactoryStub implements APIFactory {
         VulkanINSTANCE = instance;
     }
 
-    protected static void InjectOpenGL(InternalFactoryStub instance) {
+    protected static synchronized void InjectOpenGL(InternalFactoryStub instance) {
         if (OpenGLINSTANCE != null)
             throw new IllegalStateException("Factory already initialized");
         OpenGLINSTANCE = instance;
@@ -169,7 +151,7 @@ public abstract class InternalFactoryStub implements APIFactory {
 
     @Override
     public AudioSystem createAudioSystem() {
-        return javaSoundProvider().get();
+        return JavaSoundAudioSystem.create();
     }
 
     @Override

@@ -38,12 +38,13 @@ class GLTexture implements Texture {
 
     private int textureId;
     private boolean uploaded = false;
+    private boolean closed;
     private LoadedImage image;
 
     @Override
     public void upload(Path texture) {
-        if(uploaded) return;
-        uploaded = true;
+        requireOpen();
+        if (uploaded) return;
 
         byte[] data;
         try {
@@ -54,6 +55,7 @@ class GLTexture implements Texture {
 
         var format = ImageFormatDetector.detect(data);
         ByteBuffer image;
+        boolean stbAllocated = false;
         int width, height;
 
         if (!ImageFormatDetector.isStbSupported(format)) {
@@ -73,11 +75,12 @@ class GLTexture implements Texture {
 
                 STBImage.stbi_set_flip_vertically_on_load(true);
                 ByteBuffer buffer = MemoryUtil.memAlloc(data.length);
-                buffer.put(data);
-                buffer.flip();
-
-                image = STBImage.stbi_load_from_memory(buffer, w, h, channels, 4);
-                MemoryUtil.memFree(buffer);
+                try {
+                    buffer.put(data).flip();
+                    image = STBImage.stbi_load_from_memory(buffer, w, h, channels, 4);
+                } finally {
+                    MemoryUtil.memFree(buffer);
+                }
                 if (image == null) {
                     var result = GLImageIOLoader.load(data);
                     if (result == null) {
@@ -88,6 +91,7 @@ class GLTexture implements Texture {
                     width = result.width();
                     height = result.height();
                 } else {
+                    stbAllocated = true;
                     width = w.get();
                     height = h.get();
                 }
@@ -95,25 +99,33 @@ class GLTexture implements Texture {
         }
 
         final ByteBuffer capturedImage = image;
-        this.image = new LoadedImage(capturedImage, width, height, () -> MemoryUtil.memFree(capturedImage));
+        boolean fromStb = stbAllocated;
+        LoadedImage decoded = new LoadedImage(capturedImage, width, height, () -> {
+            if (fromStb) {
+                STBImage.stbi_image_free(capturedImage);
+            } else {
+                MemoryUtil.memFree(capturedImage);
+            }
+        });
 
-        textureId = glGenTextures();
-        glBindTexture(GL_TEXTURE_2D, textureId);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexImage2D(
-                GL_TEXTURE_2D,
-                0,
-                GL_RGBA,
-                width,
-                height,
-                0,
-                GL_RGBA,
-                GL_UNSIGNED_BYTE,
-                image
-        );
-        glGenerateMipmap(GL_TEXTURE_2D);
-        unbind();
+        try {
+            textureId = glGenTextures();
+            glBindTexture(GL_TEXTURE_2D, textureId);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
+            glGenerateMipmap(GL_TEXTURE_2D);
+            unbind();
+        } catch (RuntimeException | Error e) {
+            decoded.free();
+            if (textureId != 0) {
+                glDeleteTextures(textureId);
+                textureId = 0;
+            }
+            throw e;
+        }
+        this.image = decoded;
+        uploaded = true;
 
         EventBus bus = EventBus.get("SystemBus");
         if (bus != null) bus.emit(new TextureLoadedEvent(this));
@@ -121,24 +133,44 @@ class GLTexture implements Texture {
 
     @Override
     public void destroy() {
+        if (closed) {
+            return;
+        }
+        if (!uploaded) {
+            closed = true;
+            return;
+        }
         glDeleteTextures(textureId);
+        textureId = 0;
+        image.free();
+        image = null;
+        closed = true;
         EventBus bus = EventBus.get("SystemBus");
         if (bus != null) bus.emit(new TextureDestroyedEvent(this));
     }
 
     @Override
     public void bind(int slot) {
+        requireOpen();
         glActiveTexture(GL_TEXTURE0 + slot);
         glBindTexture(GL_TEXTURE_2D, textureId);
     }
 
     @Override
     public void unbind() {
+        requireOpen();
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     @Override
     public LoadedImage getImage() {
+        requireOpen();
         return image;
+    }
+
+    private void requireOpen() {
+        if (closed) {
+            throw new IllegalStateException("Texture is closed");
+        }
     }
 }

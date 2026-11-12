@@ -9,6 +9,8 @@ import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
 import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.WindowsManager;
+import com.melon.foolsEngine.backend.JavaSound.JavaSoundAudioSystem;
+import com.melon.foolsEngine.backend.OpenGL.GLInternalFactory;
 
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -18,10 +20,14 @@ public final class APIBuilder {
     private Supplier<? extends APIFactory> graphics;
     private Supplier<? extends AudioSystem> audio;
 
-    APIBuilder() {}
+    private APIBuilder() {}
+
+    public static APIBuilder builder() {
+        return new APIBuilder();
+    }
 
     public APIBuilder OpenGL() {
-        return selectGraphics(InternalFactoryStub::openGLFactory);
+        return selectGraphics(GLInternalFactory::create);
     }
 
     /** Selects Vulkan. Building currently fails because the backend is still a stub. */
@@ -38,7 +44,7 @@ public final class APIBuilder {
     }
 
     public APIBuilder JavaSound() {
-        return selectAudio(() -> InternalFactoryStub.javaSoundProvider().get());
+        return selectAudio(JavaSoundAudioSystem::create);
     }
 
     /** The provider must return a new caller-owned audio system on each invocation. */

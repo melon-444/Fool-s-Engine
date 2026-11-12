@@ -20,10 +20,9 @@ import java.nio.ByteBuffer;
 /**
  * Holds pixel data loaded from an image file, along with dimensions and a cleanup callback.
  * <p>
- * Created internally by {@link com.melon.foolsEngine.backend}
- * during upload and returned via {@link Texture#getImage()}. The {@link #free()} method
- * must be called to release the underlying native memory when the image is no longer needed;
- * this is handled automatically when the owning {@link Texture} is destroyed.
+ * The backend releases the buffer when its owning texture is closed.
+ * Callers borrowing an image via {@link Texture#getImage()} must not free it
+ * or retain its buffer past the texture's lifetime.
  */
 public final class LoadedImage {
     private final ByteBuffer pixels;
@@ -47,7 +46,12 @@ public final class LoadedImage {
     }
 
     /** @return the raw RGBA pixel buffer (native memory, do not free externally) */
-    public ByteBuffer pixels() { return pixels; }
+    public ByteBuffer pixels() {
+        if (closed) {
+            throw new IllegalStateException("Image has been freed");
+        }
+        return pixels.duplicate();
+    }
 
     /** @return image width in pixels */
     public int width() { return width; }
@@ -58,8 +62,8 @@ public final class LoadedImage {
     /** Releases the underlying pixel buffer. Safe to call multiple times. */
     public void free() {
         if (!closed) {
-            closer.run();
             closed = true;
-        } else throw new IllegalStateException("Already closed.");
+            closer.run();
+        }
     }
 }

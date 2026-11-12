@@ -37,7 +37,7 @@ import java.nio.file.Path;
  *   tex.destroy();
  * }</pre>
  */
-public interface Texture {
+public interface Texture extends AutoCloseable {
 
     /** Uploads pixel data from a file to the GPU. Safe to call only once per instance. */
     void upload(Path texture);
@@ -49,6 +49,12 @@ public interface Texture {
      */
     void destroy();
 
+    /** Releases this texture or its owned array layer. Safe to call multiple times. */
+    @Override
+    default void close() {
+        destroy();
+    }
+
     /** Binds the texture to the specified texture unit slot ({@code GL_TEXTURE0 + slot}). */
     void bind(int slot);
 
@@ -56,9 +62,9 @@ public interface Texture {
     void unbind();
 
     /**
-     * Returns the raw pixel data uploaded to this texture.
-     * For array textures, this is valid until {@link #destroy()} is called.
-     * For standalone textures, returns {@code null} after upload (data is freed).
+     * Returns borrowed pixel data, or {@code null} if no CPU copy is available.
+     * The data is valid only while this texture owns it. For an array texture,
+     * replacing its layer or closing its manager also ends that lifetime.
      */
     LoadedImage getImage();
 

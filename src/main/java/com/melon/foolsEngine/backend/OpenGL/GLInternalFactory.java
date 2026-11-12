@@ -29,8 +29,8 @@ public class GLInternalFactory extends InternalFactoryStub {
 
     private GLInternalFactory(){}
 
-    static {
-        InternalFactoryStub.InjectOpenGL(new GLInternalFactory());
+    public static GLInternalFactory create() {
+        return new GLInternalFactory();
     }
 
     @Override

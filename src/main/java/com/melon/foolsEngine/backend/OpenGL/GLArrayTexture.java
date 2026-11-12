@@ -24,8 +24,9 @@ import java.nio.file.Path;
 class GLArrayTexture implements Texture {
 
     private final GLTextureManager manager;
-    private final int layer;
+    final int layer;
     private final LoadedImage image;
+    private boolean closed;
 
     GLArrayTexture(GLTextureManager manager, int layer) {
         this(manager, layer, null);
@@ -44,11 +45,13 @@ class GLArrayTexture implements Texture {
 
     @Override
     public int getLayer() {
+        requireOpen();
         return layer;
     }
 
     @Override
     public void bind(int slot) {
+        requireOpen();
         manager.bind(slot);
     }
 
@@ -58,6 +61,7 @@ class GLArrayTexture implements Texture {
 
     @Override
     public LoadedImage getImage() {
+        requireOpen();
         return image;
     }
 
@@ -68,7 +72,19 @@ class GLArrayTexture implements Texture {
 
     @Override
     public void destroy() {
-        if (image != null) image.free();
-        manager.freeLayer(layer);
+        manager.free(this);
+    }
+
+    void invalidate() {
+        closed = true;
+        if (image != null) {
+            image.free();
+        }
+    }
+
+    private void requireOpen() {
+        if (closed) {
+            throw new IllegalStateException("Texture layer has been released");
+        }
     }
 }
