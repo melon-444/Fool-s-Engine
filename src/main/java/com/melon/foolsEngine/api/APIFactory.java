@@ -65,6 +65,11 @@ public interface APIFactory {
         throw new UnsupportedOperationException("This factory does not provide an audio system");
     }
 
+    /** Whether this factory provides an audio backend, independently of device availability. */
+    default boolean supportsAudio() {
+        return false;
+    }
+
     /**
      * Creates a TextureManager that packs same-size textures into a single
      * {@code GL_TEXTURE_2D_ARRAY}, avoiding atlas bleeding.

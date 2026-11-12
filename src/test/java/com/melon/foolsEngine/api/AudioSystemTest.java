@@ -26,7 +26,8 @@ class AudioSystemTest {
                 fail("Loading a clip must leave the caller's stream open");
             }
         };
-        APIFactory factory = InternalFactoryStub.OpenGLINSTANCE();
+        APIFactory factory = InternalFactoryStub.APIBuilder().OpenGL().JavaSound().create();
+        assertTrue(factory.supportsAudio());
         try (var audio = factory.createAudioSystem(); var other = factory.createAudioSystem()) {
             AudioClip clip = audio.load(input);
             assertEquals(0.1, clip.durationSeconds(), 0.000001);
@@ -35,5 +36,17 @@ class AudioSystemTest {
             clip.close();
             assertThrows(IllegalArgumentException.class, () -> audio.createSource(clip));
         }
+    }
+
+    @Test
+    void builderRequiresGraphicsAndLeavesAudioOptional() {
+        assertThrows(IllegalStateException.class, () -> InternalFactoryStub.APIBuilder().JavaSound().create());
+        assertThrows(IllegalStateException.class, () -> InternalFactoryStub.APIBuilder().OpenGL().Vulkan());
+        assertThrows(IllegalStateException.class, () -> InternalFactoryStub.APIBuilder().JavaSound().JavaSound());
+        assertThrows(UnsupportedOperationException.class, () -> InternalFactoryStub.APIBuilder().Vulkan().create());
+
+        APIFactory factory = InternalFactoryStub.APIBuilder().OpenGL().create();
+        assertFalse(factory.supportsAudio());
+        assertThrows(UnsupportedOperationException.class, factory::createAudioSystem);
     }
 }

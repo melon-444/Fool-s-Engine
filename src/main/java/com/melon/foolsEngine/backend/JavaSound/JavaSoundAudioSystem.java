@@ -1,6 +1,7 @@
 package com.melon.foolsEngine.backend.JavaSound;
 
 import com.melon.foolsEngine.api.audio.AudioClip;
+import com.melon.foolsEngine.api.InternalFactoryStub;
 import com.melon.foolsEngine.api.audio.AudioSource;
 import com.melon.foolsEngine.api.audio.AudioSystem;
 
@@ -21,6 +22,14 @@ import java.util.Set;
 
 /** Java Sound playback for short sounds such as mono or stereo PCM WAV files. */
 public final class JavaSoundAudioSystem implements AudioSystem {
+    static {
+        InternalFactoryStub.registerJavaSound(JavaSoundAudioSystem::new);
+    }
+
+    /** @deprecated Select Java Sound through the API builder. */
+    @Deprecated
+    public JavaSoundAudioSystem() {}
+
     private final Set<DecodedClip> clips = new HashSet<>();
     private boolean closed;
 

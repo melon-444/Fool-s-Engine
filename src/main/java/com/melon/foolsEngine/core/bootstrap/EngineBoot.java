@@ -15,6 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package com.melon.foolsEngine.core.bootstrap;
 
+import com.melon.foolsEngine.api.APIFactory;
+import com.melon.foolsEngine.api.InternalFactoryStub;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.ConstructorInjector;
 import com.melon.foolsEngine.util.Distribution;
@@ -28,6 +30,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Objects;
 
 public final class EngineBoot {
 
@@ -35,11 +38,26 @@ public final class EngineBoot {
 
     private EngineBoot() {
     }
+    /** @deprecated Pass an explicitly configured API factory. */
+    @Deprecated
     public static FoolsEngine create(int maxEntities, int maxComponents, int width, int height, boolean isServer){
         return create(maxEntities, maxComponents, width, height, isServer,LogLevel.INFO);
     }
 
+    /** @deprecated Pass an explicitly configured API factory. */
+    @Deprecated
     public static FoolsEngine create(int maxEntities, int maxComponents, int width, int height, boolean isServer, LogLevel level) {
+        return create(InternalFactoryStub.defaultInstance(), maxEntities, maxComponents, width, height, isServer, level);
+    }
+
+    public static FoolsEngine create(APIFactory apiFactory, int maxEntities, int maxComponents, int width,
+                                     int height, boolean isServer) {
+        return create(apiFactory, maxEntities, maxComponents, width, height, isServer, LogLevel.INFO);
+    }
+
+    public static FoolsEngine create(APIFactory apiFactory, int maxEntities, int maxComponents, int width,
+                                     int height, boolean isServer, LogLevel level) {
+        Objects.requireNonNull(apiFactory, "apiFactory");
         Logger.setLevel(level);
         LOG.info("Engine starting | mode=%s maxEntities=%d", isServer ? "SERVER" : "CLIENT", maxEntities);
         ValidatingLoader loader = new ValidatingLoader(Thread.currentThread().getContextClassLoader(),isServer);
@@ -51,7 +69,7 @@ public final class EngineBoot {
             throw new InternalError("FoolsEngine class not found");
         }
         FoolsEngine engine = constructEngine(
-                maxEntities, maxComponents, width, height, isServer);
+                maxEntities, maxComponents, width, height, isServer, apiFactory);
         engine.updateSettings();
         LOG.info("Engine ready | FOV=%.1f aspect=%.2f zNear=%.4f", engine.FOV, engine.aspect, engine.Z_NEAR);
         return engine;
@@ -62,7 +80,8 @@ public final class EngineBoot {
             int maxComponents,
             int width,
             int height,
-            boolean isServer
+            boolean isServer,
+            APIFactory apiFactory
     ) {
         try {
             var constructor = FoolsEngine.class.getDeclaredConstructor(
@@ -70,14 +89,16 @@ public final class EngineBoot {
                     int.class,
                     int.class,
                     int.class,
-                    boolean.class);
+                    boolean.class,
+                    APIFactory.class);
             constructor.setAccessible(true);
             return constructor.newInstance(
                     maxEntities,
                     maxComponents,
                     width,
                     height,
-                    isServer);
+                    isServer,
+                    apiFactory);
         } catch (InvocationTargetException exception) {
             Throwable cause = exception.getCause();
             if (cause instanceof RuntimeException runtimeException) {
