@@ -44,7 +44,18 @@ import java.util.List;
  */
 public class LightEnvironment {
 
-    private static final int MAX_LIGHTS = 16;
+    public static final int DEFAULT_MAX_LIGHTS = 16;
+    private final int maxLights;
+
+    public LightEnvironment() { this(DEFAULT_MAX_LIGHTS); }
+
+    /** Capacity must match the uniform arrays in the caller's shader. */
+    public LightEnvironment(int maxLights) {
+        if (maxLights <= 0) throw new IllegalArgumentException("maxLights must be positive");
+        this.maxLights = maxLights;
+    }
+
+    public int maxLights() { return maxLights; }
     /** Texture unit slot used for the shadow map array in shaders */
     public static final int SHADOW_ARRAY_SLOT = 8;
 
@@ -55,6 +66,9 @@ public class LightEnvironment {
 
     /** Adds a light to the environment */
     public void add(Light light) {
+        java.util.Objects.requireNonNull(light, "light");
+        if (lights.contains(light)) throw new IllegalArgumentException("Light already added");
+        if (lights.size() >= maxLights) throw new IllegalStateException("Light capacity exceeded: " + maxLights);
         lights.add(light);
     }
 
@@ -63,10 +77,11 @@ public class LightEnvironment {
      * If the light casts shadows, its shadow layer is released for reuse.
      */
     public void remove(Light light) {
-        if (shadowManager != null && light.castsShadow()) {
+        if (!lights.remove(light)) return;
+        if (shadowManager != null && light.castsShadow() && light.shadowInfo != null) {
             shadowManager.releaseLayer(light.shadowInfo.shadowLayer());
         }
-        lights.remove(light);
+
     }
 
     /**
@@ -185,7 +200,7 @@ public class LightEnvironment {
      */
     public void apply(ShaderProgram shader) {
         shader.setVec3("ambientColor", ambientColor.x, ambientColor.y, ambientColor.z);
-        int count = Math.min(lights.size(), MAX_LIGHTS);
+        int count = lights.size();
         shader.setInt("lightCount", count);
 
         for (int i = 0; i < count; i++) {

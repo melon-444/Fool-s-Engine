@@ -78,8 +78,8 @@ public class SnakeGame {
 
         ShaderProgram flat = engine.serviceFactory.getShaderProgram();
         flat.load(
-                Path.of("games/snake3d/src/main/resources/shaders/.glsl"),
-                Path.of("games/snake3d/src/main/resources/shaders/flflat_vshat_fsh.glsl"));
+                Path.of("games/snake3d/src/main/resources/shaders/flat_vsh.glsl"),
+                Path.of("games/snake3d/src/main/resources/shaders/flat_fsh.glsl"));
 
         ShaderProgram portal = engine.serviceFactory.getShaderProgram();
         portal.load(

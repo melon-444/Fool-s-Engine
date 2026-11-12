@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package com.melon.foolsEngine.api;
 
+import com.melon.foolsEngine.api.audio.AudioSystem;
 import com.melon.foolsEngine.api.input.InputManager;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderTarget;
@@ -26,9 +27,8 @@ import com.melon.foolsEngine.api.windows.WindowsManager;
 
 /**
  * Backend-agnostic service factory.
- * All engine services (windows, render frame, shaders, meshes, textures, render targets)
- * are obtained through this interface. The concrete implementation is selected at engine startup
- * (currently OpenGL only).
+ * Creates engine services and resources for graphics, windowing, input, and audio.
+ * The concrete factory is selected at engine startup.
  * <p>
  * Obtain via {@code FoolsEngine.serviceFactory}.
  */
@@ -56,6 +56,14 @@ public interface APIFactory {
      * @return a ready-to-use InputManager (just add bindings)
      */
     <E> InputManager createInputManager(E env);
+
+    /**
+     * Creates an independent audio system. The caller owns it and must close it.
+     * @throws UnsupportedOperationException if this factory does not provide audio
+     */
+    default AudioSystem createAudioSystem() {
+        throw new UnsupportedOperationException("This factory does not provide an audio system");
+    }
 
     /**
      * Creates a TextureManager that packs same-size textures into a single

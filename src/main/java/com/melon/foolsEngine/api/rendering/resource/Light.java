@@ -62,11 +62,11 @@ public class Light {
     /** Position in world space (primarily for point and spotlights) */
     public final Vector3f position;
     /** Intensity multiplier */
-    public final float intensity;
+    public float intensity;
     /** Inner cone angle in degrees (spotlights only) */
-    public final float innerTheta;
+    public float innerTheta;
     /** Outer cone angle in degrees (spotlights only) */
-    public final float outerTheta;
+    public float outerTheta;
     /** Shadow data; null if this light does not cast shadows */
     public final ShadowInfo shadowInfo;
 

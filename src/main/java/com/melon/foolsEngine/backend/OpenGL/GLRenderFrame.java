@@ -184,15 +184,18 @@ class GLRenderFrame implements RenderFrame {
                     pass.colorLoadOp() == ShaderPass.LoadOp.CLEAR);
         }
 
+        setDepthMask(true); // Clears must not inherit a previous transparent pass write mask.
         invalidateLoadAttachments(pass, target);
         clearPassAttachments(pass, scene, target);
 
         if (pass.type() == ShaderPass.Type.POSTEFFECT) {
             setDepthTestEnabled(false);
+            setBlendState(ShaderPass.BlendMode.OPAQUE);
             executePostEffectPass(pass);
         } else {
-            setDepthTestEnabled(true);
+            setDepthTestEnabled(pass.depthTest());
             setBlendState(pass.blendMode());
+            setDepthMask(pass.depthWrite());
             if (!commands.isEmpty()) {
                 renderCommands(commands, pass);
             }
@@ -284,21 +287,22 @@ class GLRenderFrame implements RenderFrame {
         }
         if (vpW <= 0 || vpH <= 0) return;
 
-        if (!scene.isPreserveScreenAspect() || cam == null || cam.projection == null) {
+        float projAspect = cam == null || cam.projection == null ? Float.NaN
+                : Math.abs(cam.projection.m11() / cam.projection.m00());
+        if (!scene.isPreserveScreenAspect() || !Float.isFinite(projAspect) || projAspect <= 0) {
             setViewport(0, 0, vpW, vpH);
             setScissorEnabled(false);
             return;
         }
 
-        float projAspect = Math.abs(cam.projection.m11() / cam.projection.m00());
-        int vx, vy, vw, vh;
-
-
-        vh = (int) (vpW / projAspect);
-        vw = vpW;
-        vx = 0;
-        vy = (vpH - vh) / 2;
-
+        int vw = vpW;
+        int vh = Math.max(1, (int) (vpW / projAspect));
+        if (scene.getScreenAspectMode() == RenderScene.ScreenAspectMode.CONTAIN && vh > vpH) {
+            vw = Math.max(1, (int) (vpH * projAspect));
+            vh = vpH;
+        }
+        int vx = (vpW - vw) / 2;
+        int vy = (vpH - vh) / 2;
 
         setScissorEnabled(true);
         if (clearBars) {
@@ -308,7 +312,7 @@ class GLRenderFrame implements RenderFrame {
         }
 
         setViewport(vx, vy, vw, vh);
-        setScissor(vx, vy, vw, vh);
+        setScissor(Math.max(0, vx), Math.max(0, vy), Math.min(vw, vpW), Math.min(vh, vpH));
     }
 
     // ────────────────────── OpenGL state cache ──────────────────────
@@ -552,7 +556,7 @@ class GLRenderFrame implements RenderFrame {
     // ────────────────────── core draw ──────────────────────
 
     private void renderCommands(List<RenderCommand> commands, ShaderPass pass) {
-        if (pass.blendMode() == ShaderPass.BlendMode.OPAQUE) {
+        if (pass.sortMode() == ShaderPass.SortMode.BATCHED) {
             renderOpaque(commands, pass);
         } else {
             renderBlended(commands, pass);

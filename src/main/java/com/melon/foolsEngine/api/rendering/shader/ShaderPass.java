@@ -58,12 +58,15 @@ public final class ShaderPass {
     /**
      * Alpha-blending behavior of a CORE pass.
      *
-     * <p>This is pure GL blend state. An {@link #OPAQUE OPAQUE} pass enables
-     * depth writes and keeps instanced batching; any other mode enables
-     * {@code GL_BLEND}, disables depth writes (depth stays read-only) and sorts
-     * its commands back-to-front by camera distance. Which commands a pass
+     * <p>This is pure GL blend state. An {@link #BACK_TO_FRONT} pass enables
+     * depth writes and keeps instanced batching; blended modes enable
+     * {@code GL_BLEND}, default to disabled depth writes. Alpha blending sorts
+     * its commands back-to-front; additive blending retains batching. Explicit sort,
+     * depthWrite and depthTest settings override these defaults. Which commands a pass
      * consumes is decided separately by {@link Builder#queue(RenderQueue)}.</p>
      */
+    public enum SortMode { BATCHED, BACK_TO_FRONT }
+
     public enum BlendMode {
         /** No blending, depth writes enabled. */
         OPAQUE,
@@ -94,6 +97,9 @@ public final class ShaderPass {
     private final Type type;
     private final MaterialMode materialMode;
     private final BlendMode blendMode;
+    private final SortMode sortMode;
+    private final boolean depthWrite;
+    private final boolean depthTest;
     private final RenderQueue queue;
     private final ShaderProgram shader;
     private final RenderTarget output;
@@ -118,6 +124,10 @@ public final class ShaderPass {
         this.type = builder.type;
         this.materialMode = builder.materialMode;
         this.blendMode = builder.blendMode;
+        this.sortMode = builder.sortMode != null ? builder.sortMode :
+                (builder.blendMode == BlendMode.ALPHA_BLEND ? SortMode.BACK_TO_FRONT : SortMode.BATCHED);
+        this.depthWrite = builder.depthWrite != null ? builder.depthWrite : builder.blendMode == BlendMode.OPAQUE;
+        this.depthTest = builder.depthTest;
         this.queue = builder.queue;
         this.shader = builder.shader;
         this.output = builder.output;
@@ -172,6 +182,9 @@ public final class ShaderPass {
 
     public Type type() { return type; }
     public MaterialMode materialMode() { return materialMode; }
+    public SortMode sortMode() { return sortMode; }
+    public boolean depthWrite() { return depthWrite; }
+    public boolean depthTest() { return depthTest; }
     public BlendMode blendMode() { return blendMode; }
     public RenderQueue queue() { return queue; }
     public ShaderProgram shader() { return shader; }
@@ -199,6 +212,13 @@ public final class ShaderPass {
         private final Type type;
         private MaterialMode materialMode;
         private BlendMode blendMode = BlendMode.OPAQUE;
+        private SortMode sortMode;
+        private Boolean depthWrite;
+        private boolean depthTest = true;
+
+        public Builder sort(SortMode mode) { sortMode = Objects.requireNonNull(mode); return this; }
+        public Builder depthWrite(boolean enabled) { depthWrite = enabled; return this; }
+        public Builder depthTest(boolean enabled) { depthTest = enabled; return this; }
         private RenderQueue queue = RenderQueue.OPAQUE;
         private final ShaderProgram shader;
         private RenderTarget output;

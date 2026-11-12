@@ -50,7 +50,16 @@ public class RenderScene {
     private float bgA = 1.0f;
     private int screenViewportW;
     private int screenViewportH;
-    private boolean preserveScreenAspect = true;
+    public enum ScreenAspectMode {
+        /** Match the window width. Add top/bottom bars or crop vertically as needed. */
+        FIT_WIDTH,
+        /** Keep the entire image visible, adding bars on either axis as needed. */
+        CONTAIN,
+        /** Fill the window without preserving the camera's aspect ratio. */
+        STRETCH
+    }
+
+    private ScreenAspectMode screenAspectMode = ScreenAspectMode.FIT_WIDTH;
 
     /** Sets the camera for this frame */
     public void setCamera(Camera camera) {
@@ -122,17 +131,26 @@ public class RenderScene {
      *                       bars on wider screens (default: true).
      */
     public void setScreenViewport(int width, int height, boolean preserveAspect) {
-        this.screenViewportW = width;
-        this.screenViewportH = height;
-        this.preserveScreenAspect = preserveAspect;
+        setScreenViewport(width, height, preserveAspect ? ScreenAspectMode.FIT_WIDTH : ScreenAspectMode.STRETCH);
     }
+
+    public void setScreenViewport(int width, int height, ScreenAspectMode mode) {
+        setScreenAspectMode(mode);
+        setScreenViewport(width, height);
+    }
+
+    public void setScreenAspectMode(ScreenAspectMode mode) {
+        screenAspectMode = java.util.Objects.requireNonNull(mode, "mode");
+    }
+
+    public ScreenAspectMode getScreenAspectMode() { return screenAspectMode; }
 
     /** @return the viewport width for the default framebuffer, or 0 if not set */
     public int getScreenViewportW() { return screenViewportW; }
     /** @return the viewport height for the default framebuffer, or 0 if not set */
     public int getScreenViewportH() { return screenViewportH; }
-    /** @return true when the renderer should letterbox/pillarbox to preserve camera aspect */
-    public boolean isPreserveScreenAspect() { return preserveScreenAspect; }
+    /** @return whether the selected mode preserves the camera aspect ratio */
+    public boolean isPreserveScreenAspect() { return screenAspectMode != ScreenAspectMode.STRETCH; }
 
     /** Clears all submitted commands for the next frame */
     public void clear() {

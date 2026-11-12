@@ -68,7 +68,6 @@ public class LightCollector extends ClientSystem {
 
         if (env.getLights().isEmpty() && !activeLights.isEmpty()) {
             activeLights.clear();
-            return;
         }
 
         toRemove.removeAll(current);
@@ -82,7 +81,19 @@ public class LightCollector extends ClientSystem {
         }
 
         for (int eid : current) {
-            if (activeLights.containsKey(eid)) continue;
+            Light existing = activeLights.get(eid);
+            if (existing != null) {
+                LightComponent component = ecsLights.getComponent(eid);
+                if (component != null) {
+                    existing.color.set(component.color);
+                    if (component.direction != null) existing.direction.set(component.direction);
+                    if (component.position != null) existing.position.set(component.position);
+                    existing.intensity = component.intensity;
+                    existing.innerTheta = component.innerTheta;
+                    existing.outerTheta = component.outerTheta;
+                }
+                continue;
+            }
 
             LightComponent lc = ecsLights.getComponent(eid);
             if (lc == null) continue;
