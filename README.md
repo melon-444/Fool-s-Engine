@@ -173,6 +173,8 @@ src/main/java/com/melon/foolsEngine/
       GLFWKeyBoard.java         # GLFW keyboard input
       GLFWMouse.java            # GLFW mouse input
       GLInternalFactory.java    # Backend DI registration
+      ImGuiHelper.java          # Optional GLFW input forwarding
+      imgui/                    # ImGui context, renderer and debug overlay (compile-only)
     Vulkan/                     # Vulkan backend (functional stub)
       VKRenderFrame.java        # Full pipeline: instance/device/swapchain/pipeline/render
       VKMesh.java               # VkBuffer vertex/index management
@@ -196,8 +198,6 @@ src/main/java/com/melon/foolsEngine/
    util/                         # Projection, CursorMode, ObjLoader, Signature, SparseSet, etc.
      Logger.java                 # Built-in logging (TRACE → ERROR)
      LogLevel.java               # Log severity enum
-     ImGuiHelper.java            # Optional ImGui input forwarding (no-op when imgui absent)
-     imgui/                      # ImGuiContext, ImGuiRenderer, ImGuiDebugOverlay (compile-only)
 
 src/main/resources/shader/
   vsh/main_vsh.glsl             # Main vertex shader (instanced)
@@ -229,7 +229,25 @@ frame.render(RenderScene)
 - **Shadow mapping**: 2D texture array atlas with 5x5 PCF sampling in the fragment shader. `ShadowManager` is owned by `LightEnvironment` and handles layer allocation (with a free-list for reuse), shadow camera updates, and light-space matrix sync; the renderer executes the draw.
 - **Configurable passes**: `ShaderPass` + `RenderScene.submitPass()` allows arbitrary pass ordering; `RenderPassCollector` auto-generates shadow passes before user passes.
 
+### Built-in UI
+
+Submit a rectangle or image to the current frame with `scene.ui()`. Coordinates and sizes are framebuffer pixels with the origin at the top left. Higher layers draw on top, with submission order breaking ties. OpenGL draws UI after the scene passes by default. Use `scene.submitPass(ShaderPass.ui())` to place it explicitly in the pass list.
+
+```java
+var scene = engine.systemScheduler.getScene();
+var red = new UiDrawList.Color(0.85f, 0.1f, 0.15f, 1);
+scene.ui().rectangle(16, 16, 120, 10, red, 0);
+scene.ui().submit(new UiDrawList.Quad(-32, -14, 64, 6, red, 1)
+        .at(new UiDrawList.WorldAnchor(0, 2, -4)));
+```
+
+Submit again each frame. For persistent ECS UI, attach a `UiComponent` to an entity. The built-in `UiCollector` uses the same draw list. Set `followTransform` to follow the entity's `TransformComponent`, optionally with a local offset such as `offsetY = 2` for an overhead health bar. World anchors follow the scene camera and aspect mode. Their quads keep a fixed pixel size and draw over scene geometry.
+
+Menus can acquire and close independent `systemScheduler.pauseLocalSimulation()` and `systemScheduler.captureGameplayInput()` scopes. Local pause skips fixed-step simulation without accumulating time to replay. UI, window events and rendering keep running. For multiplayer, capture gameplay input alone and have gameplay code check `isGameplayInputCaptured()` before acting. Shut down the scheduler before destroying the window.
+
 ### ImGui Integration
+
+Create an optional ImGui layer with `engine.serviceFactory.createImGuiLayer(window)`. Call `beginFrame()`, issue Dear ImGui widget calls, and call `endFrame()` while the window's graphics context is current. Close the layer before destroying the window. The engine API exposes the frame lifecycle, while widgets still use imgui-java.
 
 - **Lazy-loading**: All core engine ImGui calls go through `ImGuiHelper`, which detects via `Class.forName("imgui.ImGui")` whether imgui-java is on the classpath. When absent, every forwarding method becomes a no-op — `ImGuiInternal` (the actual imgui import holder) is never loaded by the JVM.
 - **Build**: imgui-java is `compileOnly` in `build.gradle.kts` — consumers who want ImGui must add the dependency themselves. Tests use `testImplementation`.

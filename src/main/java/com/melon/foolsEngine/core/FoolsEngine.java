@@ -73,7 +73,7 @@ public class FoolsEngine {
 
     @Deprecated
     FoolsEngine(int maxEntities, int maxComponents, int windowWidth, int windowHeight, boolean isServer) {
-        this(maxEntities, maxComponents, windowWidth, windowHeight, isServer, InternalFactoryStub.defaultInstance());
+        this(maxEntities, maxComponents, windowWidth, windowHeight, isServer, isServer?null:InternalFactoryStub.defaultInstance());
     }
 
     FoolsEngine(int maxEntities, int maxComponents, int windowWidth, int windowHeight, boolean isServer,
@@ -81,7 +81,7 @@ public class FoolsEngine {
         this.isServer = isServer;
         LOGGER.info("Booting FoolsEngine | entities=%d components=%d mode=%s", maxEntities, maxComponents,
                 isServer ? "SERVER" : "CLIENT");
-        this.serviceFactory = java.util.Objects.requireNonNull(apiFactory, "apiFactory");
+        this.serviceFactory = isServer?null:java.util.Objects.requireNonNull(apiFactory, "apiFactory");
         this.MAX_ENTITIES = maxEntities;
         this.MAX_COMPONENTS = maxComponents;
         this.entityManager = new EntityManager(this);

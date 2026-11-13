@@ -1,5 +1,8 @@
 package com.melon.foolsEngine.api;
 
+import com.melon.foolsEngine.api.rendering.ui.ImGuiLayer;
+import com.melon.foolsEngine.api.windows.Window;
+
 import com.melon.foolsEngine.api.audio.AudioSystem;
 import com.melon.foolsEngine.api.input.InputManager;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
@@ -10,6 +13,7 @@ import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
 import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.WindowsManager;
 import com.melon.foolsEngine.backend.JavaSound.JavaSoundAudioSystem;
+import com.melon.foolsEngine.backend.OpenAL.OpenALAudioSystem;
 import com.melon.foolsEngine.backend.OpenGL.GLInternalFactory;
 
 import java.util.Objects;
@@ -44,7 +48,11 @@ public final class APIBuilder {
     }
 
     public APIBuilder JavaSound() {
-        return selectAudio(JavaSoundAudioSystem::create);
+        return selectAudio(JavaSoundAudioSystem::new);
+    }
+
+    public APIBuilder OpenAL() {
+        return selectAudio(OpenALAudioSystem::new);
     }
 
     /** The provider must return a new caller-owned audio system on each invocation. */
@@ -78,6 +86,11 @@ public final class APIBuilder {
 
     private record ConfiguredFactory(APIFactory graphics, Supplier<? extends AudioSystem> audio)
             implements APIFactory {
+        @Override
+        public ImGuiLayer createImGuiLayer(Window window) {
+            return graphics.createImGuiLayer(window);
+        }
+
         @Override public WindowsManager getWindowsManager() { return graphics.getWindowsManager(); }
         @Override public RenderFrame getRenderFrame() { return graphics.getRenderFrame(); }
         @Override public ShaderProgram getShaderProgram() { return graphics.getShaderProgram(); }

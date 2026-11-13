@@ -36,9 +36,7 @@ import com.melon.foolsEngine.core.ECS.basicComponents.TransformComponent;
 import com.melon.foolsEngine.core.bootstrap.EngineBoot;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.*;
-import com.melon.foolsEngine.util.imgui.ImGuiContext;
-import com.melon.foolsEngine.util.imgui.ImGuiDebugOverlay;
-import com.melon.foolsEngine.util.imgui.ImGuiRenderer;
+import com.melon.foolsEngine.backend.OpenGL.imgui.ImGuiDebugOverlay;
 import org.joml.*;
 import org.joml.Math;
 
@@ -46,8 +44,8 @@ import java.nio.file.Path;
 
 public class TestLightBackend {
     static FoolsEngine foolsEngine = EngineBoot.create(1000, 100, 800, 600, false);
-    private static final int SHADOW_MAP_SIZE = 8192;
-    private static final int MAX_SHADOW_LAYERS = 16;
+    private static final int SHADOW_MAP_SIZE = Integer.getInteger("foolsEngine.test.shadowMapSize", 2048);
+    private static final int MAX_SHADOW_LAYERS = LightEnvironment.DEFAULT_MAX_LIGHTS;
     private static final float SPOT_SHADOW_NEAR = 0.1f;
 
     public static void main(String[] args) {
@@ -91,9 +89,7 @@ public class TestLightBackend {
         RenderFrame frame = foolsEngine.frame;
         frame.init();
 
-        ImGuiContext imGuiContext = new ImGuiContext();
-        imGuiContext.init(win.getID(), "#version 330");
-        ImGuiRenderer imGuiRenderer = new ImGuiRenderer(imGuiContext);
+        var imGuiRenderer = foolsEngine.serviceFactory.createImGuiLayer(win);
         ImGuiDebugOverlay debugOverlay = new ImGuiDebugOverlay();
 
         LightEnvironment lightEnv = new LightEnvironment();
@@ -318,7 +314,7 @@ public class TestLightBackend {
         shader.destroy();
         depthShader.destroy();
         lightEnv.destroy();
-        imGuiContext.destroy();
+        imGuiRenderer.close();
         manager.destroyWindow(win, true);
     }
 }

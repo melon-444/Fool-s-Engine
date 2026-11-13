@@ -42,7 +42,9 @@ public final class ShaderPass {
         /** Consume and instance-batch the scene's render commands. */
         CORE,
         /** Draw one fullscreen quad. */
-        POSTEFFECT
+        POSTEFFECT,
+        /** Composite the scene's UI onto the screen. */
+        UI
     }
 
     /** How a CORE pass resolves the shader and material parameters. */
@@ -150,6 +152,15 @@ public final class ShaderPass {
     }
 
     // ── Factories ──
+
+    private static final ShaderPass UI_PASS = new Builder(Type.UI, MaterialMode.COMMAND_MATERIAL, null)
+            .blend(BlendMode.ALPHA_BLEND).depthTest(false).depthWrite(false)
+            .depthLoad(LoadOp.LOAD).depthStore(StoreOp.STORE).build();
+
+    /** Draws the frame's UI onto the screen at this point in the pass list. */
+    public static ShaderPass ui() {
+        return UI_PASS;
+    }
 
     /** CORE pass using each command's complete material. */
     public static Builder core() {
@@ -425,7 +436,7 @@ public final class ShaderPass {
                     throw new IllegalStateException(
                             "POSTEFFECT pass does not consume a render queue");
                 }
-            } else {
+            } else if (type == Type.CORE) {
                 if (materialMode == MaterialMode.PASS_SHADER && shader == null) {
                     throw new IllegalStateException(
                             "PASS_SHADER mode requires a pass shader");

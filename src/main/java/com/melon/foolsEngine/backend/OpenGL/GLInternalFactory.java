@@ -15,6 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package com.melon.foolsEngine.backend.OpenGL;
 
+import com.melon.foolsEngine.api.rendering.ui.ImGuiLayer;
+import com.melon.foolsEngine.api.windows.Window;
+import com.melon.foolsEngine.backend.OpenGL.imgui.ImGuiRenderer;
+
 import com.melon.foolsEngine.api.InternalFactoryStub;
 import com.melon.foolsEngine.api.input.InputManager;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
@@ -26,6 +30,18 @@ import com.melon.foolsEngine.api.rendering.shader.ShaderProgram;
 import com.melon.foolsEngine.api.windows.WindowsManager;
 
 public class GLInternalFactory extends InternalFactoryStub {
+
+    @Override
+    public ImGuiLayer createImGuiLayer(Window window) {
+        if (!(window instanceof GLWindow)) {
+            throw new IllegalArgumentException("ImGui requires an OpenGL window");
+        }
+        try {
+            return ImGuiRenderer.create(window.getID());
+        } catch (LinkageError e) {
+            throw new UnsupportedOperationException("ImGui requires imgui-java bindings and natives", e);
+        }
+    }
 
     private GLInternalFactory(){}
 

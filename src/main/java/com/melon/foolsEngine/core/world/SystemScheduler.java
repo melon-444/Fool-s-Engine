@@ -64,6 +64,48 @@ public class SystemScheduler {
 
     private long accumulatorNs;
     private long lastFrameNs = java.lang.System.nanoTime();
+    private final AtomicInteger simulationPauses = new AtomicInteger();
+    private final AtomicInteger gameplayInputCaptures = new AtomicInteger();
+
+    public interface MenuScope extends AutoCloseable {
+        @Override void close();
+    }
+
+    /**
+     * Stops client-hosted fixed-step simulation until all pause scopes close.
+     * UI collection, rendering and window events keep running.
+     */
+    public MenuScope pauseLocalSimulation() {
+        if (headless) {
+            throw new IllegalStateException("Local menu pause requires a client scheduler");
+        }
+        return hold(simulationPauses);
+    }
+
+    public boolean isLocalSimulationPaused() {
+        return simulationPauses.get() > 0;
+    }
+
+    /** Holds gameplay input while menu input continues. Gameplay code checks the flag before applying controls. */
+    public MenuScope captureGameplayInput() {
+        return hold(gameplayInputCaptures);
+    }
+
+    public boolean isGameplayInputCaptured() {
+        return gameplayInputCaptures.get() > 0;
+    }
+
+    private static MenuScope hold(AtomicInteger count) {
+        count.incrementAndGet();
+        var released = new java.util.concurrent.atomic.AtomicBoolean();
+        return () -> {
+            if (released.compareAndSet(false, true)) {
+                count.decrementAndGet();
+            }
+        };
+    }
+
+    private boolean simulationWasPaused;
 
     public SystemScheduler(SystemManager systemManager) {
         this(null, null, systemManager);
@@ -229,7 +271,13 @@ public class SystemScheduler {
         long elapsed = now - lastFrameNs;
         lastFrameNs = now;
 
-        accumulatorNs += Math.min(elapsed, FIXED_DT_NS * MAX_FRAME_CATCHUP);
+        boolean paused = isLocalSimulationPaused();
+        if (paused) {
+            accumulatorNs = 0;
+        } else if (!simulationWasPaused) {
+            accumulatorNs += Math.min(elapsed, FIXED_DT_NS * MAX_FRAME_CATCHUP);
+        }
+        simulationWasPaused = paused;
 
         while (accumulatorNs >= FIXED_DT_NS) {
             if (serverPlanDirty) buildServerPlan();
@@ -310,5 +358,9 @@ public class SystemScheduler {
 
     public void shutdown() {
         workerPool.shutdown();
+        if (!headless) {
+            ctx.makeCurrent();
+            frame.close();
+        }
     }
 }

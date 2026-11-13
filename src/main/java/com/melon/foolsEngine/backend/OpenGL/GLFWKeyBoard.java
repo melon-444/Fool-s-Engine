@@ -19,7 +19,6 @@ import com.melon.foolsEngine.api.input.FoolsEngineKeyCode;
 import com.melon.foolsEngine.api.input.InputDevice;
 import com.melon.foolsEngine.api.rendering.render.GraphicsContext;
 import com.melon.foolsEngine.api.windows.Window;
-import com.melon.foolsEngine.util.ImGuiHelper;
 import org.joml.Vector2f;
 import org.lwjgl.system.Callback;
 

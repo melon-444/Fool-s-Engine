@@ -47,7 +47,8 @@ public final class EngineBoot {
     /** @deprecated Pass an explicitly configured API factory. */
     @Deprecated
     public static FoolsEngine create(int maxEntities, int maxComponents, int width, int height, boolean isServer, LogLevel level) {
-        return create(InternalFactoryStub.defaultInstance(), maxEntities, maxComponents, width, height, isServer, level);
+        APIFactory apiFactory = isServer ? null : InternalFactoryStub.defaultInstance();
+        return create(apiFactory, maxEntities, maxComponents, width, height, isServer, level);
     }
 
     public static FoolsEngine create(APIFactory apiFactory, int maxEntities, int maxComponents, int width,
@@ -57,7 +58,9 @@ public final class EngineBoot {
 
     public static FoolsEngine create(APIFactory apiFactory, int maxEntities, int maxComponents, int width,
                                      int height, boolean isServer, LogLevel level) {
-        Objects.requireNonNull(apiFactory, "apiFactory");
+        if (!isServer) {
+            Objects.requireNonNull(apiFactory, "Client startup requires an API factory");
+        }
         Logger.setLevel(level);
         LOG.info("Engine starting | mode=%s maxEntities=%d", isServer ? "SERVER" : "CLIENT", maxEntities);
         ValidatingLoader loader = new ValidatingLoader(Thread.currentThread().getContextClassLoader(),isServer);

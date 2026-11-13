@@ -15,6 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package com.melon.foolsEngine.api.rendering.render;
 
+import com.melon.foolsEngine.api.rendering.ui.UiDrawList;
+
 import com.melon.foolsEngine.api.rendering.resource.Camera;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.api.rendering.resource.texture.TextureManager;
@@ -44,6 +46,10 @@ public class RenderScene {
     private TextureManager textureManager;
     private final List<RenderCommand> commands = new ArrayList<>();
     private final List<ShaderPass> passes = new ArrayList<>();
+    private final UiDrawList ui = new UiDrawList();
+
+    /** Submit UI to the same frame as the scene geometry. */
+    public UiDrawList ui() { return ui; }
     private float bgR = 0.05f;
     private float bgG = 0.05f;
     private float bgB = 0.1f;
@@ -156,6 +162,7 @@ public class RenderScene {
     public void clear() {
         commands.clear();
         passes.clear();
+        ui.clear();
     }
 
     /** Adds a {@link ShaderPass} to the rendering pipeline for this frame. */

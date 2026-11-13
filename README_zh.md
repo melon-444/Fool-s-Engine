@@ -173,6 +173,8 @@ src/main/java/com/melon/foolsEngine/
       GLFWKeyBoard.java         # GLFW 键盘输入
       GLFWMouse.java            # GLFW 鼠标输入
       GLInternalFactory.java    # 后端 DI 注册
+      ImGuiHelper.java          # 可选的 GLFW 输入转发
+      imgui/                    # ImGui 上下文、渲染器和调试面板（compile-only）
     Vulkan/                     # Vulkan 后端（初步可用）
       VKRenderFrame.java        # 完整管线：instance/device/swapchain/pipeline/render
       VKMesh.java               # VkBuffer 顶点/索引管理
@@ -196,8 +198,6 @@ src/main/java/com/melon/foolsEngine/
    util/                         # Projection, CursorMode, ObjLoader, Signature, SparseSet 等
      Logger.java                 # 内置日志（TRACE → ERROR）
      LogLevel.java               # 日志严重级别枚举
-     ImGuiHelper.java            # 可选的 ImGui 输入转发（无 ImGui 时静默空操作）
-     imgui/                      # ImGuiContext, ImGuiRenderer, ImGuiDebugOverlay（compile-only）
 
 src/main/resources/shader/
   vsh/main_vsh.glsl             # 主顶点着色器（实例化）

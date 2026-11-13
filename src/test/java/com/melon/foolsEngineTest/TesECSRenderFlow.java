@@ -15,6 +15,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package com.melon.foolsEngineTest;
 
+import com.melon.foolsEngine.api.rendering.ui.UiDrawList;
+import com.melon.foolsEngine.core.ECS.basicComponents.UiComponent;
+
 import com.melon.foolsEngine.api.input.*;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
@@ -38,9 +41,7 @@ import com.melon.foolsEngine.core.events.Event;
 import com.melon.foolsEngine.core.events.EventBus;
 import com.melon.foolsEngine.core.world.SystemScheduler;
 import com.melon.foolsEngine.util.*;
-import com.melon.foolsEngine.util.imgui.ImGuiContext;
-import com.melon.foolsEngine.util.imgui.ImGuiDebugOverlay;
-import com.melon.foolsEngine.util.imgui.ImGuiRenderer;
+import com.melon.foolsEngine.backend.OpenGL.imgui.ImGuiDebugOverlay;
 import com.melon.foolsEngine.util.logger.LogLevel;
 import com.melon.foolsEngine.util.logger.Logger;
 import org.joml.*;
@@ -51,8 +52,8 @@ import java.nio.file.Path;
 @EventBusSubscriber
 public class TesECSRenderFlow {
     static FoolsEngine foolsEngine;
-    private static final int SHADOW_MAP_SIZE = 8192;
-    private static final int MAX_SHADOW_LAYERS = 32;
+    private static final int SHADOW_MAP_SIZE = Integer.getInteger("foolsEngine.test.shadowMapSize", 2048);
+    private static final int MAX_SHADOW_LAYERS = LightEnvironment.DEFAULT_MAX_LIGHTS;
     private static final float SPOT_SHADOW_NEAR = 0.1f;
 
     private static final Logger TESTLOGGER = new Logger();
@@ -179,7 +180,7 @@ public class TesECSRenderFlow {
 
         WindowsManager manager = foolsEngine.serviceFactory.getWindowsManager();
         Window win = foolsEngine.mainWindow;
-        win.setTitle("TesECSRenderFlow - ECS + SystemScheduler + Shadows");
+        win.setTitle("TesECSRenderFlow - B: Toggle Whiteboard");
         win.setSize(2048, 1536);
 
         Mesh dragonMesh = foolsEngine.serviceFactory.getMesh();
@@ -202,13 +203,25 @@ public class TesECSRenderFlow {
         arrayMaterial.set("textureSampler", arrayTexture);
 
         Vector3f origin = new Vector3f(0, 0, 5);
+        float modelTop = dragonMesh.getAABB()[4];
+        var white = UiDrawList.Color.WHITE;
+        var statusFrame = java.util.List.of(
+                new UiDrawList.Quad(-24, -12, 48, 1, white, 0),
+                new UiDrawList.Quad(-24, -1, 48, 1, white, 0),
+                new UiDrawList.Quad(-24, -11, 1, 10, white, 0),
+                new UiDrawList.Quad(23, -11, 1, 10, white, 0));
         for (int i = 0; i < 10; i++) {
             for (int j = 0; j < 10; j++) {
                 for(int k=0;k<10;k++){
                     Material mat = (i % 2 == 0) ? arrayMaterial : material;
                     Vector3f pos = new Vector3f(origin).add(3 * i, 5*k, 2 * j);
-                    foolsEngine.entityFactory.createModelEntity(
+                    int entity = foolsEngine.entityFactory.createModelEntity(
                             dragonMesh, mat, pos, new Quaternionf(), new Vector3f(0.1f, 0.1f, 0.1f));
+                    var status = new UiComponent(statusFrame.getFirst());
+                    status.setQuads(statusFrame);
+                    status.followTransform = true;
+                    status.offsetY = modelTop;
+                    foolsEngine.entityManager.bindComponent(entity, status);
                 }
             }
         }
@@ -232,9 +245,7 @@ public class TesECSRenderFlow {
                         .build());
 
 
-        ImGuiContext imGuiContext = new ImGuiContext();
-        imGuiContext.init(win.getID(), "#version 330");
-        ImGuiRenderer imGuiRenderer = new ImGuiRenderer(imGuiContext);
+        var imGuiRenderer = foolsEngine.serviceFactory.createImGuiLayer(win);
         ImGuiDebugOverlay debugOverlay = new ImGuiDebugOverlay();
 
         foolsEngine.systemManager.registerSystem(ShadowPassCollector.class);
@@ -270,6 +281,7 @@ public class TesECSRenderFlow {
         Action switchMouseMode = () -> SignalType.BUTTON;
         Action switchDebugWindow = () -> SignalType.BUTTON;
         Action switchFullscreen = () -> SignalType.BUTTON;
+        Action toggleWhiteboard = () -> SignalType.BUTTON;
 
         input.bind(input.getKeyboard(), FoolsEngineKeyCode.J, ambientUp);
         input.bind(input.getKeyboard(), FoolsEngineKeyCode.K, ambientDown);
@@ -284,6 +296,7 @@ public class TesECSRenderFlow {
 
         input.bind(input.getKeyboard(), FoolsEngineKeyCode.C, switchDebugWindow);
         input.bind(input.getKeyboard(), FoolsEngineKeyCode.F11, switchFullscreen);
+        input.bind(input.getKeyboard(), FoolsEngineKeyCode.B, toggleWhiteboard);
 
         input.bind(input.getMouse(), FoolsEngineKeyCode.MOUSE_RIGHT, switchMouseMode);
 
@@ -291,6 +304,7 @@ public class TesECSRenderFlow {
         foolsEngine.systemManager.registerSystem(CameraMovementSystem.class);
 
         boolean renderDebug = false;
+        boolean showWhiteboard = false;
 
         java.util.Random rng = new java.util.Random();
         long lastTime = System.nanoTime();
@@ -301,11 +315,17 @@ public class TesECSRenderFlow {
             lastTime = currentTime;
 
             long updateStartNs = System.nanoTime();
+            if (showWhiteboard) {
+                scheduler.getScene().ui().rectangle(24, 24, 320, 180, white, 100);
+            }
             scheduler.update();
             long updateElapsedNs = System.nanoTime() - updateStartNs;
             float updateTimeMs = updateElapsedNs / 1e6f;
             foolsEngine.LOGGER.trace("renderStart:%d, renderTimeMs:%f",updateStartNs, updateTimeMs);
             input.updateFromPolledInputs();
+            if (input.isActionPressed(toggleWhiteboard)) {
+                showWhiteboard = !showWhiteboard;
+            }
 
             if (renderDebug) {
                 scheduler.additionalRenderTask(() -> {
@@ -391,9 +411,11 @@ public class TesECSRenderFlow {
             input.clearPolledInputs();
         }
 
+        imGuiRenderer.close();
         shader.destroy();
         depthShader.destroy();
         lightEnv.destroy();
+        scheduler.shutdown();
         manager.destroyWindow(win, true);
     }
 }

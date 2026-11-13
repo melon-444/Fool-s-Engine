@@ -15,6 +15,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package com.melon.foolsEngine.api;
 
+import com.melon.foolsEngine.api.rendering.ui.ImGuiLayer;
+import com.melon.foolsEngine.api.windows.Window;
+
 import com.melon.foolsEngine.api.audio.AudioSystem;
 import com.melon.foolsEngine.api.input.InputManager;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
@@ -33,6 +36,11 @@ import com.melon.foolsEngine.api.windows.WindowsManager;
  * Obtain via {@code FoolsEngine.serviceFactory}.
  */
 public interface APIFactory {
+    /** Creates a caller-owned ImGui layer for the given window. Requires imgui-java at runtime. */
+    default ImGuiLayer createImGuiLayer(Window window) {
+        throw new UnsupportedOperationException("This graphics backend does not provide ImGui");
+    }
+
     /** @return the window manager for creating and managing windows */
     WindowsManager getWindowsManager();
     /** @return the main render frame */

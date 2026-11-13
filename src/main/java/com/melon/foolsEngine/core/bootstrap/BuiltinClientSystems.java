@@ -22,6 +22,7 @@ import com.melon.foolsEngine.core.ECS.system.MaterialCollector;
 import com.melon.foolsEngine.core.ECS.system.RenderPassCollector;
 import com.melon.foolsEngine.core.ECS.system.RenderableCollector;
 import com.melon.foolsEngine.core.ECS.system.TextureManagerCollector;
+import com.melon.foolsEngine.core.ECS.system.UiCollector;
 import com.melon.foolsEngine.core.annotation.OnlyIn;
 import com.melon.foolsEngine.core.world.SystemManager;
 import com.melon.foolsEngine.util.Distribution;
@@ -46,5 +47,6 @@ public final class BuiltinClientSystems {
         systems.registerSystem(RenderableCollector.class);
         systems.registerSystem(RenderPassCollector.class);
         systems.registerSystem(MaterialCollector.class);
+        systems.registerSystem(UiCollector.class);
     }
 }

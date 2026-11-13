@@ -16,6 +16,7 @@
 package com.melon.foolsEngine.backend.OpenGL;
 
 import com.melon.foolsEngine.api.rendering.render.*;
+import com.melon.foolsEngine.api.rendering.ui.UiDrawList.Quad;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.api.rendering.resource.Mesh;
 import com.melon.foolsEngine.api.rendering.resource.MeshData;
@@ -49,6 +50,9 @@ class GLRenderFrame implements RenderFrame {
     private final float[] vpBuffer = new float[16];
     private final float[] uniformMatrixBuffer = new float[16];
     private GLMesh fullscreenQuad;
+    private GLShaderProgram uiShader;
+    private int uiVao;
+    private final Vector4f uiProjected = new Vector4f();
     private final TextureBinder binder = new TextureBinder();
     private static final Logger RENDERLOGGER = new Logger("Render Debug");
 
@@ -137,8 +141,13 @@ class GLRenderFrame implements RenderFrame {
             }
 
             List<ShaderPass> passes = scene.getPasses();
+            boolean hasUiPass = false;
             for (ShaderPass pass : passes) {
                 executePass(pass, scene, commands);
+                hasUiPass |= pass.type() == ShaderPass.Type.UI;
+            }
+            if (!hasUiPass && !scene.ui().isEmpty()) {
+                executePass(ShaderPass.ui(), scene, commands);
             }
 
         } finally {
@@ -150,7 +159,139 @@ class GLRenderFrame implements RenderFrame {
         }
     }
 
+    private void renderUi(RenderScene scene) {
+        ensureViewportKnown();
+        int savedX = viewportX;
+        int savedY = viewportY;
+        int savedW = viewportW;
+        int savedH = viewportH;
+        boolean cull = glIsEnabled(GL_CULL_FACE);
+        int previousDraw = glGetInteger(GL_DRAW_FRAMEBUFFER_BINDING);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        try {
+            applyScreenViewport(scene, scene.getCamera(), false);
+            int width = scene.getScreenViewportW();
+            int height = scene.getScreenViewportH();
+            if (width <= 0 || height <= 0) {
+                width = savedW;
+                height = savedH;
+            }
+            if (width <= 0 || height <= 0) {
+                return;
+            }
+            int worldX = viewportX;
+            int worldY = viewportY;
+            int worldWidth = viewportW;
+            int worldHeight = viewportH;
+            setViewport(0, 0, width, height);
+            setScissorEnabled(false);
+            setDepthTestEnabled(false);
+            setBlendState(ShaderPass.BlendMode.ALPHA_BLEND);
+            glDisable(GL_CULL_FACE);
+            drawCallCounter += drawUi(scene, width, height, worldX, worldY, worldWidth, worldHeight);
+        } finally {
+            if (cull) glEnable(GL_CULL_FACE);
+            setViewport(savedX, savedY, savedW, savedH);
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, previousDraw);
+        }
+    }
+
+    @Override
+    public void close() {
+        if (uiShader != null) {
+            uiShader.destroy();
+            glDeleteVertexArrays(uiVao);
+            uiShader = null;
+        }
+        if (fullscreenQuad != null) {
+            fullscreenQuad.destroy();
+            fullscreenQuad = null;
+        }
+    }
+
+    private int drawUi(RenderScene scene, int width, int height, int worldX, int worldY, int worldWidth, int worldHeight) {
+        if (uiShader == null) {
+            GLShaderProgram program = new GLShaderProgram();
+            program.load("shader/vsh/ui_vsh.glsl", "shader/fsh/ui_fsh.glsl");
+            uiVao = glGenVertexArrays();
+            uiShader = program;
+        }
+        int previousVao = glGetInteger(GL_VERTEX_ARRAY_BINDING);
+        int previousProgram = glGetInteger(GL_CURRENT_PROGRAM);
+        int previousUnit = glGetInteger(GL_ACTIVE_TEXTURE);
+        glActiveTexture(GL_TEXTURE0);
+        int previous2d = glGetInteger(GL_TEXTURE_BINDING_2D);
+        glActiveTexture(GL_TEXTURE1);
+        int previousArray = glGetInteger(GL_TEXTURE_BINDING_2D_ARRAY);
+        glBindVertexArray(uiVao);
+        uiShader.bind();
+        int draws = 0;
+        try {
+            uiShader.setInt("image2d", 0);
+            uiShader.setInt("imageArray", 1);
+            var camera = scene.getCamera();
+            var vp = camera == null ? null : camera.vp();
+            for (Quad quad : scene.ui().orderedCommands()) {
+                if (quad.width() == 0 || quad.height() == 0 || quad.color().a() == 0) {
+                    continue;
+                }
+                float x = quad.x();
+                float y = quad.y();
+                if (quad.anchor() != null) {
+                    if (vp == null) {
+                        continue;
+                    }
+                    var anchor = quad.anchor();
+                    uiProjected.set(anchor.x(), anchor.y(), anchor.z(), 1);
+                    vp.transform(uiProjected);
+                    if (!(uiProjected.w > 0 && uiProjected.z >= 0 && uiProjected.z <= uiProjected.w)) {
+                        continue;
+                    }
+                    x += worldX + (uiProjected.x / uiProjected.w + 1) * worldWidth * 0.5f;
+                    y += height - worldY - (uiProjected.y / uiProjected.w + 1) * worldHeight * 0.5f;
+                }
+                drawQuad(quad, x, y, width, height);
+                draws++;
+            }
+        } finally {
+            glUseProgram(previousProgram);
+            glBindVertexArray(previousVao);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, previous2d);
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, previousArray);
+            glActiveTexture(previousUnit);
+        }
+        return draws;
+    }
+
+    private void drawQuad(Quad quad, float x, float y, int width, int height) {
+        uiShader.setVec4("rect", 2 * x / width - 1, 1 - 2 * y / height,
+                2 * quad.width() / width, -2 * quad.height() / height);
+        var color = quad.color();
+        uiShader.setVec4("tint", color.r(), color.g(), color.b(), color.a());
+        var texture = quad.texture();
+        if (texture == null) {
+            uiShader.setInt("imageKind", 0);
+        } else if (texture.belongsTo() == null) {
+            texture.bind(0);
+            uiShader.setInt("imageKind", 1);
+        } else {
+            texture.bind(1);
+            texture.belongsTo().flushMipmaps();
+            uiShader.setInt("imageLayer", texture.getLayer());
+            uiShader.setInt("imageKind", 2);
+        }
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    }
+
     private void executePass(ShaderPass pass, RenderScene scene, List<RenderCommand> commands) {
+        if (pass.type() == ShaderPass.Type.UI) {
+            if (!scene.ui().isEmpty()) {
+                renderUi(scene);
+            }
+            return;
+        }
         ensureViewportKnown();
         int savedViewportX = viewportX;
         int savedViewportY = viewportY;

@@ -3,30 +3,21 @@ package com.melon.foolsEngine.backend.JavaSound;
 import com.melon.foolsEngine.api.audio.AudioClip;
 import com.melon.foolsEngine.api.audio.AudioSource;
 import com.melon.foolsEngine.api.audio.AudioSystem;
+import com.melon.foolsEngine.util.PcmSound;
 
 import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.Clip;
 import javax.sound.sampled.FloatControl;
 import javax.sound.sampled.LineUnavailableException;
-import javax.sound.sampled.UnsupportedAudioFileException;
-import java.io.BufferedInputStream;
-import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 /** Java Sound playback for short sounds such as mono or stereo PCM WAV files. */
 public final class JavaSoundAudioSystem implements AudioSystem {
-    public static AudioSystem create() {
-        return new JavaSoundAudioSystem();
-    }
 
-    /** @deprecated Select Java Sound through the API builder. */
-    @Deprecated
     public JavaSoundAudioSystem() {}
 
     private final Set<DecodedClip> clips = new HashSet<>();
@@ -35,31 +26,10 @@ public final class JavaSoundAudioSystem implements AudioSystem {
     @Override
     public synchronized AudioClip load(InputStream input) throws IOException {
         requireOpen();
-        Objects.requireNonNull(input, "input");
-        InputStream borrowed = new FilterInputStream(input) {
-            @Override
-            public void close() {}
-        };
-        try (var buffered = new BufferedInputStream(borrowed);
-             AudioInputStream encoded = javax.sound.sampled.AudioSystem.getAudioInputStream(buffered)) {
-            AudioFormat source = encoded.getFormat();
-            int channels = source.getChannels();
-            if ((channels != 1 && channels != 2) || source.getSampleRate() <= 0) {
-                throw new IOException("Expected a mono or stereo sound with a valid sample rate");
-            }
-            AudioFormat format = new AudioFormat(source.getSampleRate(), 16, channels, true, false);
-            try (AudioInputStream pcm = javax.sound.sampled.AudioSystem.getAudioInputStream(format, encoded)) {
-                byte[] data = pcm.readAllBytes();
-                if (data.length == 0) {
-                    throw new IOException("Sound has no audio frames");
-                }
-                DecodedClip clip = new DecodedClip(format, data);
-                clips.add(clip);
-                return clip;
-            }
-        } catch (UnsupportedAudioFileException | IllegalArgumentException e) {
-            throw new IOException("Unsupported audio format", e);
-        }
+        PcmSound pcm = PcmSound.decode(input, false);
+        DecodedClip clip = new DecodedClip(pcm.format(), pcm.data());
+        clips.add(clip);
+        return clip;
     }
 
     @Override

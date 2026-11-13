@@ -151,7 +151,7 @@ public abstract class InternalFactoryStub implements APIFactory {
 
     @Override
     public AudioSystem createAudioSystem() {
-        return JavaSoundAudioSystem.create();
+        return new JavaSoundAudioSystem();
     }
 
     @Override

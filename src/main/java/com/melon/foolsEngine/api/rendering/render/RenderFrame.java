@@ -40,7 +40,11 @@ import java.util.List;
  * }</pre>
  * <p>
  */
-public interface RenderFrame {
+public interface RenderFrame extends AutoCloseable {
+    /** Releases frame-owned render resources while the graphics context is current. */
+    @Override
+    default void close() {}
+
     /** Initializes the renderer (must be called once before any rendering) */
     void init();
 
