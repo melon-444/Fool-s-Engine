@@ -45,6 +45,7 @@ public class ObjLoader {
         }
 
         for (String line : lines) {
+            line = line.split("#", 2)[0].strip();
             if (line.startsWith("v ")) {
                 String[] t = line.split("\\s+");
                 positions.add(new Vector3f(
@@ -68,19 +69,19 @@ public class ObjLoader {
             } else if (line.startsWith("f ")) {
                 String[] t = line.split("\\s+");
 
-                // Assume all the shapes are triangle
-                for (int i = 1; i <= 3; i++) {
+                int first = -1;
+                int previous = -1;
+                for (int i = 1; i < t.length; i++) {
                     String key = t[i];
+                    String[] indices = key.split("/", -1);
+                    int vi = resolveIndex(Integer.parseInt(indices[0]), positions.size());
+                    int ti = indices.length > 1 && !indices[1].isEmpty()
+                            ? resolveIndex(Integer.parseInt(indices[1]), textureCoords.size()) : -1;
+                    int ni = indices.length > 2 && !indices[2].isEmpty()
+                            ? resolveIndex(Integer.parseInt(indices[2]), normals.size()) : -1;
+                    key = vi + "/" + ti + "/" + ni;
 
                     if (!vertexMap.containsKey(key)) {
-                        String[] indices = key.split("/");
-
-                        int vi = resolveIndex(Integer.parseInt(indices[0]),positions.size());
-                        int ti = indices.length > 1 && !indices[1].isEmpty()
-                                ? resolveIndex(Integer.parseInt(indices[1]),textureCoords.size()) : -1;
-                        int ni = indices.length > 2
-                                ? resolveIndex(Integer.parseInt(indices[2]),normals.size()) : -1;
-
                         Vector3f pos = positions.get(vi);
                         Vector2f uv = ti >= 0 ? textureCoords.get(ti) : new Vector2f();
                         Vector3f norm = ni >= 0 ? normals.get(ni) : new Vector3f();
@@ -104,7 +105,15 @@ public class ObjLoader {
                         vertexMap.put(key, newIndex);
                     }
 
-                    indexBuffer.add(vertexMap.get(key));
+                    int index = vertexMap.get(key);
+                    if (i == 1) {
+                        first = index;
+                    } else if (i >= 3) {
+                        indexBuffer.add(first);
+                        indexBuffer.add(previous);
+                        indexBuffer.add(index);
+                    }
+                    previous = index;
                 }
             }
         }

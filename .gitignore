@@ -4,6 +4,7 @@ build/
 !gradle/wrapper/gradle-wrapper.jar
 !src/main/**/build/
 stable-libs/
+dark_wood/
 
 #local lwjgl libs
 lwjgl/

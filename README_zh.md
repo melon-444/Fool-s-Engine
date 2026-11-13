@@ -1,4 +1,4 @@
-# foolsEngine
+<p ><img src="./assets/branding/fools-engine-icon.png" alt="Logo" width="200"><img src="./assets/branding/fools-engine-title.png" alt="Logo" width="650"></p>
 
 **[English](README.md)** | **中文**
 

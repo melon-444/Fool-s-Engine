@@ -41,6 +41,9 @@ public final class UiCollector extends ClientSystem {
             for (var quad : ui.getQuads()) {
                 scene.ui().submit(worldAnchor == null ? quad : quad.at(worldAnchor));
             }
+            if (ui.hitBounds != null && ui.hitId != null) {
+                scene.ui().hitRegion(ui.hitId, worldAnchor == null ? ui.hitBounds : ui.hitBounds.at(worldAnchor));
+            }
         }
     }
 }

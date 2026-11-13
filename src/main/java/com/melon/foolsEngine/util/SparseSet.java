@@ -118,6 +118,9 @@ public class SparseSet<Component extends com.melon.foolsEngine.core.ECS.basicCom
     public void createComponent(int entityID, Component component) {
         lock.writeLock().lock();
         try {
+            if (existsUnsafe(entityID)) {
+                throw new IllegalArgumentException("Entity " + entityID + " already has this component type");
+            }
             sparseArray[entityID] = size;
             dense_entity[size] = entityID;
             dense_component[size] = component;

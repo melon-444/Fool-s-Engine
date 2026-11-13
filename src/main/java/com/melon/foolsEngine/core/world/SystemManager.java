@@ -56,6 +56,9 @@ public class SystemManager {
     }
 
     public <T extends System<?>> T registerSystem(Class<T> systemClass) {
+        if (systems.containsKey(systemClass)) {
+            throw new IllegalStateException("System already registered: " + systemClass.getName());
+        }
         try {
             LOG.debug("Registering system %s", systemClass.getSimpleName());
             T system = null;
@@ -137,6 +140,12 @@ public class SystemManager {
 
     private <T extends System> void setSignature(Class<T> systemClass, Signature signature) {
         signatures.put(systemClass, signature);
+    }
+
+    void removeEntity(int entity) {
+        for (System system : systems.values()) {
+            system.entities.remove(entity);
+        }
     }
 
     public void entitySignatureChanged(int entity, Signature entitySignature) {

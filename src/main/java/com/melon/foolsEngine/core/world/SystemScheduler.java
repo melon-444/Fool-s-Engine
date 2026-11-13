@@ -18,6 +18,8 @@ package com.melon.foolsEngine.core.world;
 import com.melon.foolsEngine.api.rendering.render.GraphicsContext;
 import com.melon.foolsEngine.api.rendering.render.RenderFrame;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
+import com.melon.foolsEngine.api.rendering.ui.UiInteraction;
+import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.core.ECS.system.ClientSystem;
 import com.melon.foolsEngine.core.ECS.system.ServerSystem;
 import com.melon.foolsEngine.core.annotation.InstanceBusSubscriber;
@@ -61,6 +63,21 @@ public class SystemScheduler {
 
     private RenderScene sceneFront;
     private RenderScene sceneBack;
+    private final UiInteraction uiInteraction = new UiInteraction();
+
+    public UiInteraction uiInteraction() { return uiInteraction; }
+
+    /** Dispatches a backend-provided window pointer snapshot. */
+    public void updateUiPointer(Window.PointerState pointer) {
+        updateUiPointer(pointer.x(), pointer.y(), pointer.primaryDown(), pointer.available());
+    }
+
+    /** Dispatches pointer input against the last rendered scene. */
+    public void updateUiPointer(float x, float y, boolean primaryDown, boolean focused) {
+        if (!headless) {
+            uiInteraction.update(sceneFront.ui(), x, y, primaryDown, focused);
+        }
+    }
 
     private long accumulatorNs;
     private long lastFrameNs = java.lang.System.nanoTime();

@@ -34,7 +34,7 @@ public class EntityManager {
 
     public Signature[] getEntitySignatures() {
         if(livingEntityCount == 0) return new Signature[0];
-        return Arrays.copyOfRange(signatures, 0, livingEntityCount-1);
+        return Arrays.copyOfRange(signatures, 0, livingEntityCount);
     }
 
     private final Signature[] signatures;
@@ -60,17 +60,17 @@ public class EntityManager {
     }
 
     public void destroyEntity(int entity) {
-        int lastIndex = livingEntityCount - 1;
-        if (entity < lastIndex) {
-            Instance.componentManager.clearComponentFromSet(entity, lastIndex);
-            signatures[entity] = signatures[lastIndex];
-            Instance.systemManager.entitySignatureChanged(entity, new Signature(Instance.MAX_COMPONENTS));
-            signatures[lastIndex] = null;
-        } else {
-            Instance.componentManager.clearComponentFromSet(entity, entity);
-            Instance.systemManager.entitySignatureChanged(entity, new Signature(Instance.MAX_COMPONENTS));
-            signatures[entity] = null;
+        if (entity < 0 || entity >= livingEntityCount) {
+            throw new IllegalArgumentException("Entity is not alive: " + entity);
         }
+        int lastIndex = livingEntityCount - 1;
+        Instance.componentManager.clearComponentFromSet(entity, lastIndex);
+        Instance.systemManager.removeEntity(lastIndex);
+        if (entity < lastIndex) {
+            signatures[entity] = signatures[lastIndex];
+            Instance.systemManager.entitySignatureChanged(entity, signatures[entity]);
+        }
+        signatures[lastIndex] = null;
         livingEntityCount = lastIndex;
 
         EventBus bus = EventBus.get("SystemBus");

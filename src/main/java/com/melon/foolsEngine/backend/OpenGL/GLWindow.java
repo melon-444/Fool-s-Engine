@@ -19,6 +19,7 @@ import com.melon.foolsEngine.api.rendering.render.GraphicsContext;
 import com.melon.foolsEngine.api.windows.Window;
 import com.melon.foolsEngine.util.CursorMode;
 import org.lwjgl.glfw.GLFWVidMode;
+import org.lwjgl.system.MemoryStack;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -183,6 +184,33 @@ class GLWindow implements Window, GraphicsContext {
     @Override
     public void pollEvents() {
         glfwPollEvents();
+    }
+
+    @Override
+    public PointerState getPointerState() {
+        boolean primaryDown = glfwGetMouseButton(id, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+        if (cursorMode == CursorMode.DISABLED ||
+                glfwGetWindowAttrib(id, GLFW_FOCUSED) != GLFW_TRUE ||
+                glfwGetWindowAttrib(id, GLFW_HOVERED) != GLFW_TRUE) {
+            return new PointerState(0, 0, primaryDown, false);
+        }
+        try (var stack = MemoryStack.stackPush()) {
+            var x = stack.mallocDouble(1);
+            var y = stack.mallocDouble(1);
+            var width = stack.mallocInt(1);
+            var height = stack.mallocInt(1);
+            var framebufferWidth = stack.mallocInt(1);
+            var framebufferHeight = stack.mallocInt(1);
+            glfwGetCursorPos(id, x, y);
+            glfwGetWindowSize(id, width, height);
+            glfwGetFramebufferSize(id, framebufferWidth, framebufferHeight);
+            if (width.get(0) <= 0 || height.get(0) <= 0 ||
+                    framebufferWidth.get(0) <= 0 || framebufferHeight.get(0) <= 0) {
+                return new PointerState(0, 0, primaryDown, false);
+            }
+            return new PointerState((float) (x.get(0) * framebufferWidth.get(0) / width.get(0)),
+                    (float) (y.get(0) * framebufferHeight.get(0) / height.get(0)), primaryDown, true);
+        }
     }
 
     @Override

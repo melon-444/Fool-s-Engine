@@ -1,4 +1,4 @@
-# foolsEngine
+<p ><img src="./assets/branding/fools-engine-icon.png" alt="Logo" width="200"><img src="./assets/branding/fools-engine-title.png" alt="Logo" width="650"></p>
 
 **English** | **[中文](README_zh.md)**
 
@@ -230,6 +230,8 @@ frame.render(RenderScene)
 - **Configurable passes**: `ShaderPass` + `RenderScene.submitPass()` allows arbitrary pass ordering; `RenderPassCollector` auto-generates shadow passes before user passes.
 
 ### Built-in UI
+
+Register a stable pointer target with `scene.ui().hitRegion(id, bounds)` or set `hitId` and `hitBounds` on a `UiComponent`. Call `scheduler.updateUiPointer(x, y, primaryDown, focused)` after polling events, using top-left framebuffer pixels. Read `hit()`, `isHovered(id)`, `isPressed(id)` and `isClicked(id)` from `scheduler.uiInteraction()`. Hits follow the last rendered frame. Use `blockPointer(bounds)` for panel backgrounds. In `TesECSRenderFlow`, press B to open the whiteboard, click its upper-right button to close it, and use a visible cursor to select a model's status frame.
 
 Submit a rectangle or image to the current frame with `scene.ui()`. Coordinates and sizes are framebuffer pixels with the origin at the top left. Higher layers draw on top, with submission order breaking ties. OpenGL draws UI after the scene passes by default. Use `scene.submitPass(ShaderPass.ui())` to place it explicitly in the pass list.
 

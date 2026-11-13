@@ -35,10 +35,8 @@ import com.melon.foolsEngine.core.ECS.system.ServerSystem;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.core.ECS.system.ShadowPassCollector;
 import com.melon.foolsEngine.core.annotation.EventBusSubscriber;
-import com.melon.foolsEngine.core.annotation.SubscribeEvent;
 import com.melon.foolsEngine.core.bootstrap.EngineBoot;
 import com.melon.foolsEngine.core.events.Event;
-import com.melon.foolsEngine.core.events.EventBus;
 import com.melon.foolsEngine.core.world.SystemScheduler;
 import com.melon.foolsEngine.util.*;
 import com.melon.foolsEngine.backend.OpenGL.imgui.ImGuiDebugOverlay;
@@ -48,6 +46,7 @@ import org.joml.*;
 import org.joml.Math;
 
 import java.nio.file.Path;
+import java.util.HashMap;
 
 @EventBusSubscriber
 public class TesECSRenderFlow {
@@ -184,7 +183,8 @@ public class TesECSRenderFlow {
         win.setSize(2048, 1536);
 
         Mesh dragonMesh = foolsEngine.serviceFactory.getMesh();
-        dragonMesh.upload(ObjLoader.loadMesh(Path.of("src/test/resources/shaders/model/dragon.obj")));
+        dragonMesh.upload(MeshImporter.load(Path.of("src/test/resources/shaders/model/dragon.obj"))
+                .parts().getFirst().mesh());
 
         BuiltinShaders builtinShaders =
                 BuiltinShaders.load(foolsEngine.serviceFactory);
@@ -205,6 +205,7 @@ public class TesECSRenderFlow {
         Vector3f origin = new Vector3f(0, 0, 5);
         float modelTop = dragonMesh.getAABB()[4];
         var white = UiDrawList.Color.WHITE;
+        var statusWidgets = new HashMap<Integer, UiComponent>();
         var statusFrame = java.util.List.of(
                 new UiDrawList.Quad(-24, -12, 48, 1, white, 0),
                 new UiDrawList.Quad(-24, -1, 48, 1, white, 0),
@@ -221,6 +222,9 @@ public class TesECSRenderFlow {
                     status.setQuads(statusFrame);
                     status.followTransform = true;
                     status.offsetY = modelTop;
+                    status.hitId = entity;
+                    status.hitBounds = new UiDrawList.Quad(-24, -12, 48, 12, white, 0);
+                    statusWidgets.put(entity, status);
                     foolsEngine.entityManager.bindComponent(entity, status);
                 }
             }
@@ -305,6 +309,14 @@ public class TesECSRenderFlow {
 
         boolean renderDebug = false;
         boolean showWhiteboard = false;
+        String closeWhiteboard = "close-whiteboard";
+        Integer selectedStatus = null;
+        var ui = scheduler.uiInteraction();
+        var board = new UiDrawList.Quad(24, 24, 320, 180, white, 100);
+        var closeButton = new UiDrawList.Quad(308, 32, 28, 28, white, 101);
+        var selectedFrame = statusFrame.stream().map(quad -> new UiDrawList.Quad(
+                quad.x(), quad.y(), quad.width(), quad.height(),
+                new UiDrawList.Color(0.2f, 1, 0.4f, 1), quad.layer())).toList();
 
         java.util.Random rng = new java.util.Random();
         long lastTime = System.nanoTime();
@@ -316,15 +328,31 @@ public class TesECSRenderFlow {
 
             long updateStartNs = System.nanoTime();
             if (showWhiteboard) {
-                scheduler.getScene().ui().rectangle(24, 24, 320, 180, white, 100);
+                var draw = scheduler.getScene().ui();
+                draw.submit(board);
+                draw.blockPointer(board);
+                float shade = ui.isPressed(closeWhiteboard) ? 0.3f : ui.isHovered(closeWhiteboard) ? 0.55f : 0.78f;
+                draw.rectangle(308, 32, 28, 28, new UiDrawList.Color(shade, shade, shade, 1), 101);
+                draw.rectangle(315, 45, 14, 2, white, 102);
+                draw.hitRegion(closeWhiteboard, closeButton);
             }
             scheduler.update();
             long updateElapsedNs = System.nanoTime() - updateStartNs;
             float updateTimeMs = updateElapsedNs / 1e6f;
             foolsEngine.LOGGER.trace("renderStart:%d, renderTimeMs:%f",updateStartNs, updateTimeMs);
             input.updateFromPolledInputs();
+            scheduler.updateUiPointer(win.getPointerState());
+            if (ui.isClicked(closeWhiteboard)) {
+                showWhiteboard = false;
+            }
+            if (ui.hit() instanceof Integer target && ui.isClicked(target)) {
+                if (selectedStatus != null) statusWidgets.get(selectedStatus).setQuads(statusFrame);
+                selectedStatus = target;
+                statusWidgets.get(target).setQuads(selectedFrame);
+            }
             if (input.isActionPressed(toggleWhiteboard)) {
                 showWhiteboard = !showWhiteboard;
+                if (showWhiteboard) win.setCursorMode(CursorMode.NORMAL);
             }
 
             if (renderDebug) {
@@ -418,4 +446,5 @@ public class TesECSRenderFlow {
         scheduler.shutdown();
         manager.destroyWindow(win, true);
     }
+
 }

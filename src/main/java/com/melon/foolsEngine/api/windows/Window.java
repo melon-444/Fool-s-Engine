@@ -78,4 +78,14 @@ public interface Window {
     public void setCursorMode(CursorMode mode);
     /** @return the current cursor mode */
     public CursorMode getCursorMode();
+
+    /** Pointer coordinates use top-left framebuffer pixels when available. */
+    record PointerState(float x, float y, boolean primaryDown, boolean available) {
+        public static final PointerState UNAVAILABLE = new PointerState(0, 0, false, false);
+    }
+
+    /** Reads the pointer after event polling. Backends without pointer support return an unavailable state. */
+    default PointerState getPointerState() {
+        return PointerState.UNAVAILABLE;
+    }
 }

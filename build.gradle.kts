@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.melon.foolsEngine"
-version = "0.1.4"
+version = "0.1.5"
 
 java {
     toolchain {
@@ -39,6 +39,7 @@ if (lwjglUseMaven) {
         api("org.lwjgl", "lwjgl-glfw")
         api("org.lwjgl", "lwjgl-opengl")
         implementation("org.lwjgl", "lwjgl-openal")
+        implementation("org.lwjgl", "lwjgl-assimp")
         api("org.lwjgl", "lwjgl-stb")
         api("org.lwjgl", "lwjgl-vulkan")
         api("org.lwjgl", "lwjgl-shaderc")
@@ -46,6 +47,7 @@ if (lwjglUseMaven) {
         runtimeOnly("org.lwjgl", "lwjgl-glfw",     classifier = "natives-$lwjglNatives")
         runtimeOnly("org.lwjgl", "lwjgl-opengl",   classifier = "natives-$lwjglNatives")
         runtimeOnly("org.lwjgl", "lwjgl-openal",   classifier = "natives-$lwjglNatives")
+        runtimeOnly("org.lwjgl", "lwjgl-assimp", classifier = "natives-$lwjglNatives")
         runtimeOnly("org.lwjgl", "lwjgl-stb",      classifier = "natives-$lwjglNatives")
         runtimeOnly("org.lwjgl", "lwjgl-shaderc", classifier = "natives-$lwjglNatives")
         api("org.joml:joml:1.10.5")
@@ -79,6 +81,7 @@ if (lwjglUseMaven) {
         api(files("${libs}lwjgl-glfw/lwjgl-glfw.jar"))
         api(files("${libs}lwjgl-opengl/lwjgl-opengl.jar"))
         implementation(files("${libs}lwjgl-openal/lwjgl-openal.jar"))
+        implementation(files("${libs}lwjgl-assimp/lwjgl-assimp.jar"))
         api(files("${libs}lwjgl-stb/lwjgl-stb.jar"))
         api(files("${libs}lwjgl-vulkan/lwjgl-vulkan.jar"))
         api(files("${libs}lwjgl-shaderc/lwjgl-shaderc.jar"))
@@ -86,6 +89,7 @@ if (lwjglUseMaven) {
         runtimeOnly(files("${libs}lwjgl-glfw/lwjgl-glfw-natives-${lwjglNatives}.jar"))
         runtimeOnly(files("${libs}lwjgl-opengl/lwjgl-opengl-natives-${lwjglNatives}.jar"))
         runtimeOnly(files("${libs}lwjgl-openal/lwjgl-openal-natives-${lwjglNatives}.jar"))
+        runtimeOnly(files("${libs}lwjgl-assimp/lwjgl-assimp-natives-${lwjglNatives}.jar"))
         runtimeOnly(files("${libs}lwjgl-stb/lwjgl-stb-natives-${lwjglNatives}.jar"))
         runtimeOnly(files("${libs}lwjgl-shaderc/lwjgl-shaderc-natives-${lwjglNatives}.jar"))
         implementation("org.ow2.asm:asm:9.10")

@@ -3,6 +3,7 @@ package com.melon.foolsEngine.api.rendering.ui;
 import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Objects;
 
@@ -54,6 +55,58 @@ public final class UiDrawList {
     }
 
     private final List<Quad> commands = new ArrayList<>();
+    private final IdentityHashMap<Quad, Object> targets = new IdentityHashMap<>();
+    private final List<Hit> presented = new ArrayList<>();
+
+    private record Hit(Object id, float x, float y, float width, float height) {
+        boolean contains(float px, float py) {
+            return px >= x && py >= y && px < x + width && py < y + height;
+        }
+    }
+
+    /** Registers a hit area in the same coordinate space and order as drawn quads. */
+    public void hitRegion(Object id, Quad bounds) {
+        var region = new Quad(bounds.x(), bounds.y(), bounds.width(), bounds.height(),
+                bounds.color(), null, bounds.layer(), bounds.anchor());
+        targets.put(region, Objects.requireNonNull(id, "id"));
+        submit(region);
+    }
+
+    /** Blocks hits on items behind these bounds without exposing an interactive target. */
+    public void blockPointer(Quad bounds) {
+        hitRegion(UiInteraction.BLOCKED, bounds);
+    }
+
+    /** Called by the renderer after resolving the frame's UI projection. */
+    public void beginPresentation() {
+        presented.clear();
+    }
+
+    /** Records a resolved hit area and returns true when this quad is interaction-only. */
+    public boolean presentHitRegion(Quad quad, float x, float y, int width, int height) {
+        Object target = targets.get(quad);
+        if (target == null) return false;
+        float left = Math.max(x, 0);
+        float top = Math.max(y, 0);
+        float right = Math.min(x + quad.width(), width);
+        float bottom = Math.min(y + quad.height(), height);
+        if (left < right && top < bottom) {
+            presented.add(new Hit(target, left, top, right - left, bottom - top));
+        }
+        return true;
+    }
+
+    Object targetAt(float x, float y) {
+        for (int i = presented.size() - 1; i >= 0; i--) {
+            Hit hit = presented.get(i);
+            if (hit.contains(x, y)) return hit.id;
+        }
+        return null;
+    }
+
+    boolean presented(Object id) {
+        return presented.stream().anyMatch(hit -> hit.id.equals(id));
+    }
 
     public void submit(Quad quad) {
         commands.add(Objects.requireNonNull(quad, "quad"));
@@ -76,5 +129,9 @@ public final class UiDrawList {
 
     public boolean isEmpty() { return commands.isEmpty(); }
 
-    public void clear() { commands.clear(); }
+    public void clear() {
+        commands.clear();
+        targets.clear();
+        presented.clear();
+    }
 }

@@ -11,6 +11,9 @@ public final class UiComponent extends Component {
     public float offsetX;
     public float offsetY;
     public float offsetZ;
+    /** Optional hit bounds and stable ID for this component's group of quads. */
+    public UiDrawList.Quad hitBounds;
+    public Object hitId;
 
     public UiComponent(UiDrawList.Quad quad) {
         setQuad(quad);

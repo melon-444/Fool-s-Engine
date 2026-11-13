@@ -122,6 +122,7 @@ class GLRenderFrame implements RenderFrame {
     public void render(RenderScene scene) {
         initTest();
         drawCallCounter = 0;
+        scene.ui().beginPresentation();
 
         /*
          * Window-system code may have changed GL_VIEWPORT since the previous
@@ -232,7 +233,7 @@ class GLRenderFrame implements RenderFrame {
             var camera = scene.getCamera();
             var vp = camera == null ? null : camera.vp();
             for (Quad quad : scene.ui().orderedCommands()) {
-                if (quad.width() == 0 || quad.height() == 0 || quad.color().a() == 0) {
+                if (quad.width() == 0 || quad.height() == 0) {
                     continue;
                 }
                 float x = quad.x();
@@ -249,6 +250,9 @@ class GLRenderFrame implements RenderFrame {
                     }
                     x += worldX + (uiProjected.x / uiProjected.w + 1) * worldWidth * 0.5f;
                     y += height - worldY - (uiProjected.y / uiProjected.w + 1) * worldHeight * 0.5f;
+                }
+                if (scene.ui().presentHitRegion(quad, x, y, width, height) || quad.color().a() == 0) {
+                    continue;
                 }
                 drawQuad(quad, x, y, width, height);
                 draws++;
