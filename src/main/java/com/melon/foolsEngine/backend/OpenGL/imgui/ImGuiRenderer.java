@@ -1,0 +1,58 @@
+// foolsEngine - A custom 3D game engine in Java
+// Copyright (C) 2026  melon_444
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+package com.melon.foolsEngine.backend.OpenGL.imgui;
+
+import com.melon.foolsEngine.api.rendering.ui.ImGuiLayer;
+import imgui.ImGui;
+import imgui.glfw.ImGuiImplGlfw;
+import imgui.gl3.ImGuiImplGl3;
+
+public class ImGuiRenderer implements ImGuiLayer {
+
+    private final ImGuiContext context;
+    private final ImGuiImplGlfw glfw;
+    private final ImGuiImplGl3 gl3;
+
+    public ImGuiRenderer(ImGuiContext context) {
+        this.context = context;
+        this.glfw = context.getGlfw();
+        this.gl3 = context.getGl3();
+    }
+
+    public static ImGuiLayer create(long windowHandle) {
+        var context = new ImGuiContext();
+        context.init(windowHandle, "#version 330");
+        return new ImGuiRenderer(context);
+    }
+
+    @Override
+    public void beginFrame() {
+        glfw.newFrame();
+        gl3.newFrame();
+        ImGui.newFrame();
+    }
+
+    @Override
+    public void endFrame() {
+        ImGui.render();
+        gl3.renderDrawData(ImGui.getDrawData());
+    }
+
+    @Override
+    public void close() {
+        context.destroy();
+    }
+}

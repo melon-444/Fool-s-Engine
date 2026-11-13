@@ -1,0 +1,100 @@
+// foolsEngine - A custom 3D game engine in Java
+// Copyright (C) 2026  melon_444
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+package com.melon.foolsEngine.backend.OpenGL.imgui;
+
+import com.melon.foolsEngine.api.rendering.resource.Light;
+import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
+import com.melon.foolsEngine.api.rendering.render.RenderScene;
+import com.melon.foolsEngine.api.rendering.resource.shadow.ShadowManager;
+import com.melon.foolsEngine.util.LightType;
+import imgui.ImGuiIO;
+import org.joml.Vector3f;
+
+import imgui.ImGui;
+import imgui.flag.ImGuiCond;
+
+public class ImGuiDebugOverlay {
+
+    public void render(RenderScene scene, float deltaTime, float renderTimeMs,
+                       Vector3f cameraPos, float yaw, float pitch,
+                       int drawCallCount) {
+
+        ImGui.setNextWindowSize(320, 360, ImGuiCond.Once);
+        ImGui.begin("FoolsEngine Debug");
+
+        float fps = 1.0f / Math.max(deltaTime, 0.0001f);
+        ImGui.text(String.format("FPS: %.1f (%.2f ms)", fps, deltaTime * 1000f));
+        ImGuiIO io = ImGui.getIO();
+
+        ImGui.text("MouseX: " + io.getMousePosX());
+        ImGui.text("MouseY: " + io.getMousePosY());
+        ImGui.text("WantCaptureMouse: " + io.getWantCaptureMouse());
+
+        ImGui.separator();
+
+        if (ImGui.collapsingHeader("Camera")) {
+            ImGui.text(String.format("Position: (%.2f, %.2f, %.2f)", cameraPos.x, cameraPos.y, cameraPos.z));
+            ImGui.text(String.format("Yaw: %.1f  Pitch: %.1f", yaw, pitch));
+        }
+
+        ImGui.separator();
+
+        LightEnvironment lightEnv = scene != null ? scene.getLighting() : null;
+        if (lightEnv != null && ImGui.collapsingHeader("Lights")) {
+            int dirCount = 0, pointCount = 0, spotCount = 0, shadowCount = 0;
+            for (Light l : lightEnv.getLights()) {
+                if (l.type == LightType.PARALLEL) {
+                    dirCount++;
+                } else if (l.type == LightType.POINT) {
+                    pointCount++;
+                } else if (l.type == LightType.SPOT) {
+                    spotCount++;
+                }
+                if (l.castsShadow()) {
+                    shadowCount++;
+                }
+            }
+            int total = lightEnv.size();
+            ImGui.text(String.format("Total: %d", total));
+            ImGui.text(String.format("Directional: %d  Point: %d  Spot: %d", dirCount, pointCount, spotCount));
+            ImGui.text(String.format("Casting Shadows: %d", shadowCount));
+
+            Vector3f ambient = lightEnv.getAmbient();
+            ImGui.text(String.format("Ambient: (%.3f, %.3f, %.3f)", ambient.x, ambient.y, ambient.z));
+        }
+
+        ImGui.separator();
+
+        if (lightEnv != null) {
+            ShadowManager shadowManager = lightEnv.getShadowManager();
+            if (shadowManager != null && ImGui.collapsingHeader("Shadows")) {
+                int layers = shadowManager.getCurrentLayerCount();
+                int maxLayers = shadowManager.getMaxLayers();
+                ImGui.text(String.format("Layers Used: %d / %d", layers, maxLayers));
+                ImGui.text(String.format("Map Size: %d", lightEnv.getShadowMapSize()));
+            }
+        }
+
+        ImGui.separator();
+
+        if (ImGui.collapsingHeader("Renderer")) {
+            ImGui.text(String.format("Draw Calls: %d", drawCallCount >= 0 ? drawCallCount : -1));
+            ImGui.text(String.format("Render Pass: %.2f ms", renderTimeMs));
+        }
+
+        ImGui.end();
+    }
+}
