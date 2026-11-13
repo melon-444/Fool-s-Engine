@@ -118,6 +118,9 @@ sourceSets["test"].resources.srcDir("games/snake3d/src/main/resources")
 
 tasks.test {
     useJUnitPlatform()
+    val animationAsset = providers.environmentVariable("FOOLSENGINE_ANIMATION_ASSET")
+    inputs.property("animationAsset", animationAsset.orElse(""))
+    animationAsset.orNull?.takeIf { it.isNotBlank() }?.let { inputs.file(it) }
 }
 
 tasks.register<JavaExec>("runTestBackend") {
@@ -163,6 +166,13 @@ tasks.register<JavaExec>("runTestTransparentBackend") {
     mainClass.set("com.melon.foolsEngineTest.TestTransparentBackend")
     classpath = sourceSets["test"].runtimeClasspath
     jvmArgs(nmtJvmArgs)
+}
+
+tasks.register<JavaExec>("runTestSkeletalAnimation") {
+    group = "verification"
+    description = "Displays the animated model in FOOLSENGINE_ANIMATION_ASSET"
+    mainClass.set("com.melon.foolsEngineTest.TestSkeletalAnimation")
+    classpath = sourceSets["test"].runtimeClasspath
 }
 
 tasks.register<JavaExec>("runSnakeGame") {

@@ -46,6 +46,7 @@ public class ComponentManager {
         registerComponent(MaterialComponent.class);
         registerComponent(RenderContextComponent.class);
         registerComponent(RenderPassComponent.class);
+        if (!engineInstance.isServer) registerComponent(SkeletalAnimationComponent.class);
     }
 
     public void registerComponent(Class<? extends Component> componentClass) {

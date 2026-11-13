@@ -768,6 +768,7 @@ class GLRenderFrame implements RenderFrame {
         }
 
         glMesh.bind();
+        glMesh.selectVertices(cmds.getFirst().deformedVertices());
         glMesh.uploadInstanceData(instanceBuffer);
 
         shader.bind();
@@ -952,7 +953,7 @@ class GLRenderFrame implements RenderFrame {
                         "Unsupported material mode: " + pass.materialMode());
             }
 
-            BatchKey key = new BatchKey(c.mesh(), material, shader);
+            BatchKey key = new BatchKey(c.mesh(), material, shader, c.deformedVertices());
             batches.computeIfAbsent(key, k -> new ArrayList<>()).add(c);
         }
         return batches;
@@ -966,15 +967,17 @@ class GLRenderFrame implements RenderFrame {
         private final Mesh mesh;
         private final Material material;
         private final ShaderProgram shader;
+        private final float[] vertices;
         private final int hash;
 
-        private BatchKey(Mesh mesh, Material material, ShaderProgram shader) {
+        private BatchKey(Mesh mesh, Material material, ShaderProgram shader, float[] vertices) {
             this.mesh = Objects.requireNonNull(mesh, "mesh");
             this.material = Objects.requireNonNull(material, "material");
             this.shader = Objects.requireNonNull(shader, "shader");
-            this.hash = 31 * (31 * System.identityHashCode(mesh)
+            this.vertices = vertices;
+            this.hash = 31 * (31 * (31 * System.identityHashCode(mesh)
                     + System.identityHashCode(material))
-                    + System.identityHashCode(shader);
+                    + System.identityHashCode(shader)) + System.identityHashCode(vertices);
         }
 
         @Override
@@ -987,7 +990,8 @@ class GLRenderFrame implements RenderFrame {
             return other instanceof BatchKey key
                     && mesh == key.mesh
                     && material == key.material
-                    && shader == key.shader;
+                    && shader == key.shader
+                    && vertices == key.vertices;
         }
     }
 

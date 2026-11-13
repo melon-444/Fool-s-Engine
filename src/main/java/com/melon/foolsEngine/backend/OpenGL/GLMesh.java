@@ -34,6 +34,7 @@ class GLMesh implements Mesh {
     private boolean uploaded = false;
     private MeshData meshData;
     private float[] aabb;
+    private float[] deformedVertices;
 
     private int instanceVBO = 0;
     private boolean instanceConfigured = false;
@@ -130,6 +131,15 @@ class GLMesh implements Mesh {
     @Override
     public int indexCount() {
         return meshData.indices().length;
+    }
+
+    void selectVertices(float[] vertices) {
+        if (vertices == deformedVertices) return;
+        if (vertices != null && vertices.length != meshData.vertices().length) {
+            throw new IllegalArgumentException("Deformed vertices must match the uploaded mesh");
+        }
+        glNamedBufferSubData(vbo, 0, vertices == null ? meshData.vertices() : vertices);
+        deformedVertices = vertices;
     }
 
     @Override

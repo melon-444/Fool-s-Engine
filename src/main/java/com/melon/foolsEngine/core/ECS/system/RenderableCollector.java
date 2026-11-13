@@ -16,11 +16,13 @@
 package com.melon.foolsEngine.core.ECS.system;
 
 import com.melon.foolsEngine.api.rendering.render.RenderCommand;
+import com.melon.foolsEngine.api.rendering.animation.AnimationPlayer;
 import com.melon.foolsEngine.api.rendering.render.RenderScene;
 import com.melon.foolsEngine.api.rendering.resource.Camera;
 import com.melon.foolsEngine.api.rendering.resource.Light;
 import com.melon.foolsEngine.api.rendering.resource.LightEnvironment;
 import com.melon.foolsEngine.core.ECS.basicComponents.RenderableComponent;
+import com.melon.foolsEngine.core.ECS.basicComponents.SkeletalAnimationComponent;
 import com.melon.foolsEngine.core.ECS.basicComponents.TransformComponent;
 import com.melon.foolsEngine.core.FoolsEngine;
 import com.melon.foolsEngine.util.Octree;
@@ -39,6 +41,8 @@ public class RenderableCollector extends ClientSystem {
 
     private final SparseSet<TransformComponent> transforms;
     private final SparseSet<RenderableComponent> renderables;
+    private final SparseSet<SkeletalAnimationComponent> animations;
+    private final Set<AnimationPlayer> advancedPlayers = new HashSet<>();
     private final RevZFrustumIntersection frustum = new RevZFrustumIntersection();
     private final RevZFrustumIntersection shadowFrustum = new RevZFrustumIntersection();
     private final Octree octree = new Octree();
@@ -59,6 +63,7 @@ public class RenderableCollector extends ClientSystem {
         super(engine);
         transforms = getSparseSet(TransformComponent.class);
         renderables = getSparseSet(RenderableComponent.class);
+        animations = getSparseSet(SkeletalAnimationComponent.class);
     }
 
     @Override
@@ -73,6 +78,13 @@ public class RenderableCollector extends ClientSystem {
 
     @Override
     public void update(float dt, RenderScene scene) {
+        advancedPlayers.clear();
+        if (animations != null && animations.getSize() > 0) {
+            for (int entity : entities) {
+                var animation = animations.getComponent(entity);
+                if (animation != null && advancedPlayers.add(animation.player)) animation.player.advance(dt);
+            }
+        }
         Camera camera = scene.getCamera();
 
         List<Camera> shadowCameras = null;
@@ -91,7 +103,7 @@ public class RenderableCollector extends ClientSystem {
                 TransformComponent t = transforms.getComponent(e);
                 RenderableComponent r = renderables.getComponent(e);
                 if (t == null || r == null) continue;
-                scene.submit(new RenderCommand(r.mesh, r.material, t.getMatrix()));
+                submit(scene, e, t, r);
             }
             return;
         }
@@ -104,6 +116,12 @@ public class RenderableCollector extends ClientSystem {
             RenderableComponent r = renderables.getComponent(e);
             if (t == null || r == null) continue;
 
+            var animation = animations == null ? null : animations.getComponent(e);
+            if (animation != null) {
+                // The bind-pose bounds may exclude posed geometry in both scene and shadow passes.
+                uncullable.add(e);
+                continue;
+            }
             float[] aabb = r.mesh.getAABB();
             if (aabb == null) {
                 uncullable.add(e);
@@ -136,12 +154,23 @@ public class RenderableCollector extends ClientSystem {
             TransformComponent t = transforms.getComponent(e);
             RenderableComponent r = renderables.getComponent(e);
             if (t == null || r == null) continue;
-            scene.submit(new RenderCommand(r.mesh, r.material, t.getMatrix()));
+            submit(scene, e, t, r);
             submitted++;
         }
 
         if (submitted < entities.size()) {
             log.trace("cull: %d/%d submitted", submitted, entities.size());
         }
+    }
+
+    private void submit(RenderScene scene, int entity, TransformComponent t, RenderableComponent r) {
+        var animation = animations == null ? null : animations.getComponent(entity);
+        if (animation == null) {
+            scene.submit(new RenderCommand(r.mesh, r.material, t.getMatrix()));
+            return;
+        }
+        var meshTransform = animation.meshTransform(new Matrix4f());
+        var worldTransform = new Matrix4f(t.getMatrix()).mul(meshTransform);
+        scene.submit(new RenderCommand(r.mesh, r.material, worldTransform, animation.deformedVertices()));
     }
 }

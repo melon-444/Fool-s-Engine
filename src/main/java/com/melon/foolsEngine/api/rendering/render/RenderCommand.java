@@ -26,9 +26,15 @@ import org.joml.Matrix4f;
  * @param mesh the mesh to draw
  * @param material the material (shader + parameters)
  * @param transform the model matrix
+ * @param deformedVertices optional interleaved vertex data for this draw, valid until rendering finishes
  */
 public record RenderCommand(
         Mesh mesh,
         Material material,
-        Matrix4f transform
-) {}
+        Matrix4f transform,
+        float[] deformedVertices
+) {
+    public RenderCommand(Mesh mesh, Material material, Matrix4f transform) {
+        this(mesh, material, transform, null);
+    }
+}
