@@ -1,6 +1,7 @@
 package com.melon.foolsEngineTest;
 
 import com.melon.foolsEngine.api.APIBuilder;
+import com.melon.foolsEngine.api.rendering.animation.AnimationBinding;
 import com.melon.foolsEngine.api.rendering.animation.AnimationPlayer;
 import com.melon.foolsEngine.api.rendering.resource.*;
 import com.melon.foolsEngine.api.rendering.shader.BuiltinShaders;
@@ -9,6 +10,7 @@ import com.melon.foolsEngine.api.rendering.resource.texture.Texture;
 import com.melon.foolsEngine.core.ECS.basicComponents.*;
 import com.melon.foolsEngine.core.bootstrap.EngineBoot;
 import com.melon.foolsEngine.util.MeshImporter;
+import com.melon.foolsEngine.util.FbxRotationRepair;
 import com.melon.foolsEngine.util.logger.Logger;
 import org.joml.Vector3f;
 
@@ -17,6 +19,7 @@ import java.awt.image.BufferedImage;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Set;
 
 /** Visual smoke test using an external asset. Run with FOOLSENGINE_ANIMATION_ASSET set. */
 public final class TestSkeletalAnimation {
@@ -26,7 +29,18 @@ public final class TestSkeletalAnimation {
             throw new IllegalArgumentException("Set FOOLSENGINE_ANIMATION_ASSET to an animated model");
         }
         var model = MeshImporter.load(Path.of(asset));
-        var clip = model.clips().stream().filter(c -> c.durationSeconds() > 0).findFirst().orElseThrow();
+        String motion = System.getenv("FOOLSENGINE_ANIMATION_MOTION");
+        var source = motion == null || motion.isBlank() ? model : MeshImporter.loadAnimation(Path.of(motion));
+        var clip = source.clips().stream().filter(c -> c.durationSeconds() > 0).findFirst().orElseThrow();
+        String bakeFps = System.getenv("FOOLSENGINE_FBX_BAKE_FPS");
+        if (bakeFps != null && !bakeFps.isBlank()) {
+            clip = FbxRotationRepair.restoreBakedFrames(clip, Double.parseDouble(bakeFps));
+        }
+        if (source != model) {
+            String ignored = System.getenv("FOOLSENGINE_ANIMATION_IGNORE_TRACK");
+            clip = AnimationBinding.bind(clip, source.skeleton(), model.skeleton(),
+                    ignored == null || ignored.isBlank() ? Set.of() : Set.of(ignored));
+        }
         var player = new AnimationPlayer(model.skeleton());
         var api = APIBuilder.builder().OpenGL().create();
         var engine = EngineBoot.create(api, Math.max(64, model.parts().size() + 2), 32, 960, 720, false);

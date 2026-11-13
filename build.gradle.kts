@@ -121,6 +121,14 @@ tasks.test {
     val animationAsset = providers.environmentVariable("FOOLSENGINE_ANIMATION_ASSET")
     inputs.property("animationAsset", animationAsset.orElse(""))
     animationAsset.orNull?.takeIf { it.isNotBlank() }?.let { inputs.file(it) }
+    inputs.files(fileTree("src/test/resources/hmanimation") {
+        include("Models/*_Model.fbx", "Animations/*/Movement/Sprint/*@Sprint01_Forward.fbx")
+    })
+}
+
+// This local test fixture is loaded by path and should stay out of packaged resources.
+tasks.processTestResources {
+    exclude("hmanimation/**")
 }
 
 tasks.register<JavaExec>("runTestBackend") {

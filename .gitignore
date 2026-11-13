@@ -4,7 +4,7 @@ build/
 !gradle/wrapper/gradle-wrapper.jar
 !src/main/**/build/
 stable-libs/
-dark_wood/
+test/resources/hmanimation/
 
 #local lwjgl libs
 lwjgl/

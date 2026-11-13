@@ -44,13 +44,24 @@ public final class MeshImporter {
      * glTF, GLB, FBX and PLY. Each part retains its node-to-model transform.
      */
     public static Model load(Path path) {
+        return load(path, true);
+    }
+
+    /** Loads a source rig and its clips without requiring or copying a mesh. */
+    public static Model loadAnimation(Path path) {
+        return load(path, false);
+    }
+
+    private static Model load(Path path, boolean requireMesh) {
         if (path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".obj")) {
+            if (!requireMesh) throw new ResourceException("No skeletal animation in " + path);
             return new Model(List.of(new Part(path.getFileName().toString(), ObjLoader.loadMesh(path),
                     new Matrix4f(), -1, List.of())), List.of());
         }
 
-        var scene = aiImportFile(path.toAbsolutePath().toString(), aiProcess_Triangulate
-                | aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals | aiProcess_SortByPType);
+        int flags = requireMesh ? aiProcess_Triangulate | aiProcess_JoinIdenticalVertices
+                | aiProcess_GenSmoothNormals | aiProcess_SortByPType : 0;
+        var scene = aiImportFile(path.toAbsolutePath().toString(), flags);
         if (scene == null) {
             throw new ResourceException("Cannot import " + path + ": " + aiGetErrorString());
         }
@@ -61,9 +72,9 @@ public final class MeshImporter {
             var names = new HashMap<String, Integer>();
             if (root != null) collectJoints(root, -1, joints, names);
             var skeleton = new Skeleton(joints);
-            if (root != null) collect(scene, root, new Matrix4f(), new Part[scene.mNumMeshes()],
+            if (root != null && requireMesh) collect(scene, root, new Matrix4f(), new Part[scene.mNumMeshes()],
                     parts, skeleton, names, 0);
-            if (parts.isEmpty()) {
+            if (requireMesh && parts.isEmpty()) {
                 throw new ResourceException("No triangle meshes in " + path);
             }
             var animations = new ArrayList<Animation>();
@@ -74,6 +85,7 @@ public final class MeshImporter {
                         animation.mTicksPerSecond(), animation.mNumChannels()));
                 clips.add(copyAnimation(animation, names));
             }
+            if (!requireMesh && clips.isEmpty()) throw new ResourceException("No skeletal animation in " + path);
             return new Model(List.copyOf(parts), List.copyOf(animations), skeleton, List.copyOf(clips));
         } finally {
             aiReleaseImport(scene);
